@@ -1,16 +1,17 @@
 
-#ifndef _PARGRID_HPP_INCLUDED
-#define _PARGRID_HPP_INCLUDED
+#pragma once
 
 #include <stdexcept>
 #include <vector>
 #include <array>
 #include <memory>
 #include <map>
+#include <boost/mpi/communicator.hpp>
 
 #include "repart/metric.hpp"
+#include "common_types.hpp"
 
-namespace generic_dd {
+namespace repa {
 namespace grids {
 
 /** Some typedefs to document what an integer is supposed to mean
@@ -43,6 +44,8 @@ struct GhostExchangeDesc {
 /** Interface for a parallel linked-cell grid implementation.
  */
 struct ParallelLCGrid {
+  ParallelLCGrid(const boost::mpi::communicator& comm, Vec3d box_size, double min_cell_size);
+
   virtual ~ParallelLCGrid(){};
 
   /** Returns the number of local cells.
@@ -65,11 +68,11 @@ struct ParallelLCGrid {
 
   /** Returns the cell sizes of Linked Cell grid.
    */
-  virtual std::array<double, 3> cell_size() = 0;
+  virtual Vec3d cell_size() = 0;
 
   /** Returns the number of grid cells of the local process's subdomain in each direction.
    */
-  virtual std::array<int, 3> grid_size() = 0;
+  virtual Vec3i grid_size() = 0;
 
   /** Returns the index of a cell neighboring a given cell (by index).
    *
@@ -142,10 +145,13 @@ struct ParallelLCGrid {
    * @throws UnknownCommandError if command cannot be interpreted.
    */
   virtual void command(std::string s) { throw UnknwonCommandError{s}; };
+
+protected:
+  boost::mpi::communicator comm, comm_cart;
+  Vec3d box_l;
+  Vec3i node_grid, node_pos;
+  double max_range;
 };
 
 }
 }
-
-#endif
-

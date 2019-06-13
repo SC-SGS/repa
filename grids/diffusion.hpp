@@ -1,25 +1,23 @@
-#ifndef _GRIDS_DIFF_HPP
-#define _GRIDS_DIFF_HPP
+#pragma once
 
-#include "../pargrid.hpp"
+#include "pargrid.hpp"
 #include "globox.hpp"
 #include <array>
 #include <unordered_map>
-#include <mpi.h>
 #include <vector>
+#include <mpi.h>
 
-namespace generic_dd {
+namespace repa {
 namespace grids {
 
 struct Diffusion : public ParallelLCGrid {
-
-  Diffusion();
+  Diffusion(const boost::mpi::communicator& comm, Vec3d box_size, double min_cell_size);
   lidx n_local_cells() override;
   gidx n_ghost_cells() override;
   nidx n_neighbors() override;
   rank neighbor_rank(nidx i) override;
-  std::array<double, 3> cell_size() override;
-  std::array<int, 3> grid_size() override;
+  Vec3d cell_size() override;
+  Vec3i grid_size() override;
   lgidx cell_neighbor_index(lidx cellidx, int neigh) override;
   std::vector<GhostExchangeDesc> get_boundary_info() override;
   lidx position_to_cell_index(double pos[3]) override;
@@ -83,5 +81,3 @@ private:
 };
 } // namespace grids
 } // namespace generic_dd
-
-#endif

@@ -1,31 +1,25 @@
 
-#include "cart.hpp"
-#include "communication.hpp" // comm_cart
-#include "grid.hpp" // node_grid, node_pos, box_l
-#include "domain_decomposition.hpp"
-
+#include <mpi.h>
 #include <algorithm>
 
-#define UNUSED(x) ((void) (x))
+#include "cart.hpp"
+#include "util/push_back_unique.hpp"
+#include "util/linearize.hpp"
+#include "util/vadd.hpp"
 
-namespace generic_dd {
+#include "_compat.hpp"
+
+namespace repa {
 namespace grids {
 
 namespace impl {
-
-template <typename T>
-void push_back_unique(std::vector<T>& v, T val)
-{
-  if (std::find(std::begin(v), std::end(v), val) == std::end(v))
-    v.push_back(val);
-}
 
 // Offsets of cell and process neighbors -- respects cell ordering requirements
 // of pargrid.hpp:
 // 0 cell itself
 // 1-13 hs neigh
 // 14-26 fs neigh
-static std::vector<std::array<int, 3>> cart_neigh_offset = {
+static std::vector<Vec3i> cart_neigh_offset = {
   { 0, 0, 0},
   { 1, 0, 0},
   {-1, 1, 0},
@@ -56,35 +50,10 @@ static std::vector<std::array<int, 3>> cart_neigh_offset = {
   {-1, 0, 0}
 };
 
-static int linearize(const std::array<int, 3>& c, const std::array<int, 3>& grid)
+static std::pair<Vec3i, Vec3i>
+determine_send_receive_bounds(const Vec3i& offset, int receive, const Vec3i& grid)
 {
-  return (c[0] * grid[1] + c[1]) * grid[2] + c[2];
-}
-
-static std::array<int, 3> unlinearize(int cidx, const std::array<int, 3>& grid)
-{
-  return {{ (cidx / grid[2]) / grid[1],
-            (cidx / grid[2]) % grid[1],
-            cidx % grid[2] }};
-}
-
-static std::array<int, 3> pos_add_folded(const std::array<int, 3>& pos, const std::array<int, 3>& offset, const std::array<int, 3>& grid)
-{
-  std::array<int, 3> res;
-
-  for (int i = 0; i < 3; ++i) {
-    res[i] = pos[i] + offset[i];
-    if (res[i] < 0 || res[i] >= grid[i])
-      res[i] -= (res[i] / grid[i]) * grid[i];
-  }
-  return res;
-}
-
-
-static std::pair<std::array<int, 3>, std::array<int, 3>>
-determine_send_receive_bounds(const std::array<int, 3>& offset, int receive, const std::array<int, 3>& grid)
-{
-  std::array<int, 3> lc, hc;
+  Vec3i lc, hc;
 
   for (int i = 0; i < 3; ++i) {
     lc[i] = offset[i] <= 0? 1: grid[i];
@@ -104,16 +73,16 @@ determine_send_receive_bounds(const std::array<int, 3>& offset, int receive, con
 
 }
 
-bool CartGrid::is_ghost_cell(const std::array<int, 3>& c)
+bool CartGrid::is_ghost_cell(const Vec3i& c)
 {
   return c[0] == 0 || c[0] == m_ghost_grid_size[0] - 1 ||
          c[1] == 0 || c[1] == m_ghost_grid_size[1] - 1 ||
          c[2] == 0 || c[2] == m_ghost_grid_size[2] - 1;
 }
 
-rank CartGrid::proc_offset_to_rank(const std::array<int, 3> &offset)
+rank CartGrid::proc_offset_to_rank(const Vec3i &offset)
 {
-  auto neighpos = impl::pos_add_folded(m_procgrid_pos, offset, m_procgrid);
+  auto neighpos = util::vadd_mod(m_procgrid_pos, offset, m_procgrid);
   int rank;
   MPI_Cart_rank(comm_cart, neighpos.data(), &rank);
   return rank;
@@ -125,7 +94,7 @@ void CartGrid::fill_neighranks()
 
   for (const auto& offset: impl::cart_neigh_offset) {
     // Push back unique neighbor ranks into m_neighbors
-    impl::push_back_unique(m_neighranks, proc_offset_to_rank(offset));
+    util::push_back_unique(m_neighranks, proc_offset_to_rank(offset));
   }
 }
 
@@ -137,7 +106,7 @@ void CartGrid::create_index_permutations()
 
   int localidx = 0, ghostidx = n_local_cells();
   for (int i = 0; i < ncells; ++i) {
-    auto c = impl::unlinearize(i, m_ghost_grid_size);
+    auto c = util::unlinearize(i, m_ghost_grid_size);
     if (is_ghost_cell(c)) {
       m_from_pargrid_order[ghostidx] = i;
       m_to_pargrid_order[i] = ghostidx++;
@@ -172,9 +141,9 @@ void CartGrid::create_grid()
 }
 
 
-void CartGrid::fill_comm_cell_lists(std::vector<int>& v, const std::array<int, 3>& lc, const std::array<int, 3>& hc)
+void CartGrid::fill_comm_cell_lists(std::vector<int>& v, const Vec3i& lc, const Vec3i& hc)
 {
-  std::array<int, 3> c;
+  Vec3i c;
   for (c[0] = lc[0]; c[0] <= hc[0]; c[0]++) {
     for (c[1] = lc[1]; c[1] <= hc[1]; c[1]++) {
       for (c[2] = lc[2]; c[2] <= hc[2]; c[2]++) {
@@ -192,12 +161,12 @@ void CartGrid::prepare_communication()
   // The loop below is not guaranteed to get to the node itself (if it is
   // neighbored in every direction by other processes). Therefore, set this
   // communication destination fix beforehand.
-  m_exdescs[neighbor_idx(this_node)].dest = this_node;
+  m_exdescs[neighbor_idx(comm_cart.rank())].dest = comm_cart.rank();
 
   for (auto o = 1; o < impl::cart_neigh_offset.size(); ++o) {
-    std::array<int, 3> lc, hc;
+    Vec3i lc, hc;
     const auto& offset = impl::cart_neigh_offset[o];
-    std::array<int, 3> opposite = {{ -offset[0], -offset[1], -offset[2] }};
+    Vec3i opposite = {{ -offset[0], -offset[1], -offset[2] }};
 
     // Send
     {
@@ -220,7 +189,8 @@ void CartGrid::prepare_communication()
   }
 }
 
-CartGrid::CartGrid()
+CartGrid::CartGrid(const boost::mpi::communicator& comm, Vec3d box_size, double min_cell_size):
+  ParallelLCGrid(comm, box_size, min_cell_size)
 {
   create_grid();
   create_index_permutations();
@@ -252,21 +222,21 @@ rank CartGrid::neighbor_rank(nidx i)
 lgidx CartGrid::cell_neighbor_index(lidx cellidx, int neigh)
 {
   auto c = unlinearize(cellidx);
-  auto nc = impl::pos_add_folded(c, impl::cart_neigh_offset[neigh],
-                                 m_ghost_grid_size);
+  auto nc = util::vadd_mod(c, impl::cart_neigh_offset[neigh],
+                           m_ghost_grid_size);
   return linearize(nc);
 }
 
-lgidx CartGrid::linearize(std::array<int, 3> c)
+lgidx CartGrid::linearize(Vec3i c)
 {
-  auto idx = impl::linearize(c, m_ghost_grid_size);
+  auto idx = util::linearize(c, m_ghost_grid_size);
   return m_to_pargrid_order[idx];
 }
 
-std::array<int, 3> CartGrid::unlinearize(lgidx cidx)
+Vec3i CartGrid::unlinearize(lgidx cidx)
 {
   auto idx = m_from_pargrid_order[cidx];
-  return impl::unlinearize(idx, m_ghost_grid_size);
+  return util::unlinearize(idx, m_ghost_grid_size);
 }
 
 std::vector<GhostExchangeDesc> CartGrid::get_boundary_info()
@@ -276,7 +246,7 @@ std::vector<GhostExchangeDesc> CartGrid::get_boundary_info()
 
 lidx CartGrid::position_to_cell_index(double pos[3])
 {
-  std::array<int, 3> c;
+  Vec3i c;
 
   for (int i = 0; i < 3; ++i) {
     // Transform to process local coordinates
@@ -291,7 +261,7 @@ lidx CartGrid::position_to_cell_index(double pos[3])
 
 rank CartGrid::position_to_rank(double pos[3])
 {
-  std::array<int, 3> proc;
+  Vec3i proc;
   for (int i = 0; i < 3; ++i)
     proc[i] = static_cast<int>(pos[i] * m_inv_cell_size[i]) / m_grid_size[i];
 
@@ -321,15 +291,17 @@ nidx CartGrid::position_to_neighidx(double pos[3])
   return neighbor_idx(rank);
 }
 
-std::array<double, 3> CartGrid::cell_size()
+Vec3d CartGrid::cell_size()
 {
   return m_cell_size;
 }
 
-std::array<int, 3> CartGrid::grid_size()
+Vec3i CartGrid::grid_size()
 {
   return m_grid_size;
 }
+
+#define UNUSED(x) ((void) (x))
 
 bool CartGrid::repartition(const repart::Metric& m,
                            std::function<void()> exchange_start_callback)

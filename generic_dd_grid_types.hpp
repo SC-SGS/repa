@@ -1,11 +1,9 @@
-
-#ifndef GRID_TYPES_HPP_INCLUDED
-#define GRID_TYPES_HPP_INCLUDED
+#pragma once
 
 #include <unordered_map>
 #include <string>
 
-namespace generic_dd {
+namespace repa {
 
 /** Enum of supported grid types.
  * Caution: Might not all be compiled in.
@@ -43,5 +41,3 @@ inline GridType parse_grid_type(const std::string &desc) {
 }
 
 } // namespace generic_dd
-
-#endif

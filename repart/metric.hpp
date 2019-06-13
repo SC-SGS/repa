@@ -1,12 +1,12 @@
 
-#ifndef REPART_HPP_INCLUDED
-#define REPART_HPP_INCLUDED
+#pragma once
 
 #include <string>
 #include <functional>
 #include <vector>
+#include <boost/mpi/communicator.hpp>
 
-namespace generic_dd {
+namespace repa {
 namespace repart {
 
 /** Represents a linear combination of single metric functions.
@@ -15,8 +15,8 @@ struct Metric {
   using metric_func = std::function<void(std::vector<double>&)>;
   using cc_metric_func = std::function<double(int, int)>;
 
-  Metric() {}
-  Metric(const std::string& desc) { set_metric(desc); }
+  Metric(const boost::mpi::communicator& comm_cart): comm_cart(comm_cart) {}
+  Metric(const boost::mpi::communicator& comm_cart, const std::string& desc): Metric(comm_cart) { set_metric(desc); }
 
   /** Set "desc" as metric. Might throw a std::invalid_argument exception if
    * desc is not understood. Metric description strings are linear combinations
@@ -72,12 +72,10 @@ private:
   void parse_cell_metric_desc(const std::string& desc);
   void parse_cell_cell_metric_desc(const std::string& desc);
 
+  const boost::mpi::communicator& comm_cart;
   std::vector<std::pair<double, metric_func>> mdesc;
   std::vector<std::pair<double, cc_metric_func>> ccmdesc;
 };
 
 }
 }
-
-#endif
-

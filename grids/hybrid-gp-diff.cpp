@@ -1,14 +1,15 @@
 
-#ifdef HAVE_METIS
+//#ifdef HAVE_METIS
 
 #include <mpi.h>
 #include "hybrid-gp-diff.hpp"
+#include "util/mpi_type.hpp"
 
-namespace generic_dd {
+namespace repa {
 namespace grids {
 
-HybridGPDiff::HybridGPDiff()
-    : state(State::GRAPH), active_implementation(&graph_impl) {}
+HybridGPDiff::HybridGPDiff(const boost::mpi::communicator& comm, Vec3d box_size, double min_cell_size):
+  ParallelLCGrid(comm, box_size, min_cell_size), diff_impl(comm, box_size, min_cell_size), graph_impl(comm, box_size, min_cell_size), state(State::GRAPH), active_implementation(&graph_impl) {}
 
 lidx HybridGPDiff::n_local_cells() {
   return active_implementation->n_local_cells();
@@ -24,11 +25,11 @@ rank HybridGPDiff::neighbor_rank(nidx i) {
   return active_implementation->neighbor_rank(i);
 }
 
-std::array<double, 3> HybridGPDiff::cell_size() {
+Vec3d HybridGPDiff::cell_size() {
   return active_implementation->cell_size();
 }
 
-std::array<int, 3> HybridGPDiff::grid_size() {
+Vec3i HybridGPDiff::grid_size() {
   return active_implementation->grid_size();
 }
 
@@ -60,33 +61,17 @@ bool HybridGPDiff::repartition(const repart::Metric &m,
 
   switch (state) {
   case State::GRAPH:
-    if (this_node == 0)
+    if (comm_cart.rank() == 0)
       std::cout << "[Hybrid-GP-Diff] Repart GRAPH" << std::endl;
     break;
   case State::DIFF:
-    if (this_node == 0)
+    if (comm_cart.rank() == 0)
       std::cout << "[Hybrid-GP-Diff] Repart DIFF" << std::endl;
     break;
   }
 
   return active_implementation->repartition(m, exchange_start_callback);
 }
-
-
-template <typename T>
-struct mpi_type {};
-
-template <>
-struct mpi_type<int32_t> {
-  static const MPI_Datatype type;
-};
-const MPI_Datatype mpi_type<int32_t>::type = MPI_INT32_T;
-
-template <>
-struct mpi_type<int64_t> {
-  static const MPI_Datatype type;
-};
-const MPI_Datatype mpi_type<int64_t>::type = MPI_INT64_T;
 
 
 void HybridGPDiff::switch_implementation() {
@@ -100,7 +85,7 @@ void HybridGPDiff::switch_implementation() {
     std::copy(std::begin(diff_impl.partition), std::end(diff_impl.partition),
               std::begin(graph_impl.partition));
     MPI_Allreduce(MPI_IN_PLACE, graph_impl.partition.data(),
-                  graph_impl.partition.size(), mpi_type<decltype(graph_impl.partition)::value_type>::type, MPI_MAX, comm_cart);
+                  graph_impl.partition.size(), MPI_ELEM_DECLTYPE_T(graph_impl.partition), MPI_MAX, comm_cart);
     graph_impl.init();
     break;
   case State::DIFF:
@@ -132,4 +117,4 @@ void HybridGPDiff::command(std::string s) {
 } // namespace grids
 } // namespace generic_dd
 
-#endif // HAVE_METIS
+//#endif // HAVE_METIS

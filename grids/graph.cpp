@@ -1,61 +1,23 @@
-#ifdef HAVE_METIS
+//#ifdef HAVE_METIS
 
 #include <algorithm>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/mpi.hpp>
 #include <mpi.h>
-#include "communication.hpp" // comm_cart
 #include "graph.hpp"
+
+#include "util/push_back_unique.hpp"
+#include "util/ensure.hpp"
+#include "util/mpi_type.hpp"
+
+#define MPI_IDX_T util::mpi_type<idx_t>::type
 
 #ifndef NDEBUG
 #define GRAPH_DEBUG
-#pragma message "Building graph.cpp with debug code"
 #endif
 
-// MPI_Datatype define analogous to typedef idx_t in parmetis.h
-#if IDXTYPEWIDTH == 32
-#define MPI_IDX_T MPI_INT32_T
-
-#ifdef GRAPH_DEBUG
-#pragma message "Metis is compiled with 32 bit idx_t"
-#endif
-
-#elif IDXTYPEWIDTH == 64
-#define MPI_IDX_T MPI_INT64_T
-
-#ifdef GRAPH_DEBUG
-#pragma message "Metis is compiled with 64 bit idx_t"
-#endif
-
-#else
-#error "Incorrect IDXTYPEWIDTH in metis.h"
-#endif
-
-
-template <typename T>
-static void push_back_unique(std::vector<T>& v, const T& el)
-{
-  if (std::find(std::begin(v), std::end(v), el) == std::end(v)) {
-    v.push_back(el);
-  }
-}
-
-#ifdef GRAPH_DEBUG
-#include <sys/signal.h>
-
-#define ENSURE(cond)                                                          \
-    do {                                                                      \
-        if (!(cond)) {                                                        \
-            fprintf(stderr, "Ensure `%s' in %s:%i (%s) failed.\n",            \
-                    #cond, __FILE__, __LINE__, __FUNCTION__);                 \
-            kill(0, SIGINT);                                                  \
-        }                                                                     \
-    } while (0)
-#endif
-
-
-namespace generic_dd {
+namespace repa {
 namespace grids {
 
 lidx Graph::n_local_cells() {
@@ -74,11 +36,11 @@ rank Graph::neighbor_rank(nidx i) {
   return neighbors[i];
 }
 
-std::array<double, 3> Graph::cell_size() {
+Vec3d Graph::cell_size() {
   return gbox.cell_size();
 }
 
-std::array<int, 3> Graph::grid_size() {
+Vec3i Graph::grid_size() {
   return gbox.grid_size();
 }
 
@@ -91,7 +53,7 @@ std::vector<GhostExchangeDesc> Graph::get_boundary_info() {
 }
 
 lidx Graph::position_to_cell_index(double pos[3]) {
-  if (position_to_rank(pos) != this_node)
+  if (position_to_rank(pos) != comm_cart.rank())
     throw std::domain_error("Particle not in local box");
 
   return global_to_local[gbox.cell_at_pos(pos)];
@@ -125,18 +87,18 @@ nidx Graph::position_to_neighidx(double pos[3]) {
   auto vertex_weights = m();
 
   idx_t nglocells = static_cast<idx_t>(gbox.ncells());
-  idx_t ncells_per_proc = static_cast<idx_t>(std::ceil(static_cast<double>(nglocells) / n_nodes));
+  idx_t ncells_per_proc = static_cast<idx_t>(std::ceil(static_cast<double>(nglocells) / comm_cart.size()));
 
 #ifdef GRAPH_DEBUG
-  //if (this_node == 0)
-  //  std::cout << "Graph::repartition with n_nodes = " << n_nodes << std::endl;
+  //if (comm_cart.rank() == 0)
+  //  std::cout << "Graph::repartition with comm_cart.size() = " << comm_cart.size() << std::endl;
 #endif
 
   // Vertex ranges per process
-  std::vector<idx_t> vtxdist(n_nodes + 1);
-  for (int i = 0; i < n_nodes; ++i)
+  std::vector<idx_t> vtxdist(comm_cart.size() + 1);
+  for (int i = 0; i < comm_cart.size(); ++i)
     vtxdist[i] = i * ncells_per_proc;
-  vtxdist[n_nodes] = nglocells;
+  vtxdist[comm_cart.size()] = nglocells;
 
 #ifdef GRAPH_DEBUG
   //std::cout << "Vtxdist: ";
@@ -145,11 +107,11 @@ nidx Graph::position_to_neighidx(double pos[3]) {
 #endif
 
 #ifdef GRAPH_DEBUG
-  ENSURE(vtxdist.size() == n_nodes + 1);
-  for (int i = 0; i < n_nodes; ++i) {
+  ENSURE(vtxdist.size() == comm_cart.size() + 1);
+  for (int i = 0; i < comm_cart.size(); ++i) {
     ENSURE(0 <= vtxdist[i] && vtxdist[i] < nglocells);
   }
-  ENSURE(vtxdist[n_nodes] == nglocells);
+  ENSURE(vtxdist[comm_cart.size()] == nglocells);
 #endif
 
   // Receive vertex and edge weights
@@ -157,30 +119,30 @@ nidx Graph::position_to_neighidx(double pos[3]) {
   // Determine ranks from which to receive
   // (Via old "partition" field and the range of graph nodes this
   // process is responsible for.)
-  for (idx_t i = vtxdist[this_node]; i < vtxdist[this_node + 1]; ++i)
-    push_back_unique(recvranks, static_cast<int>(partition[i]));
+  for (idx_t i = vtxdist[comm_cart.rank()]; i < vtxdist[comm_cart.rank() + 1]; ++i)
+    util::push_back_unique(recvranks, static_cast<int>(partition[i]));
 
 #ifdef GRAPH_DEBUG
   for (int r: recvranks) {
-    ENSURE(0 <= r && r < n_nodes);
+    ENSURE(0 <= r && r < comm_cart.size());
     ENSURE(std::count(std::begin(recvranks), std::end(recvranks), r) == 1);
   }
-  ENSURE(recvranks.size() <= n_nodes);
+  ENSURE(recvranks.size() <= comm_cart.size());
 #endif
 
   // [0]: vertex weight
   // [1-26]: edge weights
   using Weights = std::array<idx_t, 27>;
   
-  std::vector<boost::mpi::request> rreq(n_nodes);
-  std::vector<std::vector<Weights>> their_weights(n_nodes);
+  std::vector<boost::mpi::request> rreq(comm_cart.size());
+  std::vector<std::vector<Weights>> their_weights(comm_cart.size());
   idx_t wsum = 0; // Check for possible overflow
   for (int n: recvranks)
     rreq[n] = comm_cart.irecv(n, 0, their_weights[n]);
 
   // Sending vertex weights
-  std::vector<boost::mpi::request> sreq(n_nodes);
-  std::vector<std::vector<Weights>> my_weights(n_nodes);
+  std::vector<boost::mpi::request> sreq(comm_cart.size());
+  std::vector<std::vector<Weights>> my_weights(comm_cart.size());
   for (int i = 0; i < localCells; ++i) {
     // "Rank" is responsible for cell "gidx" / "i" (local)
     // during graph parititioning
@@ -209,7 +171,7 @@ nidx Graph::position_to_neighidx(double pos[3]) {
 
     // Catch total weight sum overlow
     wsum += std::accumulate(std::begin(w), std::end(w), static_cast<idx_t>(0));
-    if (wsum > std::numeric_limits<idx_t>::max() / n_nodes) {
+    if (wsum > std::numeric_limits<idx_t>::max() / comm_cart.size()) {
       std::fprintf(stderr, "Warning: Graph weights are too large for chosen index type width.\n");
       if (w_fac > 1)
         std::fprintf(stderr, "- Try to reduce the weight factor in graph.cpp.");
@@ -219,7 +181,7 @@ nidx Graph::position_to_neighidx(double pos[3]) {
     }
   }
 
-  for (int i = 0; i < n_nodes; ++i) {
+  for (int i = 0; i < comm_cart.size(); ++i) {
     if (my_weights[i].size() > 0)
       sreq[i] = comm_cart.isend(i, 0, my_weights[i]);
   }
@@ -227,14 +189,14 @@ nidx Graph::position_to_neighidx(double pos[3]) {
 
   // Prepare graph
 
-  idx_t nvtx = vtxdist[this_node + 1] - vtxdist[this_node];
+  idx_t nvtx = vtxdist[comm_cart.rank() + 1] - vtxdist[comm_cart.rank()];
 
   // Regular grid as graph
   std::vector<idx_t> xadj(nvtx + 1), adjncy(26 * nvtx);
   for (idx_t i = 0; i < nvtx; ++i) {
     xadj[i] = 26 * i;
     for (int n = 0; n < 26; ++n) {
-      adjncy[26 * i + n] = gbox.neighbor(vtxdist[this_node] + i, n + 1);
+      adjncy[26 * i + n] = gbox.neighbor(vtxdist[comm_cart.rank()] + i, n + 1);
     }
   }
   xadj[nvtx] = 26 * nvtx;
@@ -246,7 +208,7 @@ nidx Graph::position_to_neighidx(double pos[3]) {
 #endif
 
 #ifdef GRAPH_DEBUG
-  ENSURE(nvtx == vtxdist[this_node + 1] - vtxdist[this_node]);
+  ENSURE(nvtx == vtxdist[comm_cart.rank() + 1] - vtxdist[comm_cart.rank()]);
   ENSURE(nvtx <= nglocells);
   ENSURE(xadj.size() == nvtx + 1);
   for (int i = 0; i < nvtx; ++i) {
@@ -267,9 +229,9 @@ nidx Graph::position_to_neighidx(double pos[3]) {
 
   boost::mpi::wait_all(std::begin(rreq), std::end(rreq));
 
-  std::vector<size_t> ii(n_nodes, 0); // Iteration indices
+  std::vector<size_t> ii(comm_cart.size(), 0); // Iteration indices
   size_t li = 0;
-  for (idx_t i = vtxdist[this_node]; i < vtxdist[this_node + 1]; ++i) {
+  for (idx_t i = vtxdist[comm_cart.rank()]; i < vtxdist[comm_cart.rank() + 1]; ++i) {
     auto rank = partition[i];
     auto& w = their_weights[rank][ii[rank]++];
     vwgt[li] = w[0];
@@ -280,7 +242,7 @@ nidx Graph::position_to_neighidx(double pos[3]) {
   }
 
 #ifdef GRAPH_DEBUG
-  for (int i = 0; i < n_nodes; ++i) {
+  for (int i = 0; i < comm_cart.size(); ++i) {
     ENSURE(ii[i] == their_weights[i].size());
   }
   ENSURE(li == nvtx);
@@ -306,7 +268,7 @@ nidx Graph::position_to_neighidx(double pos[3]) {
   // Number of weights per vertex
   idx_t ncon = 1;
   // Number of wanted subdomains
-  idx_t nparts = static_cast<idx_t>(n_nodes);
+  idx_t nparts = static_cast<idx_t>(comm_cart.size());
   // Target weights -- must add up to 1.0
   std::vector<real_t> tpwgts(nparts, 1.0 / nparts);
   // Imbalance tolerance
@@ -318,7 +280,7 @@ nidx Graph::position_to_neighidx(double pos[3]) {
   //options[METIS_OPTION_MINCONN] = 1;
   //options[METIS_OPTION_CONTIG] = 1;
   //options[METIS_OPTION_NOOUTPUT] = 1;
-  idx_t options[3] = {0, 0, this_node};
+  idx_t options[3] = {0, 0, comm_cart.rank()};
 
   // Comm
   MPI_Comm communicator = comm_cart;
@@ -327,7 +289,7 @@ nidx Graph::position_to_neighidx(double pos[3]) {
   idx_t edgecut;
   std::vector<idx_t> part(nvtx, -1);
   
-  //if (this_node == 0)
+  //if (comm_cart.rank() == 0)
   //  std::cout << "Calling ParMETIS_V3_PartKway with " << nglocells << " total vertices for " << nparts << " subdomains." << std::endl;
 
   if (ParMETIS_V3_PartKway(vtxdist.data(),
@@ -345,7 +307,7 @@ nidx Graph::position_to_neighidx(double pos[3]) {
                            &edgecut,
                            part.data(),
                            &communicator) != METIS_OK) {
-    if (this_node == 0) {
+    if (comm_cart.rank() == 0) {
       std::fprintf(stderr, "Error when graph partitioning: ParMETIS returned error.\n");
       errexit();
     }
@@ -355,7 +317,7 @@ nidx Graph::position_to_neighidx(double pos[3]) {
   ENSURE(part.size() == nvtx);
   for (int r: part) {
     ENSURE(r != -1);
-    ENSURE(0 <= r && r < n_nodes);
+    ENSURE(0 <= r && r < comm_cart.size());
   }
 #endif
 
@@ -363,13 +325,13 @@ nidx Graph::position_to_neighidx(double pos[3]) {
   std::fill(std::begin(partition), std::end(partition), static_cast<idx_t>(-1));
 #endif
   //int li = 0;
-  //for (idx_t i = vtxdist[this_node]; i < vtxdist[this_node + 1]; ++i) {
+  //for (idx_t i = vtxdist[comm_cart.rank()]; i < vtxdist[comm_cart.rank() + 1]; ++i) {
   //  partition[i] = part[li++];
   //}
 
   // MPI expects integer recvcounts and displacements for MPI_Allgatherv.
-  std::vector<int> recvcount(n_nodes), displ(n_nodes);
-  for (size_t i = 0; i < n_nodes; ++i) {
+  std::vector<int> recvcount(comm_cart.size()), displ(comm_cart.size());
+  for (size_t i = 0; i < comm_cart.size(); ++i) {
     recvcount[i] = static_cast<int>(vtxdist[i + 1] - vtxdist[i]);
     displ[i] = static_cast<int>(vtxdist[i]);
   }
@@ -380,18 +342,18 @@ nidx Graph::position_to_neighidx(double pos[3]) {
   ENSURE(partition.size() == nglocells);
   for (int r: partition) {
     ENSURE(r != -1);
-    ENSURE(0 <= r && r < n_nodes);
+    ENSURE(0 <= r && r < comm_cart.size());
   }
 #endif
 
 
 #ifdef GRAPH_DEBUG
-  int nlc = static_cast<int>(std::count(std::begin(partition), std::end(partition), this_node));
+  int nlc = static_cast<int>(std::count(std::begin(partition), std::end(partition), comm_cart.rank()));
 
-  std::vector<int> nlcs(n_nodes);
+  std::vector<int> nlcs(comm_cart.size());
   MPI_Allgather(&nlc, 1, MPI_INT, nlcs.data(), 1, MPI_INT, comm_cart);
 
-  if (this_node == 0) {
+  if (comm_cart.rank() == 0) {
     std::cout << "Partitioning result:";
     std::copy(std::begin(nlcs), std::end(nlcs), std::ostream_iterator<int>(std::cout, " "));
     std::cout << std::endl;
@@ -410,9 +372,11 @@ nidx Graph::position_to_neighidx(double pos[3]) {
   return true;
 }
 
-Graph::Graph() {
+Graph::Graph(const boost::mpi::communicator& comm, Vec3d box_size, double min_cell_size)
+  : ParallelLCGrid(comm, box_size, min_cell_size), gbox(box_size, min_cell_size)
+{
   int nglocells = gbox.ncells();
-  int ncells_per_proc = static_cast<int>(std::ceil(static_cast<double>(nglocells) / n_nodes));
+  int ncells_per_proc = static_cast<int>(std::ceil(static_cast<double>(nglocells) / comm_cart.size()));
 
   // Initial partitioning
   partition.resize(nglocells);
@@ -424,10 +388,10 @@ Graph::Graph() {
 
   //// Init to equally sized boxes on Cartesian grid
   //int dims[3] = {0, 0, 0};
-  //MPI_Dims_create(n_nodes, 3, dims);
+  //MPI_Dims_create(comm_cart.size(), 3, dims);
 
   //auto cellgrid = gbox.grid_size();
-  //std::array<int, 3> cells_per_proc = {{
+  //Vec3i cells_per_proc = {{
   //    static_cast<int>(std::ceil(static_cast<double>(cellgrid[0]) / dims[0])),
   //    static_cast<int>(std::ceil(static_cast<double>(cellgrid[1]) / dims[1])),
   //    static_cast<int>(std::ceil(static_cast<double>(cellgrid[2]) / dims[2])),
@@ -462,7 +426,7 @@ void Graph::init() {
 
   // Extract the local cells from "partition".
   for (int i = 0; i < nglocells; i++) {
-    if (partition[i] == this_node) {
+    if (partition[i] == comm_cart.rank()) {
       // Vector of own cells
       cells.push_back(i);
       // Index mapping from global to local
@@ -475,13 +439,13 @@ void Graph::init() {
   // Temporary storage for exchange descriptors.
   // Will be filled only for neighbors
   // and moved from later.
-  std::vector<GhostExchangeDesc> tmp_ex_descs(n_nodes);
+  std::vector<GhostExchangeDesc> tmp_ex_descs(comm_cart.size());
 
   // Determine ghost cells and communication volume
   for (int i = 0; i < localCells; i++) {
     for (int neighborIndex: gbox.full_shell_neigh_without_center(cells[i])) {
       rank owner = static_cast<rank>(partition[neighborIndex]);
-      if (owner == this_node)
+      if (owner == comm_cart.rank())
         continue;
       
       // Find ghost cells. Add only once to "cells" vector.
@@ -500,14 +464,14 @@ void Graph::init() {
         tmp_ex_descs[owner].dest = owner;
       }
 
-      push_back_unique(tmp_ex_descs[owner].recv, neighborIndex);
-      push_back_unique(tmp_ex_descs[owner].send, cells[i]);
+      util::push_back_unique(tmp_ex_descs[owner].recv, neighborIndex);
+      util::push_back_unique(tmp_ex_descs[owner].send, cells[i]);
     }
   }
 
   // Move all existent exchange descriptors from "tmp_ex_descs" to "exchangeVector".
   exchangeVector.clear();
-  for (int i = 0; i < n_nodes; ++i) {
+  for (int i = 0; i < comm_cart.size(); ++i) {
     if (tmp_ex_descs[i].dest != -1) {
       auto ed = std::move(tmp_ex_descs[i]);
 
@@ -523,7 +487,7 @@ void Graph::init() {
   }
 
 #ifdef GRAPH_DEBUG
-  for (int i = 0; i < n_nodes; ++i) {
+  for (int i = 0; i < comm_cart.size(); ++i) {
     if (tmp_ex_descs[i].dest != -1)
       ENSURE (tmp_ex_descs[i].recv.size() == 0 && tmp_ex_descs[i].send.size() == 0);
   }
@@ -532,4 +496,4 @@ void Graph::init() {
 } // namespace grids
 } // namespace generic_dd
 
-#endif
+//#endif

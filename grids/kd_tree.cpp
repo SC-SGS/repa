@@ -1,13 +1,17 @@
-#ifdef HAVE_KDPART
+//#ifdef HAVE_KDPART
 
 #include "kd_tree.hpp"
 
-namespace generic_dd {
+#include <algorithm>
+#include <numeric>
+#include <cassert>
+
+namespace repa {
 namespace grids {
 
-Vector3i KDTreeGrid::grid_dimensions()
+Vec3i KDTreeGrid::grid_dimensions()
 {
-  Vector3i grid_dimensions = {{1, 1, 1}};
+  Vec3i grid_dimensions = {{1, 1, 1}};
   for (int dim = 0; dim < 3; dim++) {
     if (max_range > ROUND_ERROR_PREC * box_l[dim]) {
       grid_dimensions[dim] = std::max<int>(box_l[dim] / max_range, 1);
@@ -16,16 +20,16 @@ Vector3i KDTreeGrid::grid_dimensions()
   return grid_dimensions;
 }
 
-Vector3d KDTreeGrid::cell_dimensions(const Vector3i& grid_dimensions)
+Vec3d KDTreeGrid::cell_dimensions(const Vec3i& grid_dimensions)
 {
-  Vector3d cell_dimensions;
+  Vec3d cell_dimensions;
   for (int dim = 0; dim < 3; dim++) {
     cell_dimensions[dim] = box_l[dim] / grid_dimensions[dim];
   }
   return cell_dimensions;
 }
 
-int KDTreeGrid::volume(Vector3i domain_size)
+int KDTreeGrid::volume(Vec3i domain_size)
 {
   return domain_size[0] * domain_size[1] * domain_size[2];
 }
@@ -47,15 +51,15 @@ Domain KDTreeGrid::ghostdomain_bounds(const Domain& domain)
   return ghostdomain;
 }
 
-Vector3i KDTreeGrid::domain_size(const Domain& domain) {
-  Vector3i domain_size;
+Vec3i KDTreeGrid::domain_size(const Domain& domain) {
+  Vec3i domain_size;
   for (int dim = 0; dim < 3; dim++) {
     domain_size[dim] = domain.second[dim] - domain.first[dim];
   }
   return domain_size;
 }
 
-bool KDTreeGrid::is_ghost_cell(const Vector3i& cell, const Vector3i& ghostdomain_size)
+bool KDTreeGrid::is_ghost_cell(const Vec3i& cell, const Vec3i& ghostdomain_size)
 {
   for (auto dim = 0; dim < 3; dim++) {
     if (cell[dim] == 0 || cell[dim] == ghostdomain_size[dim] - 1) {
@@ -65,7 +69,7 @@ bool KDTreeGrid::is_ghost_cell(const Vector3i& cell, const Vector3i& ghostdomain
   return false;
 }
 
-int KDTreeGrid::linearize(const Vector3i& cell_position, const Vector3i& domain_size) 
+int KDTreeGrid::linearize(const Vec3i& cell_position, const Vec3i& domain_size) 
 {
   // Precondition
   #ifndef NDEBUG
@@ -78,27 +82,27 @@ int KDTreeGrid::linearize(const Vector3i& cell_position, const Vector3i& domain_
       * domain_size[2] + cell_position[2];
 }
 
-Vector3i KDTreeGrid::unlinearize(int cell_index, const Vector3i& domain_size)
+Vec3i KDTreeGrid::unlinearize(int cell_index, const Vec3i& domain_size)
 {
   // Precondition
   assert(cell_index >= 0);
   assert(cell_index < domain_size[0] * domain_size[1] * domain_size[2]);
 
-  return Vector3i{{
+  return Vec3i{{
     (cell_index / domain_size[2]) / domain_size[1],
     (cell_index / domain_size[2]) % domain_size[1],
     cell_index % domain_size[2]
   }};
 }
 
-Vector3i KDTreeGrid::absolute_position_to_cell_position(double absolute_position[3])
+Vec3i KDTreeGrid::absolute_position_to_cell_position(double absolute_position[3])
 {
   #ifndef NDEBUG
   for (int dim = 0; dim < 3; dim++) {
     assert(absolute_position[dim] >= 0);
   }
   #endif
-  Vector3i cell_position;
+  Vec3i cell_position;
   for (int dim = 0; dim < 3; dim++) {
     cell_position[dim] = absolute_position[dim] / m_cell_dimensions[dim];
   }
@@ -130,7 +134,7 @@ void KDTreeGrid::init_index_permutations()
   int localidx = 0;
   int ghostidx = m_nb_of_local_cells;
   for (int cellidx = 0; cellidx < nb_of_total_cells; cellidx++) {
-    Vector3i cell = unlinearize(cellidx, m_local_ghostdomain_size);
+    Vec3i cell = unlinearize(cellidx, m_local_ghostdomain_size);
     if (is_ghost_cell(cell, m_local_ghostdomain_size)) {
       m_index_permutations_inverse[ghostidx] = cellidx;
       m_index_permutations[cellidx] = ghostidx++;
@@ -184,7 +188,7 @@ std::vector<Domain> KDTreeGrid::intersection_domains(const Domain& localdomain,
 
   for (int nidx = 0; nidx < volume(neighborhood_to_check); nidx++) {
     // Determine neighbor offset
-    Vector3i neighbor_offset = unlinearize(
+    Vec3i neighbor_offset = unlinearize(
         nidx, domain_size(neighborhood_to_check));
     for (int dim = 0; dim < 3; dim++) {
       neighbor_offset[dim] += neighborhood_to_check.first[dim];
@@ -194,7 +198,7 @@ std::vector<Domain> KDTreeGrid::intersection_domains(const Domain& localdomain,
     // the localdomain across periodic domain bounds should be excluded from
     // the result
     if (periodic_intersections_only
-        && neighbor_offset == Vector3i{0, 0, 0}) {
+        && neighbor_offset == Vec3i{0, 0, 0}) {
       continue;
     }
 
@@ -247,7 +251,7 @@ bool KDTreeGrid::are_domains_intersecting(const Domain& localdomain,
 }
 
 bool KDTreeGrid::domain_contains_cell(const Domain& domain,
-    const Vector3i& cell)
+    const Vec3i& cell)
 {
   for (int dim = 0; dim < 3; dim++) {
     if (cell[dim] < domain.first[dim] || cell[dim] >= domain.second[dim]) {
@@ -258,12 +262,12 @@ bool KDTreeGrid::domain_contains_cell(const Domain& domain,
 }
 
 // TODO return an iterator and not an elephant vector
-std::vector<Vector3i> KDTreeGrid::cells(const std::vector<Domain>& domains)
+std::vector<Vec3i> KDTreeGrid::cells(const std::vector<Domain>& domains)
 {
-  std::vector<Vector3i> result;
+  std::vector<Vec3i> result;
   for (const Domain& domain : domains) {
     for (int cellidx = 0; cellidx < volume(domain); cellidx++) {
-      Vector3i cellvector = unlinearize(cellidx, domain_size(domain));
+      Vec3i cellvector = unlinearize(cellidx, domain_size(domain));
       for (int dim = 0; dim < 3; dim++) {
         cellvector[dim] += domain.first[dim];
       }
@@ -313,17 +317,17 @@ void KDTreeGrid::init_recv_cells(int neighbor_rank,
 {
   // Get overlapping cells between the neighbor subdomain and the local
   // ghostdomain.
-  std::vector<Vector3i> intersecting_cellvectors = cells(intersection_domains(
+  std::vector<Vec3i> intersecting_cellvectors = cells(intersection_domains(
     neighbor_subdomain, 
     m_local_ghostdomain,
     true,
     neighbor_rank == comm_cart.rank()
   ));
 
-  for (const Vector3i& intersecting_cellvector : intersecting_cellvectors) {
+  for (const Vec3i& intersecting_cellvector : intersecting_cellvectors) {
     // Convert global cellvector to local cellvector relative to
     // ghostdomain.
-    Vector3i local_cellvector = intersecting_cellvector;
+    Vec3i local_cellvector = intersecting_cellvector;
     for (int dim = 0; dim < 3; dim++) {
       local_cellvector[dim] -= m_local_ghostdomain.first[dim];
     }
@@ -348,17 +352,17 @@ void KDTreeGrid::init_send_cells(int neighbor_rank,
 {
   // Get overlapping cells between the neighbor ghostdomain and the local
   // domain.
-  std::vector<Vector3i> intersecting_cellvectors = cells(intersection_domains(
+  std::vector<Vec3i> intersecting_cellvectors = cells(intersection_domains(
     m_local_subdomain, 
     neighbor_ghostdomain,
     false,
     neighbor_rank == comm_cart.rank()
   ));
 
-  for (const Vector3i& intersecting_cellvector : intersecting_cellvectors) {
+  for (const Vec3i& intersecting_cellvector : intersecting_cellvectors) {
     // Convert global cellvector to local cellvector relative to
     // ghostdomain.
-    Vector3i local_cellvector = intersecting_cellvector;
+    Vec3i local_cellvector = intersecting_cellvector;
     for (int dim = 0; dim < 3; dim++) {
       local_cellvector[dim] -= m_local_subdomain.first[dim];
     }
@@ -396,8 +400,9 @@ void KDTreeGrid::reinitialize()
   init_neighborhood_information();
 }
 
-KDTreeGrid::KDTreeGrid()
-  : m_global_domain_size(grid_dimensions())
+KDTreeGrid::KDTreeGrid(const boost::mpi::communicator& comm, Vec3d box_size, double min_cell_size)
+  : ParallelLCGrid(comm, box_size, min_cell_size)
+  , m_global_domain_size(grid_dimensions())
   , m_global_domain({{0, 0, 0}, m_global_domain_size})
   , m_global_ghostdomain(ghostdomain_bounds(m_global_domain))
   , m_global_ghostdomain_size(domain_size(m_global_ghostdomain))
@@ -406,11 +411,11 @@ KDTreeGrid::KDTreeGrid()
   int nb_of_subdomains = comm_cart.size();
 
   // Use constant load to make initial tree evenly distributed
-  auto load_function = [](Vector3i) { return 1; };
+  auto load_function = [](Vec3i) { return 1; };
 
   m_kdtree = kdpart::make_parttree(
     nb_of_subdomains, 
-    Vector3i{{0, 0, 0}},
+    Vec3i{{0, 0, 0}},
     m_global_domain_size, 
     load_function,
     kdpart::quality_splitting
@@ -449,12 +454,12 @@ rank KDTreeGrid::neighbor_rank(nidx i)
   return m_neighbor_processes[i];
 }
 
-Vector3d KDTreeGrid::cell_size()
+Vec3d KDTreeGrid::cell_size()
 {
   return m_cell_dimensions;
 }
 
-Vector3i KDTreeGrid::grid_size()
+Vec3i KDTreeGrid::grid_size()
 {
   return m_local_subdomain_size;
 }
@@ -469,13 +474,13 @@ lgidx KDTreeGrid::cell_neighbor_index(lidx cellidx, int neigh)
   }
 
   // Get cellvector in local ghostdomain
-  Vector3i cellvector = unlinearize(
+  Vec3i cellvector = unlinearize(
     m_index_permutations_inverse[cellidx], 
     m_local_ghostdomain_size
   );
 
   // Shift cellvector to the choosen neighbor
-  const Vector3i& offset = m_neighbor_offsets[neigh];
+  const Vec3i& offset = m_neighbor_offsets[neigh];
   for (int dim = 0; dim < 3; dim++) {
     cellvector[dim] += offset[dim];
   }
@@ -495,7 +500,7 @@ std::vector<GhostExchangeDesc> KDTreeGrid::get_boundary_info()
 
 lidx KDTreeGrid::position_to_cell_index(double pos[3])
 {
-  Vector3i cellvector = absolute_position_to_cell_position(pos);
+  Vec3i cellvector = absolute_position_to_cell_position(pos);
 
   // Precondition: Position must be within local subdomain
   if (!domain_contains_cell(m_local_subdomain, cellvector)) {
@@ -518,7 +523,7 @@ lidx KDTreeGrid::position_to_cell_index(double pos[3])
 
 rank KDTreeGrid::position_to_rank(double pos[3])
 {
-  Vector3i cellvector = absolute_position_to_cell_position(pos);
+  Vec3i cellvector = absolute_position_to_cell_position(pos);
 
   // Precondition: Position must be within global domain
   if (!domain_contains_cell(m_global_domain, cellvector)) {
@@ -530,7 +535,7 @@ rank KDTreeGrid::position_to_rank(double pos[3])
 
 nidx KDTreeGrid::position_to_neighidx(double pos[3])
 {
-  Vector3i cellvector = absolute_position_to_cell_position(pos);
+  Vec3i cellvector = absolute_position_to_cell_position(pos);
   
   // Precondition
   if (!domain_contains_cell(m_global_ghostdomain, cellvector)) {
@@ -556,4 +561,4 @@ bool KDTreeGrid::repartition(const repart::Metric& m, std::function<void()> cb)
 } // namespace "grids"
 } // namespace "generic_dd"
 
-#endif // HAVE_KDPART
+//#endif // HAVE_KDPART

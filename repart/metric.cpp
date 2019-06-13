@@ -1,121 +1,43 @@
 
 #include "metric.hpp"
-#include "cells.hpp"
-#include "domain_decomposition.hpp"
-#include <algorithm>
-#include <boost/iterator/iterator_facade.hpp>
 #include <cctype>
 #include <chrono>
 #include <stdexcept>
 #include <random>
 #include <regex>
-#include "bonded_interactions/bonded_interaction_data.hpp"
-#include "nonbonded_interactions/nonbonded_interaction_data.hpp"
-#include "short_range_loop.hpp"
+#include <mpi.h>
+
+#include "_compat.hpp"
 
 // Fills weights with a constant.
 static void metric_ncells(std::vector<double> &weights) {
-  std::fill(weights.begin(), weights.end(), 1.0);
+
 }
 
 // Fills weights with the number of particles per cell.
 static void metric_npart(std::vector<double> &weights) {
-  std::transform(local_cells.cell, local_cells.cell + local_cells.n,
-                 weights.begin(), [](const Cell *c) { return c->n; });
-}
 
-int cell_ndistpairs(Cell *c) {
-  int nnp =
-      std::accumulate(c->m_neighbors.red().begin(), c->m_neighbors.red().begin(), 0,
-                      [](int acc, const Cell *neigh) { return acc + neigh->n; });
-  return c->n * nnp;
 }
 
 // Fills weights with the number of distance pairs per cell.
 static void metric_ndistpairs(std::vector<double> &weights) {
-  std::transform(local_cells.begin(), local_cells.end(), weights.begin(),
-                 cell_ndistpairs);
+
 }
 
 static void metric_nforcepairs(std::vector<double> &weights) {
-#ifdef LENNARD_JONES
-  // Ugly hack: Use pairkernel to advance the current cell number
-  int cellno = 0;
-  for(;cellno < (local_cells.n - 1) && local_cells.cell[cellno]->n == 0; cellno++);
 
-  auto particlekernel = [&cellno](Particle &p) {
-    const Cell *c = local_cells.cell[cellno];
-    // At the end of a cell? -> Increment cellno consistently to
-    // short_range_loop. I.e. next non-empty cell
-    if (p.p.identity == c->part[c->n - 1].p.identity) {
-      if (cellno < (local_cells.n - 1))
-        cellno++;
-      // Cell "cellno" might be empty, skip ahead if so
-      while (cellno < (local_cells.n - 1) && local_cells.cell[cellno]->n == 0)
-        cellno++;
-    }
-  };
-
-  auto pairkernel = [&weights, &cellno](Particle &p1, Particle &p2,
-                                       Distance &d) {
-#ifdef EXCLUSIONS
-    if (do_nonbonded(&p1, &p2))
-#endif
-    {
-      IA_parameters *ia_params = get_ia_param(p1.p.type, p2.p.type);
-      double dist = std::sqrt(d.dist2);
-      if (dist < ia_params->LJ_cut + ia_params->LJ_offset &&
-          dist > ia_params->LJ_min + ia_params->LJ_offset)
-        weights[cellno]++;
-    }
-  };
-
-  short_range_loop(particlekernel, pairkernel);
-#else
-  fprintf(stderr, "Error: metric nforcepairs only available with LENNARD_JONES feature enabled.\n");
-  errexit();
-#endif
-}
-
-int cell_nbondedia(Cell *cell) {
-  int nbondedia = 0;
-  for (Particle *p = cell->part; p < cell->part + cell->n; p++) {
-    for (int i = 0; i < p->bl.n;) {
-      int type_num = p->bl.e[i++];
-      Bonded_ia_parameters *iaparams = &bonded_ia_params[type_num];
-      // int type = iaparams->type;
-
-      // This could be incremented conditionally if "type" has a specific value
-      // to only count bonded_ia of a certain type.
-      nbondedia++;
-      i += iaparams->num; // Skip the all partner particle numbers
-    }
-  }
-  return nbondedia;
 }
 
 static void metric_nbondedia(std::vector<double> &weights) {
-  std::transform(local_cells.begin(), local_cells.end(), weights.begin(),
-                 cell_nbondedia);
+
 }
 
 static void metric_nghostcells(std::vector<double> &weights) {
-  // Reminder: Weights is a vector over local cells.
-  // We simply count the number of ghost cells and
-  // add this cost in equal parts to all local cells
-  double nghostfrac = static_cast<double>(ghost_cells.n) / local_cells.n;
-  std::fill(weights.begin(), weights.end(), nghostfrac);
+
 }
 
 static void metric_nghostpart(std::vector<double> &weights) {
-  // Reminder: Weights is a vector over local cells.
-  // We simply count the number of ghost particles and
-  // add this cost in equal parts to all local cells
-  int nghostpart =
-      std::accumulate(ghost_cells.begin(), ghost_cells.end(), 0,
-                      [](int acc, const Cell *c) { return acc + c->n; });
-  double nghostfrac = static_cast<double>(nghostpart) / local_cells.n;
-  std::fill(weights.begin(), weights.end(), nghostfrac);
+
 }
 
 static void metric_runtime(std::vector<double> &weights) {
@@ -150,41 +72,18 @@ static double cc_metric_uniform(int i, int j) {
 }
 
 static double cc_metric_multiply_npart(int i, int j) {
-  return cells[i].n * cells[j].n;
+  return 0;
 }
 
 static double cc_metric_add_npart(int i, int j) {
-  return cells[i].n + cells[j].n;
+  return 0;
 }
 
 static double cc_metric_forcepairs(int i, int j) {
-#ifdef LENNARD_JONES
-  auto& c1 = cells[i];
-  auto& c2 = cells[j];
-
-  int nfp = 0;
-  double r[3];
-
-  for (int p1 = 0; p1 < c1.n; ++p1) {
-    for (int p2 = 0; p2 < c2.n; ++p2) {
-      IA_parameters *ia_params = get_ia_param(c1.part[p1].p.type, c2.part[p2].p.type);
-      get_mi_vector(r, c1.part[p1].r.p, c2.part[p2].r.p);
-      double dist = std::sqrt(sqrlen(r));
-      if (dist < ia_params->LJ_cut + ia_params->LJ_offset &&
-          dist > ia_params->LJ_min + ia_params->LJ_offset)
-        nfp++;
-    }
-  }
-  return static_cast<double>(nfp);
-#else
-  fprintf(stderr, "Error: metric nforcepairs only available with LENNARD_JONES feature enabled.\n");
-  errexit();
-  // not reached.
   return 0;
-#endif
 }
 
-namespace generic_dd {
+namespace repa {
 namespace repart {
 
 // Get the appropriate metric function described in string "desc".
@@ -291,7 +190,9 @@ void Metric::parse_cell_metric_desc(const std::string &desc) {
 }
 
 std::vector<double> Metric::operator()() const {
-  std::vector<double> w(local_cells.n, 0.0), tmp(local_cells.n);
+  throw std::runtime_error("Metric currently not implemented.");
+  constexpr size_t n = 0;
+  std::vector<double> w(n, 0.0), tmp(n);
 
   for (const auto &t : mdesc) {
     double factor = std::get<0>(t);
@@ -315,7 +216,7 @@ double Metric::paverage() const {
   double l = curload();
   double tot;
   MPI_Allreduce(&l, &tot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  return tot / n_nodes;
+  return tot / comm_cart.size();
 }
 
 double Metric::pmax() const {
@@ -335,7 +236,7 @@ double Metric::pimbalance() const {
   MPI_Iallreduce(&l, &max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD, &req[1]);
   MPI_Waitall(2, req, MPI_STATUS_IGNORE);
 
-  double avg = tot / n_nodes;
+  double avg = tot / comm_cart.size();
   return max / avg;
 }
 

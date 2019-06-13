@@ -1,16 +1,14 @@
-
-#ifndef GENERIC_DD_GRIDS_GLOBOX_HPP_INCLUDED
-#define GENERIC_DD_GRIDS_GLOBOX_HPP_INCLUDED
+#pragma once
 
 #include <array>
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/range/iterator_range.hpp>
 #include <cmath>
 
-#include "cells.hpp" // max_range
-#include "grid.hpp"  // node_grid, node_pos, box_l
+#include "util/linearize.hpp"
+#include "_compat.hpp"
 
-namespace generic_dd {
+namespace repa {
 namespace grids {
 namespace globox {
 
@@ -58,7 +56,7 @@ private:
   const GloBox *g;
 };
 
-inline const std::array<int, 3> &neigh_offset_3d(int i) {
+inline const Vec3i &neigh_offset_3d(int i) {
   /*
    * Offsets of cell and process neighbors -- respects cell ordering
    * requirements of pargrid.hpp: 0 cell itself 1-13 hs neigh 14-26 fs neigh
@@ -66,7 +64,7 @@ inline const std::array<int, 3> &neigh_offset_3d(int i) {
    * For iterating over all neighbors without 0, iterate over neigh_offset[i+1]
    * for i = 0..26
    */
-  static constexpr std::array<std::array<int, 3>, 27> _neigh_offset_3d = {
+  static constexpr std::array<Vec3i, 27> _neigh_offset_3d = {
       {{{0, 0, 0}},
        {{1, 0, 0}},
        {{-1, 1, 0}},
@@ -106,11 +104,12 @@ std::array<
   return {{a[0] / b[0], a[1] / b[1], a[2] / b[2]}};
 }
 
-template <typename index1d, typename index3d = index1d> struct GlobalBox {
+template <typename index1d, typename index3d = index1d>
+struct GlobalBox {
   typedef index1d index_type_1d;
   typedef index3d index_type_3d;
   typedef std::array<index_type_3d, 3> cell_index_type;
-  typedef std::array<double, 3> position_type;
+  typedef Vec3d position_type;
 
   cell_index_type m_cell_grid;
   cell_index_type m_cell_grid_corr;
@@ -119,7 +118,7 @@ template <typename index1d, typename index3d = index1d> struct GlobalBox {
   std::array<index_type_1d, 27> m_neigh_offset_1d;
 
   // Initialize with Espresso internals
-  GlobalBox()
+  GlobalBox(Vec3d box_l, double max_range)
       : m_cell_grid({{static_cast<index_type_3d>(box_l[0] / max_range),
                       static_cast<index_type_3d>(box_l[1] / max_range),
                       static_cast<index_type_3d>(box_l[2] / max_range)}}),
@@ -208,7 +207,7 @@ template <typename index1d, typename index3d = index1d> struct GlobalBox {
     position_type midpoint;
 
     for (int d = 0; d < 3; ++d)
-      midpoint[d] = m_cell_size[d] * (ii[d] + .5);;
+      midpoint[d] = m_cell_size[d] * (ii[d] + .5);
     return midpoint;
   }
 
@@ -216,19 +215,16 @@ private:
   // This is a template because we need it for index_type_3d and int.
   template <typename T>
   inline index_type_1d __linearize(const T *cell) const noexcept {
-    return (static_cast<index_type_1d>(cell[0]) * m_cell_grid[1] + cell[1]) *
-               m_cell_grid[2] +
-           cell[2];
+    return util::linearize<index_type_1d>(cell, m_cell_grid.data());
   }
 
   template <typename T>
   inline index_type_1d __linearize(const std::array<T, 3> &cell) const
       noexcept {
-    return __linearize(cell.data());
+    return util::linearize<index_type_1d>(cell, m_cell_grid);
   }
 };
 
-} // namespace globox
-} // namespace grids
-} // namespace generic_dd
-#endif
+}
+}
+}

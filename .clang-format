@@ -1,0 +1,6 @@
+AllowShortFunctionsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Stroustrup
+BreakBeforeBinaryOperators: true
+ColumnLimit: 80

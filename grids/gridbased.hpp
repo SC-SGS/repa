@@ -1,31 +1,30 @@
-#ifndef _GRIDS_GRIDBASED_HPP
-#define _GRIDS_GRIDBASED_HPP
+#pragma once
 
-#ifdef HAVE_TETRA
+//#ifdef HAVE_TETRA
 
-#include <array>
+#include <unordered_map>
 #include <vector>
 #include <mpi.h>
 
-#include "tetra.hpp"
+#include <tetra.hpp>
 
 #include "globox.hpp"
-#include "../pargrid.hpp"
+#include "pargrid.hpp"
 
 
-namespace generic_dd {
+namespace repa {
 namespace grids {
 
 /** TODO: comment
  */
 struct GridBasedGrid : public ParallelLCGrid {
-  GridBasedGrid();
+  GridBasedGrid(const boost::mpi::communicator& comm, Vec3d box_size, double min_cell_size);
   lidx n_local_cells() override;
   gidx n_ghost_cells() override;
   nidx n_neighbors() override;
   rank neighbor_rank(nidx i) override;
-  std::array<double, 3> cell_size() override;
-  std::array<int, 3> grid_size() override;
+  Vec3d cell_size() override;
+  Vec3i grid_size() override;
   lgidx cell_neighbor_index(lidx cellidx, int neigh) override;
   std::vector<GhostExchangeDesc> get_boundary_info() override;
   lidx position_to_cell_index(double pos[3]) override;
@@ -68,9 +67,9 @@ private:
   std::unordered_map<rank, int> neighbor_idx;
 
   // Associated grid point -- upper right back vertex of subdomain.
-  std::array<double, 3> gridpoint;
+  Vec3d gridpoint;
   // The gathered version of "gridpoint", i.e. the gridpoint of every process.
-  std::vector<std::array<double, 3>> gridpoints;
+  std::vector<Vec3d> gridpoints;
 
 
   // Indices of locally known cells. Local cells before ghost cells.
@@ -85,7 +84,7 @@ private:
 
 
   // Returns the 8 vertices bounding the subdomain of rank "r"
-  std::array<std::array<double, 3>, 8> bounding_box(rank r);
+  std::array<Vec3d, 8> bounding_box(rank r);
 
   // Neighborhood communicator for load exchange during repart
   MPI_Comm neighcomm;
@@ -104,11 +103,11 @@ private:
   void init_neighbors();
 
   // Returns the center of this subdomain
-  std::array<double, 3> center_of_load();
+  Vec3d center_of_load();
+
+  rank cart_topology_position_to_rank(Vec3d pos);
 };
 }
 }
 
-#endif //HAVE_TETRA
-
-#endif
+//#endif //HAVE_TETRA

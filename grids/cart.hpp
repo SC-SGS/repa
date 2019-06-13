@@ -1,14 +1,12 @@
 
-#ifndef _GRIDS_CART_HPP
-#define _GRIDS_CART_HPP
+#pragma once
 
 #include <array>
 #include <vector>
-#include <mpi.h>
 #include "../pargrid.hpp"
 
 
-namespace generic_dd {
+namespace repa {
 namespace grids {
 
 /** TODO: comment
@@ -20,13 +18,13 @@ namespace grids {
  * boundary) cell and so on.
  */
 struct CartGrid : public ParallelLCGrid {
-  CartGrid();
+  CartGrid(const boost::mpi::communicator& comm, Vec3d box_size, double min_cell_size);
   lidx n_local_cells() override;
   gidx n_ghost_cells() override;
   nidx n_neighbors() override;
   rank neighbor_rank(nidx i) override;
-  std::array<double, 3> cell_size() override;
-  std::array<int, 3> grid_size() override;
+  Vec3d cell_size() override;
+  Vec3i grid_size() override;
   lgidx cell_neighbor_index(lidx cellidx, int neigh) override;
   std::vector<GhostExchangeDesc> get_boundary_info() override;
   lidx position_to_cell_index(double pos[3]) override;
@@ -38,13 +36,13 @@ private:
   // Cell size (box_l / m_grid_size)
   std::array<double, 3> m_cell_size, m_inv_cell_size;
   // No of (ghost) cells on this node
-  std::array<int, 3> m_grid_size, m_ghost_grid_size;
+  Vec3i m_grid_size, m_ghost_grid_size;
 
   // Number of processes in direction i
-  std::array<int, 3> m_procgrid, m_procgrid_pos;
+  Vec3i m_procgrid, m_procgrid_pos;
 
   // Lower left corner of this process
-  std::array<double, 3> m_lowerleft, m_localbox;
+  Vec3d m_lowerleft, m_localbox;
 
   // comm data structures
   std::vector<GhostExchangeDesc> m_exdescs;
@@ -57,23 +55,21 @@ private:
   // m_from_pargrid_order is just the inverse permutation.
   std::vector<lgidx> m_to_pargrid_order, m_from_pargrid_order;
 
-  lgidx linearize(std::array<int, 3> c);
-  std::array<int, 3> unlinearize(lgidx cidx);
+  lgidx linearize(Vec3i c);
+  Vec3i unlinearize(lgidx cidx);
 
-  //rank cell_to_rank(const std::array<int, 3>& c);
+  //rank cell_to_rank(const Vec3i& c);
   nidx neighbor_idx(rank r);
-  //rank cell_to_neighidx(const std::array<int, 3>& c);
-  rank proc_offset_to_rank(const std::array<int, 3> &offset);
+  //rank cell_to_neighidx(const Vec3i& c);
+  rank proc_offset_to_rank(const Vec3i &offset);
 
-  void fill_comm_cell_lists(std::vector<int>& v, const std::array<int, 3>& lc, const std::array<int, 3>& hc);
+  void fill_comm_cell_lists(std::vector<int>& v, const Vec3i& lc, const Vec3i& hc);
   void create_index_permutations();
   void create_grid();
   void prepare_communication();
   void fill_neighranks();
 
-  bool is_ghost_cell(const std::array<int, 3>& c);
+  bool is_ghost_cell(const Vec3i& c);
 };
 }
 }
-
-#endif

@@ -1,30 +1,24 @@
-#ifndef _GRIDS_HYBRID_GP_DIFF_HPP
-#define _GRIDS_HYBRID_GP_DIFF_HPP
+#pragma once
 
-#ifdef HAVE_METIS
+//#ifdef HAVE_METIS
 
-#include "../pargrid.hpp"
-#include "communication.hpp" // comm_cart
+#include "pargrid.hpp"
 #include "diffusion.hpp"
 #include "globox.hpp"
 #include "graph.hpp"
 #include <array>
-#include <map>
-#include <mpi.h>
-#include <set>
-#include <vector>
 
-namespace generic_dd {
+namespace repa {
 namespace grids {
 
 struct HybridGPDiff : public ParallelLCGrid {
-  HybridGPDiff();
+  HybridGPDiff(const boost::mpi::communicator& comm, Vec3d box_size, double min_cell_size);
   lidx n_local_cells() override;
   gidx n_ghost_cells() override;
   nidx n_neighbors() override;
   rank neighbor_rank(nidx i) override;
-  std::array<double, 3> cell_size() override;
-  std::array<int, 3> grid_size() override;
+  Vec3d cell_size() override;
+  Vec3i grid_size() override;
   lgidx cell_neighbor_index(lidx cellidx, int neigh) override;
   std::vector<GhostExchangeDesc> get_boundary_info() override;
   lidx position_to_cell_index(double pos[3]) override;
@@ -62,6 +56,4 @@ private:
 } // namespace grids
 } // namespace generic_dd
 
-#endif // HAVE_METIS
-
-#endif
+//#endif // HAVE_METIS

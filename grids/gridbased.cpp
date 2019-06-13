@@ -1,46 +1,24 @@
 
-#ifdef HAVE_TETRA
+//#ifdef HAVE_TETRA
 
 #include "gridbased.hpp"
-#include "communication.hpp" // comm_cart
-#include "grid.hpp" // node_grid, node_pos, box_l
-#include "domain_decomposition.hpp"
-#include "utils/Vector.hpp"
 
 #include <algorithm>
 #include <regex>
 #include <boost/mpi/collectives.hpp>
 
+#include "util/push_back_unique.hpp"
+#include "util/ensure.hpp"
+#include "util/vdist.hpp"
+#include "util/mpi_cart.hpp"
+#include "util/mpi_graph.hpp"
+
 #ifndef NDEBUG
 #define GRID_DEBUG
-#pragma message "Building grid.cpp with debug code"
 #endif
 
-#ifdef GRID_DEBUG
-#include <sys/signal.h>
-#define ENSURE(cond)                                                          \
-    do {                                                                      \
-        if (!(cond)) {                                                        \
-            fprintf(stderr, "Ensure `%s' in %s:%i (%s) failed.\n",            \
-                    #cond, __FILE__, __LINE__, __FUNCTION__);                 \
-            kill(0, SIGINT);                                                  \
-        }                                                                     \
-    } while (0)
-#else
-#define ENSURE(cond)
-#endif
-
-
-namespace generic_dd {
+namespace repa {
 namespace grids {
-
-template <typename T>
-static void push_back_unique(std::vector<T>& v, const T& el)
-{
-  if (std::find(std::begin(v), std::end(v), el) == std::end(v)) {
-    v.push_back(el);
-  }
-}
 
 
 rank GridBasedGrid::gloidx_to_rank(int gloidx)
@@ -49,28 +27,15 @@ rank GridBasedGrid::gloidx_to_rank(int gloidx)
   return position_to_rank(m.data());
 }
 
-static std::array<int, 3> mpi_cart_get_dims(MPI_Comm comm)
-{
-  std::array<int, 3> dims, _dummy, _dummy2;
-  MPI_Cart_get(comm, 3, dims.data(), _dummy.data(), _dummy2.data());
-  return dims;
-}
 
-static std::array<int, 3> mpi_cart_get_coords(MPI_Comm comm)
+std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank r)
 {
-  std::array<int, 3> coords, _dummy, _dummy2;
-  MPI_Cart_get(comm, 3, _dummy.data(), _dummy2.data(), coords.data());
-  return coords;
-}
-
-std::array<std::array<double, 3>, 8> GridBasedGrid::bounding_box(rank r)
-{
-  std::array<int, 3> c, off;
+  Vec3i c, off;
   MPI_Cart_coords(comm_cart, r, 3, c.data());
 
-  std::array<std::array<double, 3>, 8> result;
+  std::array<Vec3d, 8> result;
 
-  std::array<int, 3> dims = mpi_cart_get_dims(comm_cart);
+  Vec3i dims = util::mpi_cart_get_dims(comm_cart);
 
   size_t i = 0;
   // Ranks holding the bounding box grid points of "r" = (c0, c1, c2) are:
@@ -86,7 +51,7 @@ std::array<std::array<double, 3>, 8> GridBasedGrid::bounding_box(rank r)
     for (off[1] = 0; off[1] <= 1; ++off[1]) {
       for (off[2] = 0; off[2] <= 1; ++off[2]) {
         int rank;
-        std::array<int, 3> nc, mirror = {{0, 0, 0}};
+        Vec3i nc, mirror = {{0, 0, 0}};
         
         for (int d = 0; d < 3; ++d) {
           nc[d] = c[d] - off[d];
@@ -118,11 +83,11 @@ void GridBasedGrid::init_partitioning()
 
   // Copy data from grid.hpp
   for (int d = 0; d < 3; ++d) {
-    gridpoint[d] = my_right[d];
+    gridpoint[d] = (node_pos[d] + 1) * (box_l[d] / node_grid[d]);
     // NOTE:
-    // If my_right[d] intersects a cell midpoint, currently both processes feel
+    // If gridpoint[d] intersects a cell midpoint, currently both processes feel
     // responsible. We could round to circumvent this, i.e.
-    // gridpoint[d] = std::floor(my_right[d] / gbox.cell_size()[d])
+    // gridpoint[d] = std::floor(gridpoint[d] / gbox.cell_size()[d])
     //                    * gbox.cell_size()[d];
     // But this way, we cannot use grid.hpp for initially resolving
     // pos-to-proc, because its local_box_l would not be coherent to the domain
@@ -134,7 +99,7 @@ void GridBasedGrid::init_partitioning()
     // Therefore, we use this hack and hope that no particle goes into the
     // "gap" caused by it. These particles will be resolved to the wrong
     // process.
-    if (my_right[d] < box_l[d])
+    if (gridpoint[d] < box_l[d])
       gridpoint[d] -= 1e-6; // This is unlikely to hit any cell midpoint
   }
   
@@ -147,7 +112,7 @@ void GridBasedGrid::init_neighbors()
   neighbor_ranks.clear();
   neighbor_idx.clear();
 
-  std::array<int, 3> c, off, dims, _dummy;
+  Vec3i c, off, dims, _dummy;
   MPI_Cart_get(comm_cart, 3, dims.data(), _dummy.data(), c.data());
 
   std::vector<int> source_neigh, dest_neigh; // Send and receive neighborhood for repart
@@ -155,7 +120,7 @@ void GridBasedGrid::init_neighbors()
   for (off[0] = -1; off[0] <= 1; ++off[0]) {
     for (off[1] = -1; off[1] <= 1; ++off[1]) {
       for (off[2] = -1; off[2] <= 1; ++off[2]) {
-        std::array<int, 3> nc;
+        Vec3i nc;
 
         for (int d = 0; d < 3; ++d) {
           nc[d] = c[d] + off[d];
@@ -171,7 +136,7 @@ void GridBasedGrid::init_neighbors()
         MPI_Cart_rank(comm_cart, nc.data(), &r);
 
         // Insert "r" as a new neighbor if yet unseen.
-        if (r == this_node)
+        if (r == comm_cart.rank())
           continue;
         if (neighbor_idx.find(r) == neighbor_idx.end()) {
           neighbor_ranks.push_back(r);
@@ -180,9 +145,9 @@ void GridBasedGrid::init_neighbors()
         }
 
         if (off[0] >= 0 && off[1] >= 0 && off[2] >= 0)
-          push_back_unique(source_neigh, r);
+          util::push_back_unique(source_neigh, r);
         if (off[0] <= 0 && off[1] <= 0 && off[2] <= 0)
-          push_back_unique(dest_neigh, r);
+          util::push_back_unique(dest_neigh, r);
       }
     }
   }
@@ -190,8 +155,8 @@ void GridBasedGrid::init_neighbors()
   if (neighcomm != MPI_COMM_NULL)
     MPI_Comm_free(&neighcomm);
 
-  source_neigh.push_back(this_node);
-  dest_neigh.push_back(this_node);
+  source_neigh.push_back(comm_cart.rank());
+  dest_neigh.push_back(comm_cart.rank());
   MPI_Dist_graph_create_adjacent(comm_cart, source_neigh.size(), source_neigh.data(),
                                  static_cast<const int*>(MPI_UNWEIGHTED), dest_neigh.size(),
                                  dest_neigh.data(), static_cast<const int*>(MPI_UNWEIGHTED),
@@ -202,7 +167,7 @@ void GridBasedGrid::init_octagons()
 {
   boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
 
-  my_dom = tetra::Octagon(bounding_box(this_node));
+  my_dom = tetra::Octagon(bounding_box(comm_cart.rank()));
   
   neighbor_doms.clear();
   neighbor_doms.reserve(neighbor_ranks.size());
@@ -234,7 +199,7 @@ void GridBasedGrid::reinit()
 
   // FIXME: Support single cell
 #ifdef GRID_DEBUG
-  printf("[%i] nlocalcells: %i\n", this_node, nlocalcells);
+  printf("[%i] nlocalcells: %i\n", comm_cart.rank(), nlocalcells);
 #endif
   ENSURE(nlocalcells > 0);
 
@@ -250,7 +215,7 @@ void GridBasedGrid::reinit()
     for (int neighidx: gbox.full_shell_neigh_without_center(cells[i])) {
       rank owner = gloidx_to_rank(neighidx);
 
-      if (owner == this_node)
+      if (owner == comm_cart.rank())
         continue;
       
       // Add ghost cells only once to "cells" vector.
@@ -269,14 +234,14 @@ void GridBasedGrid::reinit()
       if (exchange_vec[idx].dest == -1)
         exchange_vec[idx].dest = owner;
 
-      push_back_unique(exchange_vec[idx].recv, neighidx);
-      push_back_unique(exchange_vec[idx].send, cells[i]);
+      util::push_back_unique(exchange_vec[idx].recv, neighidx);
+      util::push_back_unique(exchange_vec[idx].send, cells[i]);
     }
   }
 
 #ifdef GRID_DEBUG
-  printf("[%i] nghostcells: %i\n", this_node, nghostcells);
-  ENSURE(n_nodes == 1 || nghostcells > 0);
+  printf("[%i] nghostcells: %i\n", comm_cart.rank(), nghostcells);
+  ENSURE(comm_cart.size() == 1 || nghostcells > 0);
 #endif
 
   // All neighbors must be communicated with, otherwise something went wrong.
@@ -300,7 +265,8 @@ void GridBasedGrid::reinit()
   }
 }
 
-GridBasedGrid::GridBasedGrid(): mu(1.0), neighcomm(MPI_COMM_NULL)
+GridBasedGrid::GridBasedGrid(const boost::mpi::communicator& comm, Vec3d box_size, double min_cell_size):
+  ParallelLCGrid(comm, box_size, min_cell_size), mu(1.0), gbox(box_size, min_cell_size), neighcomm(MPI_COMM_NULL)
 {
   init_partitioning();
   reinit();
@@ -340,7 +306,7 @@ std::vector<GhostExchangeDesc> GridBasedGrid::get_boundary_info()
 lidx GridBasedGrid::position_to_cell_index(double pos[3])
 {
 #ifdef GRID_DEBUG
-  if (position_to_rank(pos) != this_node)
+  if (position_to_rank(pos) != comm_cart.rank())
     throw std::domain_error("Particle not in local box");
 #endif
 
@@ -365,6 +331,22 @@ lidx GridBasedGrid::position_to_cell_index(double pos[3])
   return i;
 }
 
+rank GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
+{
+  Vec3i grid_coord;
+  for (size_t i = 0; i < 3; ++i) {
+    grid_coord[i] = pos[i] / (box_l[i] / node_grid[i]);
+    if (grid_coord[i] >= node_grid[i])
+      grid_coord[i] = node_grid[i] - 1;
+    else if (grid_coord[i] < 0)
+      grid_coord[i] = 0;
+  }
+
+  int rank;
+  MPI_Cart_rank(comm_cart, grid_coord.data(), &rank);
+  return rank;
+}
+
 rank GridBasedGrid::position_to_rank(double pos[3])
 {
   // Do not attempt to resolve "pos" directly via grid.hpp.
@@ -375,11 +357,11 @@ rank GridBasedGrid::position_to_rank(double pos[3])
 
   if (is_regular_grid) {
     // Use grid.hpp
-    return map_position_node_array(Utils::Vector3d{mp});
+    return cart_topology_position_to_rank(mp);
   }
 
   if (my_dom.contains(mp))
-    return this_node;
+    return comm_cart.rank();
   for (int i = 0; i < n_neighbors(); ++i) {
     if (neighbor_doms[i].contains(mp))
       return neighbor_ranks[i];
@@ -394,21 +376,22 @@ nidx GridBasedGrid::position_to_neighidx(double pos[3])
   return neighbor_idx[rank];
 }
 
-std::array<double, 3> GridBasedGrid::cell_size()
+Vec3d GridBasedGrid::cell_size()
 {
   return gbox.cell_size();
 }
 
-std::array<int, 3> GridBasedGrid::grid_size()
+Vec3i GridBasedGrid::grid_size()
 {
   return gbox.grid_size();
 }
 
 
-std::array<double, 3> GridBasedGrid::center_of_load()
+Vec3d GridBasedGrid::center_of_load()
 {
+  /* FIXME: how to abstract?
   int npart = 0;
-  std::array<double, 3> c = {{0., 0., 0.}};
+  Vec3d c = {{0., 0., 0.}};
 
   for (const auto& p: local_cells.particles()) {
     npart++;
@@ -431,30 +414,9 @@ std::array<double, 3> GridBasedGrid::center_of_load()
     c[d] /= npart;
 
   return c;
-}
+  */
 
-static int undirected_neighbor_count(MPI_Comm neighcomm) {
-  int indegree = 0, outdegree = 0, weighted = 0;
-  MPI_Dist_graph_neighbors_count(neighcomm, &indegree, &outdegree, &weighted);
-  return indegree;
-}
-
-static double norm2(const double *v)
-{
-  return std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-}
-
-static double norm2(const std::array<double, 3>& v)
-{
-  return norm2(v.data());
-}
-
-static double dist2(const std::array<double, 3>& v, const std::array<double, 3>& w)
-{
-  std::array<double, 3> vw;
-  for (int d = 0; d < 3; ++d)
-    vw[d] = v[d] - w[d];
-  return norm2(vw);
+  return {{0., 0., 0.}};
 }
 
 bool GridBasedGrid::repartition(const repart::Metric& m,
@@ -463,10 +425,10 @@ bool GridBasedGrid::repartition(const repart::Metric& m,
   // The node displacement is calculated according to
   // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61 
 
-  using Vec3d = std::array<double, 3>;
-  using Vec3i = std::array<int, 3>;
+  using Vec3d = Vec3d;
+  using Vec3i = Vec3i;
 
-  int nneigh = undirected_neighbor_count(neighcomm);
+  int nneigh = util::mpi_undirected_neighbor_count(neighcomm);
 
   auto weights = m();
   double lambda_p = std::accumulate(std::begin(weights), std::end(weights), 0.0);
@@ -490,15 +452,15 @@ bool GridBasedGrid::repartition(const repart::Metric& m,
     // Form "u"
     for (int d = 0; d < 3; ++d)
       r[3 * i + d] -= gridpoint[d];
-    double len = norm2(&r[3 * i]);
+    double len = util::norm2(&r[3 * i]);
 
     // Form "f"
     for (int d = 0; d < 3; ++d)
       r[3 * i + d] = (lambda_hat[i] - 1) * r[3 * i + d] / len;
   }
 
-  const Vec3i coords = mpi_cart_get_coords(comm_cart);
-  const Vec3i dims = mpi_cart_get_dims(comm_cart);
+  const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
+  const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
 
   Vec3d new_c = gridpoint;
   for (int d = 0; d < 3; ++d) {
@@ -521,8 +483,8 @@ bool GridBasedGrid::repartition(const repart::Metric& m,
   // So we can safely neglect multiple neighbors.
 
 #ifdef GRID_DEBUG
-  std::cout << "[" << this_node << "] Old c: " << gridpoint[0] << "," << gridpoint[1] << "," << gridpoint[2] << std::endl;
-  std::cout << "[" << this_node << "] New c: " << new_c[0] << "," << new_c[1] << "," << new_c[2] << std::endl;
+  std::cout << "[" << comm_cart.rank() << "] Old c: " << gridpoint[0] << "," << gridpoint[1] << "," << gridpoint[2] << std::endl;
+  std::cout << "[" << comm_cart.rank() << "] New c: " << new_c[0] << "," << new_c[1] << "," << new_c[2] << std::endl;
 #endif
 
   // Update gridpoint and gridpoints
@@ -532,7 +494,7 @@ bool GridBasedGrid::repartition(const repart::Metric& m,
   auto old_gridpoints = gridpoints;
   gridpoints.clear();
   boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
-  ENSURE(gridpoints.size() == n_nodes);
+  ENSURE(gridpoints.size() == comm_cart.size());
 
   // Check for admissibility of new grid.
   // We do not constrain the grid cells to be convex.
@@ -544,11 +506,11 @@ bool GridBasedGrid::repartition(const repart::Metric& m,
 
   int nconflicts = 0;
 
-  auto bb = bounding_box(this_node);
+  auto bb = bounding_box(comm_cart.rank());
 
   for (size_t i = 0; i < bb.size(); ++i)
     for (size_t j = i + 1; j < bb.size(); ++j)
-      if (dist2(bb[i], bb[j]) < 2 * min_cell_size)
+      if (util::dist2(bb[i], bb[j]) < 2 * min_cell_size)
         nconflicts++;
 
   MPI_Allreduce(MPI_IN_PLACE, &nconflicts, 1, MPI_INT, MPI_SUM, comm_cart);
@@ -558,7 +520,7 @@ bool GridBasedGrid::repartition(const repart::Metric& m,
     std::cout << "Gridpoint update rejected because of node conflicts." << std::endl;
     ENSURE(0);
     gridpoints = old_gridpoints;
-    gridpoint = gridpoints[this_node];
+    gridpoint = gridpoints[comm_cart.rank()];
     return false;
   }
 
@@ -578,7 +540,7 @@ void GridBasedGrid::command(std::string s)
 
   if (std::regex_match(s, m, mure)) {
     mu = std::strtod(m[1].str().c_str(), NULL);
-    if (this_node == 0)
+    if (comm_cart.rank() == 0)
       std::cout << "Setting mu = " << mu << std::endl;
   }
 }
@@ -586,4 +548,4 @@ void GridBasedGrid::command(std::string s)
 }
 }
 
-#endif // HAVE_TETRA
+//#endif // HAVE_TETRA
