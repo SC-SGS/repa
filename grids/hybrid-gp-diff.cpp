@@ -1,120 +1,149 @@
 
 //#ifdef HAVE_METIS
 
-#include <mpi.h>
 #include "hybrid-gp-diff.hpp"
 #include "util/mpi_type.hpp"
+#include <mpi.h>
 
 namespace repa {
 namespace grids {
 
-HybridGPDiff::HybridGPDiff(const boost::mpi::communicator& comm, Vec3d box_size, double min_cell_size):
-  ParallelLCGrid(comm, box_size, min_cell_size), diff_impl(comm, box_size, min_cell_size), graph_impl(comm, box_size, min_cell_size), state(State::GRAPH), active_implementation(&graph_impl) {}
-
-lidx HybridGPDiff::n_local_cells() {
-  return active_implementation->n_local_cells();
+HybridGPDiff::HybridGPDiff(const boost::mpi::communicator &comm,
+                           Vec3d box_size,
+                           double min_cell_size)
+    : ParallelLCGrid(comm, box_size, min_cell_size),
+      diff_impl(comm, box_size, min_cell_size),
+      graph_impl(comm, box_size, min_cell_size),
+      state(State::GRAPH),
+      active_implementation(&graph_impl)
+{
 }
 
-gidx HybridGPDiff::n_ghost_cells() {
-  return active_implementation->n_ghost_cells();
+lidx HybridGPDiff::n_local_cells()
+{
+    return active_implementation->n_local_cells();
 }
 
-nidx HybridGPDiff::n_neighbors() { return active_implementation->n_neighbors(); }
-
-rank HybridGPDiff::neighbor_rank(nidx i) {
-  return active_implementation->neighbor_rank(i);
+gidx HybridGPDiff::n_ghost_cells()
+{
+    return active_implementation->n_ghost_cells();
 }
 
-Vec3d HybridGPDiff::cell_size() {
-  return active_implementation->cell_size();
+nidx HybridGPDiff::n_neighbors()
+{
+    return active_implementation->n_neighbors();
 }
 
-Vec3i HybridGPDiff::grid_size() {
-  return active_implementation->grid_size();
+rank HybridGPDiff::neighbor_rank(nidx i)
+{
+    return active_implementation->neighbor_rank(i);
 }
 
-lgidx HybridGPDiff::cell_neighbor_index(lidx cellidx, int neigh) {
-  return active_implementation->cell_neighbor_index(cellidx, neigh);
+Vec3d HybridGPDiff::cell_size()
+{
+    return active_implementation->cell_size();
 }
 
-std::vector<GhostExchangeDesc> HybridGPDiff::get_boundary_info() {
-  return active_implementation->get_boundary_info();
+Vec3i HybridGPDiff::grid_size()
+{
+    return active_implementation->grid_size();
 }
 
-lidx HybridGPDiff::position_to_cell_index(double pos[3]) {
-  return active_implementation->position_to_cell_index(pos);
+lgidx HybridGPDiff::cell_neighbor_index(lidx cellidx, int neigh)
+{
+    return active_implementation->cell_neighbor_index(cellidx, neigh);
 }
 
-rank HybridGPDiff::position_to_rank(double pos[3]) {
-  return active_implementation->position_to_rank(pos);
+std::vector<GhostExchangeDesc> HybridGPDiff::get_boundary_info()
+{
+    return active_implementation->get_boundary_info();
 }
 
-nidx HybridGPDiff::position_to_neighidx(double pos[3]) {
-  return active_implementation->position_to_neighidx(pos);
+lidx HybridGPDiff::position_to_cell_index(double pos[3])
+{
+    return active_implementation->position_to_cell_index(pos);
+}
+
+rank HybridGPDiff::position_to_rank(double pos[3])
+{
+    return active_implementation->position_to_rank(pos);
+}
+
+nidx HybridGPDiff::position_to_neighidx(double pos[3])
+{
+    return active_implementation->position_to_neighidx(pos);
 }
 
 bool HybridGPDiff::repartition(const repart::Metric &m,
-                               std::function<void()> exchange_start_callback) {
+                               std::function<void()> exchange_start_callback)
+{
 
-  if (switch_to_state != state)
-    switch_implementation();
+    if (switch_to_state != state)
+        switch_implementation();
 
-  switch (state) {
-  case State::GRAPH:
-    if (comm_cart.rank() == 0)
-      std::cout << "[Hybrid-GP-Diff] Repart GRAPH" << std::endl;
-    break;
-  case State::DIFF:
-    if (comm_cart.rank() == 0)
-      std::cout << "[Hybrid-GP-Diff] Repart DIFF" << std::endl;
-    break;
-  }
+    switch (state) {
+    case State::GRAPH:
+        if (comm_cart.rank() == 0)
+            std::cout << "[Hybrid-GP-Diff] Repart GRAPH" << std::endl;
+        break;
+    case State::DIFF:
+        if (comm_cart.rank() == 0)
+            std::cout << "[Hybrid-GP-Diff] Repart DIFF" << std::endl;
+        break;
+    }
 
-  return active_implementation->repartition(m, exchange_start_callback);
+    return active_implementation->repartition(m, exchange_start_callback);
 }
 
+void HybridGPDiff::switch_implementation()
+{
+    if (state == switch_to_state)
+        return;
 
-void HybridGPDiff::switch_implementation() {
-  if (state == switch_to_state)
-    return;
-
-  switch (switch_to_state) {
-  case State::GRAPH:
-    state = State::GRAPH;
-    active_implementation = &graph_impl;
-    std::copy(std::begin(diff_impl.partition), std::end(diff_impl.partition),
-              std::begin(graph_impl.partition));
-    MPI_Allreduce(MPI_IN_PLACE, graph_impl.partition.data(),
-                  graph_impl.partition.size(), MPI_ELEM_DECLTYPE_T(graph_impl.partition), MPI_MAX, comm_cart);
-    graph_impl.init();
-    break;
-  case State::DIFF:
-    state = State::DIFF;
-    active_implementation = &diff_impl;
-    std::copy(std::begin(graph_impl.partition), std::end(graph_impl.partition),
-              std::begin(diff_impl.partition));
-    diff_impl.reinit();
-    break;
-  }
+    switch (switch_to_state) {
+    case State::GRAPH:
+        state = State::GRAPH;
+        active_implementation = &graph_impl;
+        std::copy(std::begin(diff_impl.partition),
+                  std::end(diff_impl.partition),
+                  std::begin(graph_impl.partition));
+        MPI_Allreduce(MPI_IN_PLACE, graph_impl.partition.data(),
+                      graph_impl.partition.size(),
+                      MPI_ELEM_DECLTYPE_T(graph_impl.partition), MPI_MAX,
+                      comm_cart);
+        graph_impl.init();
+        break;
+    case State::DIFF:
+        state = State::DIFF;
+        active_implementation = &diff_impl;
+        std::copy(std::begin(graph_impl.partition),
+                  std::end(graph_impl.partition),
+                  std::begin(diff_impl.partition));
+        diff_impl.reinit();
+        break;
+    }
 }
 
-void HybridGPDiff::command(std::string s) {
-  // Only delegate the switch to later because if the user
-  // were to switch the states not *directly* before a repartition
-  // command, the grid would be inconsistent.
-  // Because the active_implementation is changed to the implementation
-  // that does not hold the current partitioning but something else.
-  if (s == "graph" || s == "set graph") {
-    switch_to_state = State::GRAPH;
-  } else if (s == "diff" || s == "diffusion" || s == "set diff" ||
-             s == "set diffusion") {
-    switch_to_state = State::DIFF;
-  } else if (s == "toggle" || s == "switch") {
-    switch_to_state = state == State::DIFF ? State::GRAPH : State::DIFF;
-  }
+void HybridGPDiff::command(std::string s)
+{
+    // Only delegate the switch to later because if the user
+    // were to switch the states not *directly* before a repartition
+    // command, the grid would be inconsistent.
+    // Because the active_implementation is changed to the implementation
+    // that does not hold the current partitioning but something else.
+    if (s == "graph" || s == "set graph") {
+        switch_to_state = State::GRAPH;
+    }
+    else if (s == "diff" || s == "diffusion" || s == "set diff"
+             || s == "set diffusion") {
+        switch_to_state = State::DIFF;
+    }
+    else if (s == "toggle" || s == "switch") {
+        switch_to_state = state == State::DIFF ? State::GRAPH : State::DIFF;
+    }
 }
 
 } // namespace grids
-} // namespace generic_dd
+} // namespace repa
 
 //#endif // HAVE_METIS

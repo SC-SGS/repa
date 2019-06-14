@@ -5,7 +5,6 @@
 
 namespace repa {
 
-
 template <typename T>
 using Vec3 = std::array<T, 3>;
 

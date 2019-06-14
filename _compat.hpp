@@ -5,10 +5,11 @@
 #include <cstdio>
 #include <mpi.h>
 #define errexit()                                                              \
-  do {                                                                         \
-    std::fprintf(stderr, "Invoking errexit() at %s:%i", __FILE__, __LINE__);   \
-    MPI_Abort(MPI_COMM_WORLD, 1);                                              \
-  } while (0)
+    do {                                                                       \
+        std::fprintf(stderr, "Invoking errexit() at %s:%i", __FILE__,          \
+                     __LINE__);                                                \
+        MPI_Abort(MPI_COMM_WORLD, 1);                                          \
+    } while (0)
 
 // Currently only full-periodic grids are supported
 #define PERIODIC(x) (1)
