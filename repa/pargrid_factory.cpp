@@ -11,7 +11,7 @@
 namespace repa {
 namespace grids {
 
-namespace impl {
+namespace {
 ParallelLCGrid *make_pargrid_impl(GridType gt,
                                   const boost::mpi::communicator &comm,
                                   Vec3d box_size,
@@ -69,17 +69,17 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         throw std::invalid_argument("Invalid grid type");
     }
 }
-} // namespace impl
+} // namespace
+} // namespace grids
 
-std::unique_ptr<ParallelLCGrid>
+std::unique_ptr<grids::ParallelLCGrid>
 make_pargrid(GridType gt,
              const boost::mpi::communicator &comm,
              Vec3d box_size,
              double min_cell_size)
 {
-    return std::unique_ptr<ParallelLCGrid>(
-        impl::make_pargrid_impl(gt, comm, box_size, min_cell_size));
+    return std::unique_ptr<grids::ParallelLCGrid>(
+        grids::make_pargrid_impl(gt, comm, box_size, min_cell_size));
 }
 
-} // namespace grids
 } // namespace repa
