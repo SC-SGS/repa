@@ -36,7 +36,7 @@ include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
 
 find_package(Boost "1.53.0" REQUIRED mpi serialization)
 
-add_subdirectory(src)
+add_subdirectory(repa)
 
 include(FeatureSummary)
 feature_summary(WHAT ALL)
