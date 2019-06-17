@@ -15,6 +15,8 @@ option(WITH_PARMETIS "Build with graph partitioning LB support" ON)
 option(WITH_TETRA "Build with grid-based LB support" ON)
 option(WITH_KDPART "Build with kd grid support" ON)
 
+option(WITH_TESTS "Perform unit tests" ON)
+
 if(WITH_KDPART)
   find_package(KDPart REQUIRED)
 endif(WITH_KDPART)
@@ -34,9 +36,18 @@ endif(WITH_PARMETIS)
 find_package(MPI REQUIRED)
 include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
 
-find_package(Boost "1.53.0" REQUIRED mpi serialization)
+list(APPEND REQ_BOOST_PACKAGES mpi serialization)
+if(WITH_TESTS)
+  list(APPEND REQ_BOOST_PACKAGES unit_test_framework)
+endif(WITH_TESTS)
+find_package(Boost "1.53.0" REQUIRED ${REQ_BOOST_PACKAGES})
 
 add_subdirectory(repa)
+
+if(WITH_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif(WITH_TESTS)
 
 include(FeatureSummary)
 feature_summary(WHAT ALL)

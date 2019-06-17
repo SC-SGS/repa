@@ -1,29 +1,4 @@
 
-if(WITH_KDPART AND KDPART_FOUND)
-  include_directories(${KDPART_INCLUDE_DIR})
-  list(APPEND LIBRARIES ${KDPART_LIBRARIES})
-  add_definitions(-DHAVE_KDPART)
-endif(WITH_KDPART AND KDPART_FOUND)
-
-if(WITH_TETRA AND TETRA_FOUND)
-  include_directories(${TETRA_INCLUDE_DIR})
-  list(APPEND LIBRARIES ${TETRA_LIBRARIES} "-lCGAL" "-gmp")
-  add_definitions(-DHAVE_TETRA)
-endif(WITH_TETRA AND TETRA_FOUND)
-
-if(WITH_P4EST AND P4EST_FOUND)
-  include_directories(${P4EST_INCLUDE_DIR})
-  list(APPEND LIBRARIES ${P4EST_LIBRARIES})
-  add_definitions(-DHAVE_P4EST)
-endif(WITH_P4EST AND P4EST_FOUND)
-
-if(WITH_PARMETIS AND PARMETIS_FOUND)
-  include_directories(${PARMETIS_INCLUDE_DIR})
-  list(APPEND LIBRARIES ${PARMETIS_LIBRARIES})
-  add_definitions(-DHAVE_METIS)
-endif(WITH_PARMETIS AND PARMETIS_FOUND)
-
-
 set(repa_SRC
     grids/graph.cpp
     grids/gridbased.cpp
@@ -34,11 +9,13 @@ set(repa_SRC
     grids/cart.cpp
     grids/util/mpi_type.cpp
     repart/metric.cpp
+    grid_types.cpp
     pargrid_factory.cpp
     pargrid.cpp
 )
 
 set(repa_HDR
+    repa.hpp
     pargrid.hpp
     pargrid_factory.hpp
     common_types.hpp
@@ -47,7 +24,35 @@ set(repa_HDR
 )
 
 add_library(repa SHARED ${repa_SRC})
-target_link_libraries(repa ${MPI_CXX_LIBRARIES})
+
+if(WITH_KDPART AND KDPART_FOUND)
+  target_include_directories(repa PUBLIC ${KDPART_INCLUDE_DIR})
+  target_link_libraries(repa PUBLIC ${KDPART_LIBRARIES})
+  add_definitions(-DHAVE_KDPART)
+endif(WITH_KDPART AND KDPART_FOUND)
+
+if(WITH_TETRA AND TETRA_FOUND)
+  target_include_directories(repa PUBLIC ${TETRA_INCLUDE_DIR})
+  target_link_libraries(repa PUBLIC ${TETRA_LIBRARIES} "-lCGAL" "-lgmp")
+  add_definitions(-DHAVE_TETRA)
+endif(WITH_TETRA AND TETRA_FOUND)
+
+if(WITH_P4EST AND P4EST_FOUND)
+  target_include_directories(repa PUBLIC ${P4EST_INCLUDE_DIR})
+  target_link_libraries(repa PUBLIC ${P4EST_LIBRARIES})
+  add_definitions(-DHAVE_P4EST)
+endif(WITH_P4EST AND P4EST_FOUND)
+
+if(WITH_PARMETIS AND PARMETIS_FOUND)
+  target_include_directories(repa PUBLIC ${PARMETIS_INCLUDE_DIR})
+  target_link_libraries(repa PUBLIC ${PARMETIS_LIBRARIES})
+  add_definitions(-DHAVE_METIS)
+endif(WITH_PARMETIS AND PARMETIS_FOUND)
+
+target_link_libraries(repa 
+                      PUBLIC ${MPI_CXX_LIBRARIES}
+                             ${Boost_MPI_LIBRARIES}
+                             ${Boost_SERIALIZATION_LIBRARIES})
 target_include_directories(repa PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 install(TARGETS repa
