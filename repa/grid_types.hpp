@@ -1,5 +1,6 @@
 #pragma once
 
+#include <set>
 #include <string>
 #include <unordered_map>
 
@@ -44,5 +45,9 @@ GridType parse_grid_type(const std::string &desc);
 /** Returns true if support for a certain grid type is compiled in.
  */
 bool has_grid_type(GridType gt);
+
+/** Returns a set of all supported grid types.
+ */
+std::set<GridType> supported_grid_types();
 
 } // namespace repa

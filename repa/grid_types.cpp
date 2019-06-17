@@ -64,9 +64,20 @@ bool has_grid_type(GridType gt)
 {
     try {
         return grid_type_availability.at(gt);
-    } catch (const std::out_of_range &) {
+    }
+    catch (const std::out_of_range &) {
         throw UnknownGridTypeError();
     }
+}
+
+std::set<GridType> supported_grid_types()
+{
+    std::set<GridType> gts;
+    for (const auto &p : grid_type_availability) {
+        if (p.second)
+            gts.insert(p.first);
+    }
+    return gts;
 }
 
 } // namespace repa
