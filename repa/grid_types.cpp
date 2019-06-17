@@ -60,6 +60,16 @@ inline GridType parse_grid_type(const std::string &desc)
     }
 }
 
+std::string grid_type_to_string(GridType gt)
+{
+    for (const auto &p : grid_type_registry) {
+        if (gt == p.second)
+            return p.first;
+    }
+
+    throw UnknownGridTypeError();
+}
+
 bool has_grid_type(GridType gt)
 {
     try {

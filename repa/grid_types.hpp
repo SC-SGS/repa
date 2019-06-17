@@ -42,6 +42,10 @@ private:
  */
 GridType parse_grid_type(const std::string &desc);
 
+/** Inverse of 'parse_grid_type'
+ */
+std::string grid_type_to_string(GridType gt);
+
 /** Returns true if support for a certain grid type is compiled in.
  */
 bool has_grid_type(GridType gt);
