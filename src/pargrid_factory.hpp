@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "generic_dd_grid_types.hpp"
+#include "grid_types.hpp"
 #include "pargrid.hpp"
 #include <memory>
 

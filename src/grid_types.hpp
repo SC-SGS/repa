@@ -20,6 +20,9 @@ enum class GridType {
 };
 
 struct UnknownGridTypeError {
+    UnknownGridTypeError() : w(std::string("Unknown grid type."))
+    {
+    }
     UnknownGridTypeError(std::string s)
         : w(std::string("Unknown grid type: `") + s + std::string("'"))
     {
@@ -36,23 +39,10 @@ private:
 /** Returns the GridType associated with a descriptive string for the grid
  * type.
  */
-inline GridType parse_grid_type(const std::string &desc)
-{
-    static const std::unordered_map<std::string, GridType> grid_type_registry
-        = {{"p4est", GridType::P4EST},
-           {"cart", GridType::CART},
-           {"graph", GridType::GRAPH},
-           {"diff", GridType::DIFF},
-           {"hybrid_gp_diff", GridType::HYB_GP_DIFF},
-           {"kd_tree", GridType::KD_TREE},
-           {"gridbased", GridType::GRIDBASED}};
+GridType parse_grid_type(const std::string &desc);
 
-    try {
-        return grid_type_registry.at(desc);
-    }
-    catch (const std::out_of_range &) {
-        throw UnknownGridTypeError(desc);
-    }
-}
+/** Returns true if support for a certain grid type is compiled in.
+ */
+bool has_grid_type(GridType gt);
 
 } // namespace repa
