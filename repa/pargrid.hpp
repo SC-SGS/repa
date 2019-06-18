@@ -99,8 +99,7 @@ struct ParallelLCGrid {
      */
     virtual Vec3d cell_size() = 0;
 
-    /** Returns the number of grid cells of the local process's subdomain in
-     * each direction.
+    /** Returns the number of grid cells in total in each direction.
      */
     virtual Vec3i grid_size() = 0;
 
