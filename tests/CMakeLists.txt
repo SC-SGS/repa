@@ -1,5 +1,24 @@
+# Copyright 2017-2019 Steffen Hirschmann
+#
+# This file is part of Repa.
+#
+# Repa is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Repa is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Repa.  If not, see <https://www.gnu.org/licenses/>.
+#
 
 include(define_test)
 
 define_test(NAME test_grid_types SRC test_grid_types.cpp)
 define_test(NAME test_neighborhood_symmetry SRC test_neighborhood_symmetry.cpp)
+define_test(NAME test_all_ghost_cells_valid SRC test_all_ghost_cells_valid.cpp)
+#define_test(NAME test_ghost_exchange_volume SRC test_ghost_exchange_volume.cpp)
