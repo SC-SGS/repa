@@ -42,8 +42,10 @@ BOOST_AUTO_TEST_CASE(test_neighborhood_symmetry)
     boost::mpi::communicator comm;
 
     for (const auto gt : repa::supported_grid_types()) {
-        std::cout << "Checking grid '" << repa::grid_type_to_string(gt) << "'"
-                  << std::endl;
+        if (comm.rank() == 0) {
+            std::cout << "Checking grid '" << repa::grid_type_to_string(gt)
+                      << "'" << std::endl;
+        }
         auto up = repa::make_pargrid(gt, comm, {{20., 20., 20.}}, 1.0);
         test(up.get());
     }
