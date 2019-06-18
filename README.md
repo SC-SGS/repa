@@ -10,6 +10,7 @@ Repa is a library for *load-balanced*, regular grids.
 - [Boost](https://www.boost.org/) (mpi, serialization)
 - [CMake](https://cmake.org/) for building
 - Make/Ninja/... as backend for CMake
+- C++14 compatible compiler
 
 Note, that Boost::MPI must be compiled with the chosen MPI distribution.
 
