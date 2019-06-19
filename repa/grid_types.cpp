@@ -44,10 +44,10 @@ static const std::unordered_map<std::string, GridType> grid_type_registry
 #define P4EST_AVAIL false
 #endif
 
-#ifdef HAVE_PARMETIS
-#define PARMETIS_AVAIL true
+#ifdef HAVE_METIS
+#define METIS_AVAIL true
 #else
-#define PARMETIS_AVAIL false
+#define METIS_AVAIL false
 #endif
 
 #ifdef HAVE_TETRA
@@ -60,9 +60,9 @@ static const std::unordered_map<std::string, GridType> grid_type_registry
 static const std::unordered_map<GridType, bool> grid_type_availability
     = {{GridType::P4EST, P4EST_AVAIL},
        {GridType::CART, true},
-       {GridType::GRAPH, PARMETIS_AVAIL},
+       {GridType::GRAPH, METIS_AVAIL},
        {GridType::DIFF, true},
-       {GridType::HYB_GP_DIFF, PARMETIS_AVAIL},
+       {GridType::HYB_GP_DIFF, METIS_AVAIL},
        {GridType::KD_TREE, KDPART_AVAIL},
        {GridType::GRIDBASED, true}};
 
