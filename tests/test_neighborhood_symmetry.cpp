@@ -45,6 +45,10 @@ static void test(repa::grids::ParallelLCGrid *grid)
     for (int c = 0; c < grid->n_local_cells(); ++c) {
         for (int j = 0; j < 27; ++j) {
             int d = grid->cell_neighbor_index(c, j);
+            // Test if "d" is valid.
+            BOOST_TEST(
+                ((0 <= d)
+                 && (d <= grid->n_local_cells() + grid->n_ghost_cells())));
 
             // If "d" is a inner cell and neighbors "c", then "c" must also
             // neighbor "d".
