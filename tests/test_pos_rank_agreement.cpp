@@ -49,6 +49,15 @@ bool ignore_message(const E &e)
     return true;
 }
 
+static std::vector<int> neighranks(repa::grids::ParallelLCGrid *grid)
+{
+    std::vector<int> res;
+    res.reserve(grid->n_neighbors());
+    for (int i = 0; i < grid->n_neighbors(); ++i)
+        res.push_back(grid->neighbor_rank(i));
+    return res;
+}
+
 static void test_position(const boost::mpi::communicator &comm,
                           repa::grids::ParallelLCGrid *grid,
                           const repa::Vec3d &opos)
@@ -78,6 +87,18 @@ static void test_position(const boost::mpi::communicator &comm,
         // to a cell index.
         BOOST_CHECK_EXCEPTION(grid->position_to_cell_index(pos.data()),
                               std::domain_error, ignore_message);
+    }
+
+    // Check that position_to_neighidx can resolve "pos" if it actually is on a
+    // neighboring process
+    auto neighborranks
+        = neighranks(grid); // Okay, recreating this vecor for every position is
+                            // stupid, but I currently don't care.
+    if (std::find(std::begin(neighborranks), std::end(neighborranks), rank)
+        != std::end(neighborranks)) {
+        int nidx;
+        BOOST_CHECK_NO_THROW(nidx = grid->position_to_neighidx(pos.data()));
+        BOOST_TEST(((nidx >= 0) && (nidx <= grid->n_neighbors())));
     }
 
     test_agreement(comm, rank);
