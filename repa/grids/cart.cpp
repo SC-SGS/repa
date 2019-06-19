@@ -137,7 +137,7 @@ void CartGrid::create_index_permutations()
 void CartGrid::create_grid()
 {
     for (int i = 0; i < 3; ++i) {
-        // Copy infos from grid.hpp (dependant on comm_cart)
+        // Copy infos from deprecated pargrid variables
         m_procgrid[i] = node_grid[i];
         m_procgrid_pos[i] = node_pos[i];
 
