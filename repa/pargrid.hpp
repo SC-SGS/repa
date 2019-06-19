@@ -105,13 +105,13 @@ struct ParallelLCGrid {
 
     /** Returns the index of a cell neighboring a given cell (by index).
      *
-     * Interpret a neighbor index N the following way:
+     * A resulting index N can be interpreted as follows:
      * Case 1: 0 <= N < n_local_cells(): local cell N.
      * Case 2: n_local_cells() <= N < n_local_cells() + n_ghost_cells():
      *  ghost cell no. (N - n_local_cells()).
      * Other values for N cannot occur.
      *
-     * Neighbor 0 is the cells itself
+     * Neighbor 0 is the cells itself, i.e. "cell_neighbor_index(c, 0) == c"
      * Neighbors 1-13: Half shell neighborhood
      * Neighbors 14-26: Rest of full shell neighborhood
      *
