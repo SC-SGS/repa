@@ -472,7 +472,7 @@ Vec3d KDTreeGrid::cell_size()
 
 Vec3i KDTreeGrid::grid_size()
 {
-    return m_local_subdomain_size;
+    return m_global_domain_size;
 }
 
 lgidx KDTreeGrid::cell_neighbor_index(lidx cellidx, int neigh)

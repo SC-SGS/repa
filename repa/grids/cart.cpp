@@ -322,7 +322,13 @@ Vec3d CartGrid::cell_size()
 
 Vec3i CartGrid::grid_size()
 {
-    return m_grid_size;
+    Vec3i gs;
+    // "m_grid_size" is the local number of cells.
+    // Each process, however, has the same number of local cells per dimension.
+    for (size_t i = 0; i < gs.size(); ++i) {
+        gs[i] = m_grid_size[i] * node_grid[i];
+    }
+    return gs;
 }
 
 #define UNUSED(x) ((void)(x))
