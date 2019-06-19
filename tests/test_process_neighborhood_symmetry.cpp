@@ -28,7 +28,6 @@
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #include <boost/serialization/vector.hpp>
-#include <cassert>
 #include <repa/repa.hpp>
 
 static void test(const boost::mpi::communicator &comm,

@@ -26,7 +26,6 @@
 
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
-#include <cassert>
 #include <repa/repa.hpp>
 
 static bool has_neighbor(repa::grids::ParallelLCGrid *grid,
