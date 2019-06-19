@@ -64,18 +64,45 @@ void serialize(Archive &ar,
 } // namespace serialization
 } // namespace boost
 
+static bool if_then(bool b1, bool b2)
+{
+    return b2 || !b1;
+}
+
 static void test(const boost::mpi::communicator &comm,
                  repa::grids::ParallelLCGrid *grid)
 {
     auto gexds = grid->get_boundary_info();
 
-    // Validity of exchange descriptor
+    // Validity of exchange descriptors
     for (const auto &g : gexds) {
         BOOST_TEST((g.dest >= 0 && g.dest < comm.size()));
         BOOST_TEST(g.recv.size() > 0);
         BOOST_TEST(g.send.size() > 0);
     }
 
+    // Validity of cell indices
+    for (const auto &g : gexds) {
+        for (auto sendc : g.send) {
+            BOOST_TEST(((0 <= sendc) && (sendc < grid->n_local_cells())));
+        }
+        for (auto recvc : g.recv) {
+            // BOOST_TEST(((grid->n_local_cells() <= recvc)
+            //            && (recvc < grid->n_local_cells()
+            //                            + grid->n_ghost_cells())));
+            if (!((grid->n_local_cells() <= recvc)
+                  && (recvc < grid->n_local_cells() + grid->n_ghost_cells()))) {
+                std::printf("[%i] Got recv cell %i (nl %i, ng %i, nl+ng %i)\n",
+                            comm.rank(), recvc, grid->n_local_cells(),
+                            grid->n_ghost_cells(),
+                            grid->n_local_cells() + grid->n_ghost_cells());
+                MPI_Abort(comm, 1);
+            }
+        }
+    }
+
+    // Note, although gathered on all processes, all indices will still be in
+    // local to the respective process they came from.
     std::vector<decltype(gexds)> gexdss;
     boost::mpi::all_gather(comm, gexds, gexdss);
 
@@ -88,12 +115,32 @@ static void test(const boost::mpi::communicator &comm,
         return *it;
     };
 
+    // Check if send indices fit receive indices on the other side.
     for (int r = 0; r < comm.size(); ++r) {
         for (const auto &rg : gexdss[r]) {
             auto counterpart = find_comm(gexdss[rg.dest], r);
             // Check for matching sizes
             BOOST_TEST((rg.send.size() == counterpart.recv.size()));
             BOOST_TEST((rg.recv.size() == counterpart.send.size()));
+
+            // Check send and receive site for inconsistencies in
+            // receive/send numbering.
+            for (size_t i1 = 0; i1 < rg.send.size(); ++i1) {
+                for (size_t i2 = i1 + 1; i2 < rg.send.size(); ++i2) {
+                    auto sc1 = rg.send[i1];
+                    auto sc2 = rg.send[i2];
+                    auto rc1 = counterpart.recv[i1];
+                    auto rc2 = counterpart.recv[i2];
+
+                    // Recv cells could possibly be two different cells
+                    // for the same send cell, if no minimal ghost layer
+                    // is implemented but a "full halo".
+                    // Therefore (sc1 == sc2) <=> (rc1 == rc2) might not hold.
+                    // But if the send cells are different, the recv cells for
+                    // sure must be different, too.
+                    BOOST_TEST(if_then(sc1 != sc2, rc1 != rc2));
+                }
+            }
 
             // TODO: Cannot check contents, since indices are process local.
             //       Need ability to transform local cells to unique (global)
