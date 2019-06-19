@@ -35,11 +35,11 @@ namespace grids {
 /** Some typedefs to document what an integer is supposed to mean
  */
 typedef int rank;  // Rank of a node
-typedef int nidx;  // Index of a neighboring process (rank) (0..n_neighbors)
-typedef int lidx;  // Index of a local cell (0..n_local_cells)
-typedef int gidx;  // Index of a ghost cell (0..n_ghost_cells)
-typedef int lgidx; // Index of a local (0..n_local_cells) or ghost cell
-                   // (n_local_cells..n_local_cells+n_ghost_cells)
+typedef int nidx;  // Index of a neighboring process (rank) (0..n_neighbors-1)
+typedef int lidx;  // Index of a local cell (0..n_local_cells-1)
+typedef int gidx;  // Index of a ghost cell (0..n_ghost_cells-1)
+typedef int lgidx; // Index of a local (0..n_local_cells-1) or ghost cell
+                   // (n_local_cells..n_local_cells+n_ghost_cells-1)
 
 /** Describes a ghost exchange process.
  * Corresponds to a GhostCommunication from ghosts.[ch]pp.
