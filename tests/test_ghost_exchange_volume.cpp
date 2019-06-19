@@ -68,10 +68,28 @@ static bool if_then(bool b1, bool b2)
     return b2 || !b1;
 }
 
+static std::vector<int> neighranks(repa::grids::ParallelLCGrid *grid)
+{
+    std::vector<int> res;
+    res.reserve(grid->n_neighbors());
+    for (int i = 0; i < grid->n_neighbors(); ++i)
+        res.push_back(grid->neighbor_rank(i));
+    return res;
+}
+
 static void test(const boost::mpi::communicator &comm,
                  repa::grids::ParallelLCGrid *grid)
 {
     auto gexds = grid->get_boundary_info();
+    auto neighborranks = neighranks(grid);
+
+    // Verify consistency of neighbor information with ghost communications
+    for (auto rank : neighborranks) {
+        BOOST_TEST(
+            (std::find_if(std::begin(gexds), std::end(gexds),
+                          [rank](auto gexd) { return gexd.dest == rank; })
+             != std::end(gexds)));
+    }
 
     // Validity of exchange descriptors
     for (const auto &g : gexds) {
@@ -82,6 +100,10 @@ static void test(const boost::mpi::communicator &comm,
 
     // Validity of cell indices
     for (const auto &g : gexds) {
+        // Verify consistency of ghost communications with neighbors
+        BOOST_TEST((std::find(std::begin(neighborranks),
+                              std::end(neighborranks), g.dest)
+                    != std::end(neighborranks)));
         for (auto sendc : g.send) {
             BOOST_TEST(((0 <= sendc) && (sendc < grid->n_local_cells())));
         }
