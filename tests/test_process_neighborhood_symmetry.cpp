@@ -18,7 +18,7 @@
  */
 
 /**
- * Checks the full shell neighborhood symmetry for inner cells.
+ * Checks the symmetry of the process neighborhood relation.
  */
 
 #define BOOST_TEST_MODULE process_neighborhood_symmetry
