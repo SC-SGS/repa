@@ -301,7 +301,7 @@ nidx CartGrid::neighbor_idx(rank r)
     // at most 26 entries, so sequential search might not hurt that much.
     auto it = std::find(std::begin(m_neighranks), std::end(m_neighranks), r);
     if (*it != r)
-        throw std::runtime_error("Rank not a neighbor.");
+        throw std::domain_error("Rank not a neighbor.");
 
     return std::distance(std::begin(m_neighranks), it);
 }

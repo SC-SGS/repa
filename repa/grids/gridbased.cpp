@@ -395,8 +395,8 @@ rank GridBasedGrid::position_to_rank(double pos[3])
             return neighbor_ranks[i];
     }
 
-    throw std::runtime_error("Position unknown. Possibly a position outside of "
-                             "the neighborhood of this process.");
+    throw std::domain_error("Position unknown. Possibly a position outside of "
+                            "the neighborhood of this process.");
 }
 
 nidx GridBasedGrid::position_to_neighidx(double pos[3])

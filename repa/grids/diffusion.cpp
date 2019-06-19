@@ -193,7 +193,7 @@ nidx Diffusion::position_to_neighidx(double pos[3])
     if (ni != std::end(neighbors))
         return std::distance(std::begin(neighbors), ni);
     else
-        throw std::runtime_error("Rank not a neighbor.");
+        throw std::domain_error("Rank not a neighbor.");
 }
 
 void Diffusion::clear_unknown_cell_ownership()

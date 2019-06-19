@@ -482,7 +482,7 @@ nidx P4estGrid::position_to_neighidx(double pos[3])
     auto it = std::lower_bound(std::begin(m_neighranks), std::end(m_neighranks),
                                rank);
     if (it == std::end(m_neighranks) || *it != rank)
-        throw std::runtime_error("Position not in a ghost cell.");
+        throw std::domain_error("Position not in a ghost cell.");
     return std::distance(std::begin(m_neighranks), it);
 }
 
