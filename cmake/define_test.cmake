@@ -40,5 +40,10 @@ function(define_test)
     target_include_directories(${TEST_NAME}
                                PRIVATE ${CMAKE_SOURCE_DIR})
 
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    foreach(nproc RANGE 1 ${TEST_MAX_NPROC} 1)
+        add_test(NAME "${TEST_NAME}-${nproc}"
+                 COMMAND ${MPIEXEC} "--oversubscribe"
+                         ${MPIEXEC_NUMPROC_FLAG} ${nproc}
+                         ${MPIEXEC_PREFLAGS} ${TEST_NAME} ${MPIEXEC_POSTFLAGS})
+    endforeach()
 endfunction(define_test)

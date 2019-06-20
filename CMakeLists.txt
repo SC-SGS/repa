@@ -62,6 +62,8 @@ find_package(Boost "1.53.0" REQUIRED ${REQ_BOOST_PACKAGES})
 add_subdirectory(repa)
 
 if(WITH_TESTS)
+  set(TEST_MAX_NPROC 4
+      CACHE STRING "Maximum number of processes to run the tests with")
   enable_testing()
   add_subdirectory(tests)
 endif(WITH_TESTS)
