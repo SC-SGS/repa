@@ -59,7 +59,7 @@ BOOST_AUTO_TEST_CASE(test_grid_types)
                       << "'" << std::endl;
         }
 
-        const repa::Vec3d box = {{10., 10., 10.}};
+        const repa::Vec3d box = {{20., 20., 20.}};
         const double mings = 1.0;
         auto up = repa::make_pargrid(gt, comm, box, mings);
         BOOST_TEST(up.get() != nullptr);
