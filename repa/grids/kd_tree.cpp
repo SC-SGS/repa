@@ -316,6 +316,21 @@ void KDTreeGrid::init_neighborhood_information()
             if (!node.inner())
                 this->init_neighborhood_information(node.rank());
         });
+
+    // m_boundary_info holds entries for all processes, however, only
+    // neighboring processes are filled. Additionally, it can be, that the
+    // process may or may not send/recv to/from itself. Simply discard empty
+    // entries here:
+    // TODO: Change definition and fill procedure to not include unnecessary
+    // entries.
+    auto tmp = std::move(m_boundary_info);
+    m_neighbor_processes.clear();
+    for (auto &t : tmp) {
+        if (!t.recv.empty() && !t.send.empty()) {
+            m_neighbor_processes.push_back(t.dest);
+            m_boundary_info.emplace_back(std::move(t));
+        }
+    }
 }
 
 void KDTreeGrid::init_neighborhood_information(int neighbor_rank)
