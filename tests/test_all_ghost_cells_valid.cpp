@@ -71,6 +71,10 @@ static void test_ghost_has_comm(repa::grids::ParallelLCGrid *grid)
 
     for (const auto &g : grid->get_boundary_info()) {
         for (int ghost : g.recv) {
+            // Ensure valid ghost cell index
+            BOOST_TEST(
+                ((ghost >= grid->n_local_cells())
+                 && (ghost < grid->n_local_cells() + grid->n_ghost_cells())));
             // Each ghost cell can only have one receive operation.
             BOOST_TEST(!used[ghost - grid->n_local_cells()]);
             used.at(ghost - grid->n_local_cells()) = true;
