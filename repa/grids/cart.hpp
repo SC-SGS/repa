@@ -91,6 +91,7 @@ private:
     void fill_neighranks();
 
     bool is_ghost_cell(const Vec3i &c);
+    bool self_comm_necessary();
 };
 } // namespace grids
 } // namespace repa

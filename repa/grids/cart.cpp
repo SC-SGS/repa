@@ -18,6 +18,7 @@
  */
 
 #include <algorithm>
+#include <boost/range/iterator_range.hpp>
 #include <mpi.h>
 
 #include "cart.hpp"
@@ -104,13 +105,20 @@ rank CartGrid::proc_offset_to_rank(const Vec3i &offset)
     return rank;
 }
 
+bool CartGrid::self_comm_necessary()
+{
+    return m_procgrid[0] < 2 || m_procgrid[1] < 2 || m_procgrid[2] < 2;
+}
+
 void CartGrid::fill_neighranks()
 {
     m_neighranks.clear();
 
     for (const auto &offset : impl::cart_neigh_offset) {
         // Push back unique neighbor ranks into m_neighbors
-        util::push_back_unique(m_neighranks, proc_offset_to_rank(offset));
+        auto rank = proc_offset_to_rank(offset);
+        if (rank != comm.rank() || self_comm_necessary())
+            util::push_back_unique(m_neighranks, rank);
     }
 }
 
@@ -176,21 +184,21 @@ void CartGrid::prepare_communication()
     m_exdescs.clear();
     m_exdescs.resize(n_neighbors());
 
-    // The loop below is not guaranteed to get to the node itself (if it is
-    // neighbored in every direction by other processes). Therefore, set this
-    // communication destination fix beforehand.
-    m_exdescs[neighbor_idx(comm_cart.rank())].dest = comm_cart.rank();
-
-    for (auto o = 1; o < impl::cart_neigh_offset.size(); ++o) {
+    // Exclude first offset (0, 0, 0).
+    for (const auto &offset : boost::make_iterator_range(
+             std::next(std::begin(impl::cart_neigh_offset)),
+             std::end(impl::cart_neigh_offset))) {
         Vec3i lc, hc;
-        const auto &offset = impl::cart_neigh_offset[o];
-        Vec3i opposite = {{-offset[0], -offset[1], -offset[2]}};
+        auto rank = proc_offset_to_rank(offset);
+
+        // Skip self communication if it is unnecessary
+        if (!self_comm_necessary() && rank == comm.rank())
+            continue;
 
         // Send
         {
-            auto neigh = proc_offset_to_rank(offset);
-            auto i = neighbor_idx(neigh);
-            m_exdescs[i].dest = neigh;
+            auto i = neighbor_idx(rank);
+            m_exdescs[i].dest = rank;
             std::tie(lc, hc)
                 = impl::determine_send_receive_bounds(offset, 0, m_grid_size);
             fill_comm_cell_lists(m_exdescs[i].send, lc, hc);
@@ -199,6 +207,7 @@ void CartGrid::prepare_communication()
         // Receive in opposite direction. Otherwise send and receive order on
         // the processes won't match.
         {
+            Vec3i opposite = {{-offset[0], -offset[1], -offset[2]}};
             auto neigh = proc_offset_to_rank(opposite);
             auto i = neighbor_idx(neigh);
             m_exdescs[i].dest = neigh;
