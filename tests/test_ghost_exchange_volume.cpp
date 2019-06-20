@@ -108,17 +108,9 @@ static void test(const boost::mpi::communicator &comm,
             BOOST_TEST(((0 <= sendc) && (sendc < grid->n_local_cells())));
         }
         for (auto recvc : g.recv) {
-            // BOOST_TEST(((grid->n_local_cells() <= recvc)
-            //            && (recvc < grid->n_local_cells()
-            //                            + grid->n_ghost_cells())));
-            if (!((grid->n_local_cells() <= recvc)
-                  && (recvc < grid->n_local_cells() + grid->n_ghost_cells()))) {
-                std::printf("[%i] Got recv cell %i (nl %i, ng %i, nl+ng %i)\n",
-                            comm.rank(), recvc, grid->n_local_cells(),
-                            grid->n_ghost_cells(),
-                            grid->n_local_cells() + grid->n_ghost_cells());
-                MPI_Abort(comm, 1);
-            }
+             BOOST_TEST(((grid->n_local_cells() <= recvc)
+                        && (recvc < grid->n_local_cells()
+                                        + grid->n_ghost_cells())));
         }
     }
 
