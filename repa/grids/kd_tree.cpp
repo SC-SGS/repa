@@ -335,6 +335,7 @@ void KDTreeGrid::init_recv_cells(int neighbor_rank,
     std::vector<Vec3i> intersecting_cellvectors
         = cells(intersection_domains(neighbor_subdomain, m_local_ghostdomain,
                                      true, neighbor_rank == comm_cart.rank()));
+    m_boundary_info[neighbor_rank].recv.reserve(intersecting_cellvectors.size());
 
     for (const Vec3i &intersecting_cellvector : intersecting_cellvectors) {
         // Convert global cellvector to local cellvector relative to
@@ -364,6 +365,7 @@ void KDTreeGrid::init_send_cells(int neighbor_rank,
     std::vector<Vec3i> intersecting_cellvectors
         = cells(intersection_domains(m_local_subdomain, neighbor_ghostdomain,
                                      false, neighbor_rank == comm_cart.rank()));
+    m_boundary_info[neighbor_rank].send.reserve(intersecting_cellvectors.size());
 
     for (const Vec3i &intersecting_cellvector : intersecting_cellvectors) {
         // Convert global cellvector to local cellvector relative to
