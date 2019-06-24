@@ -19,6 +19,9 @@
 
 #pragma once
 
+#include <vector>
+#include <algorithm>
+
 namespace repa {
 namespace util {
 
