@@ -125,9 +125,9 @@ struct GlobalBox {
                         static_cast<index_type_3d>(box_l[2] / max_range)}}),
           m_cell_size(div_3(box_l, m_cell_grid))
     {
-        m_cell_grid_corr[0] = linearize({m_cell_grid[0], 0, 0});
-        m_cell_grid_corr[1] = linearize({0, m_cell_grid[1], 0});
-        m_cell_grid_corr[2] = linearize({0, 0, m_cell_grid[2]});
+        m_cell_grid_corr[0] = linearize(cell_index_type{m_cell_grid[0], 0, 0});
+        m_cell_grid_corr[1] = linearize(cell_index_type{0, m_cell_grid[1], 0});
+        m_cell_grid_corr[2] = linearize(cell_index_type{0, 0, m_cell_grid[2]});
 
         std::transform(std::begin(util::NeighborOffsets3D::raw),
                        std::end(util::NeighborOffsets3D::raw),
@@ -141,16 +141,6 @@ struct GlobalBox {
             cell[d] -= std::floor(cell[d] / static_cast<double>(m_cell_grid[d]))
                        * m_cell_grid[d];
         }
-    }
-
-    inline index_type_1d linearize(const index_type_3d *cell) const noexcept
-    {
-        return __linearize(cell);
-    }
-
-    inline index_type_1d linearize(const cell_index_type &cell) const noexcept
-    {
-        return __linearize(cell);
     }
 
     inline cell_index_type unlinearize(index_type_1d pos) const
@@ -201,7 +191,7 @@ struct GlobalBox {
             cell[d] = static_cast<index_type_3d>(pos[d] / m_cell_size[d]);
         }
 
-        return linearize(cell.data());
+        return linearize(cell);
     }
 
     inline index_type_1d ncells() const noexcept
@@ -233,14 +223,7 @@ struct GlobalBox {
 private:
     // This is a template because we need it for index_type_3d and int.
     template <typename T>
-    inline index_type_1d __linearize(const T *cell) const noexcept
-    {
-        return util::linearize<index_type_1d>(cell, m_cell_grid.data());
-    }
-
-    template <typename T>
-    inline index_type_1d __linearize(const std::array<T, 3> &cell) const
-        noexcept
+    inline index_type_1d linearize(const Vec3<T> &cell) const noexcept
     {
         return util::linearize<index_type_1d>(cell, m_cell_grid);
     }
