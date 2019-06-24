@@ -143,16 +143,6 @@ struct GlobalBox {
         }
     }
 
-    inline cell_index_type unlinearize(index_type_1d pos) const
-    {
-        cell_index_type idx;
-        idx[2] = static_cast<index_type_3d>(pos % m_cell_grid[2]);
-        pos /= m_cell_grid[2];
-        idx[1] = static_cast<index_type_3d>(pos % m_cell_grid[1]);
-        idx[0] = static_cast<index_type_3d>(pos / m_cell_grid[1]);
-        return idx;
-    }
-
     inline index_type_1d neighbor(index_type_1d index, int neigh) const
     {
         if (neigh < 0 || neigh >= 27)
@@ -226,6 +216,11 @@ private:
     inline index_type_1d linearize(const Vec3<T> &cell) const noexcept
     {
         return util::linearize<index_type_1d>(cell, m_cell_grid);
+    }
+
+    inline cell_index_type unlinearize(index_type_1d pos) const
+    {
+        return util::unlinearize(pos, m_cell_grid);
     }
 };
 

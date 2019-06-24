@@ -51,11 +51,18 @@ constexpr T linearize(const Vec3<T> &c, const Vec3<T> &grid)
     return linearize<T>(c.data(), grid.data());
 }
 
+template <typename Idx3d, typename Idx1d>
+constexpr Vec3<Idx3d> unlinearize(Idx1d cidx, const Vec3<Idx3d> &grid)
+{
+    return {{static_cast<Idx3d>((cidx / grid[2]) / grid[1]),
+             static_cast<Idx3d>((cidx / grid[2]) % grid[1]),
+             static_cast<Idx3d>(cidx % grid[2])}};
+}
+
 template <typename T>
 constexpr Vec3<T> unlinearize(T cidx, const Vec3<T> &grid)
 {
-    return {{(cidx / grid[2]) / grid[1], (cidx / grid[2]) % grid[1],
-             cidx % grid[2]}};
+    return unlinearize<T, T>(cidx, grid);
 }
 
 } // namespace util
