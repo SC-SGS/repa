@@ -218,7 +218,6 @@ bool Diffusion::repartition(const repart::Metric &m,
     static int nrepartcalls = 0;
     nrepartcalls++;
 #endif
-    auto nglocells = gbox.ncells();
 
     clear_unknown_cell_ownership();
 
