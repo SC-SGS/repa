@@ -325,6 +325,7 @@ void KDTreeGrid::init_neighborhood_information()
     // entries.
     auto tmp = std::move(m_boundary_info);
     m_neighbor_processes.clear();
+    m_boundary_info.clear();
     for (auto &t : tmp) {
         if (!t.recv.empty() && !t.send.empty()) {
             m_neighbor_processes.push_back(t.dest);
