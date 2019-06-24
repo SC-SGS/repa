@@ -17,7 +17,6 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #pragma once
 
 #include <array>
@@ -27,6 +26,7 @@
 
 #include "_compat.hpp"
 #include "util/linearize.hpp"
+#include "util/neighbor_offsets.hpp"
 
 namespace repa {
 namespace grids {
@@ -96,47 +96,6 @@ private:
     const GloBox *g;
 };
 
-inline const Vec3i &neigh_offset_3d(int i)
-{
-    /*
-     * Offsets of cell and process neighbors -- respects cell ordering
-     * requirements of pargrid.hpp: 0 cell itself 1-13 hs neigh 14-26 fs neigh
-     *
-     * For iterating over all neighbors without 0, iterate over
-     * neigh_offset[i+1] for i = 0..26
-     */
-    static constexpr std::array<Vec3i, 27> _neigh_offset_3d
-        = {{{{0, 0, 0}},
-            {{1, 0, 0}},
-            {{-1, 1, 0}},
-            {{0, 1, 0}},
-            {{1, 1, 0}},
-            {{-1, -1, 1}},
-            {{0, -1, 1}},
-            {{1, -1, 1}},
-            {{-1, 0, 1}},
-            {{0, 0, 1}},
-            {{1, 0, 1}},
-            {{-1, 1, 1}},
-            {{0, 1, 1}},
-            {{1, 1, 1}},
-            // Full shell begin
-            {{-1, -1, -1}},
-            {{0, -1, -1}},
-            {{1, -1, -1}},
-            {{-1, 0, -1}},
-            {{0, 0, -1}},
-            {{1, 0, -1}},
-            {{-1, 1, -1}},
-            {{0, 1, -1}},
-            {{1, 1, -1}},
-            {{-1, -1, 0}},
-            {{0, -1, 0}},
-            {{1, -1, 0}},
-            {{-1, 0, 0}}}};
-    return _neigh_offset_3d[i];
-}
-
 template <typename T1, typename T2>
 std::array<typename std::common_type<typename T1::value_type,
                                      typename T2::value_type>::type,
@@ -170,8 +129,10 @@ struct GlobalBox {
         m_cell_grid_corr[1] = linearize({0, m_cell_grid[1], 0});
         m_cell_grid_corr[2] = linearize({0, 0, m_cell_grid[2]});
 
-        for (int i = 0; i < 27; ++i)
-            m_neigh_offset_1d[i] = __linearize(neigh_offset_3d(i));
+        std::transform(std::begin(util::NeighborOffsets3D::raw),
+                       std::end(util::NeighborOffsets3D::raw),
+                       std::begin(m_neigh_offset_1d),
+                       [this](const auto &cell) { return linearize(cell); });
     }
 
     inline void apply_pbc(index_type_3d cell[3]) const noexcept
@@ -207,7 +168,7 @@ struct GlobalBox {
         if (neigh < 0 || neigh >= 27)
             throw std::out_of_range("Neighbor index out of range.");
         auto idx = unlinearize(index);
-        const auto &no = neigh_offset_3d(neigh);
+        const auto &no = util::NeighborOffsets3D::raw[neigh];
         auto ni = index + m_neigh_offset_1d[neigh];
 
         for (int d = 0; d < 3; ++d) {

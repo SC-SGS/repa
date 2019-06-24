@@ -23,6 +23,7 @@
 
 #include "cart.hpp"
 #include "util/linearize.hpp"
+#include "util/neighbor_offsets.hpp"
 #include "util/push_back_unique.hpp"
 #include "util/vadd.hpp"
 
@@ -32,40 +33,6 @@ namespace repa {
 namespace grids {
 
 namespace impl {
-
-// Offsets of cell and process neighbors -- respects cell ordering requirements
-// of pargrid.hpp:
-// 0 cell itself
-// 1-13 hs neigh
-// 14-26 fs neigh
-static std::vector<Vec3i> cart_neigh_offset = {{0, 0, 0},
-                                               {1, 0, 0},
-                                               {-1, 1, 0},
-                                               {0, 1, 0},
-                                               {1, 1, 0},
-                                               {-1, -1, 1},
-                                               {0, -1, 1},
-                                               {1, -1, 1},
-                                               {-1, 0, 1},
-                                               {0, 0, 1},
-                                               {1, 0, 1},
-                                               {-1, 1, 1},
-                                               {0, 1, 1},
-                                               {1, 1, 1},
-                                               // Full shell begin
-                                               {-1, -1, -1},
-                                               {0, -1, -1},
-                                               {1, -1, -1},
-                                               {-1, 0, -1},
-                                               {0, 0, -1},
-                                               {1, 0, -1},
-                                               {-1, 1, -1},
-                                               {0, 1, -1},
-                                               {1, 1, -1},
-                                               {-1, -1, 0},
-                                               {0, -1, 0},
-                                               {1, -1, 0},
-                                               {-1, 0, 0}};
 
 static std::pair<Vec3i, Vec3i> determine_send_receive_bounds(
     const Vec3i &offset, int receive, const Vec3i &grid)
@@ -114,7 +81,7 @@ void CartGrid::fill_neighranks()
 {
     m_neighranks.clear();
 
-    for (const auto &offset : impl::cart_neigh_offset) {
+    for (const auto &offset : util::NeighborOffsets3D::raw) {
         // Push back unique neighbor ranks into m_neighbors
         auto rank = proc_offset_to_rank(offset);
         if (rank != comm.rank() || self_comm_necessary())
@@ -186,8 +153,8 @@ void CartGrid::prepare_communication()
 
     // Exclude first offset (0, 0, 0).
     for (const auto &offset : boost::make_iterator_range(
-             std::next(std::begin(impl::cart_neigh_offset)),
-             std::end(impl::cart_neigh_offset))) {
+             std::next(std::begin(util::NeighborOffsets3D::raw)),
+             std::end(util::NeighborOffsets3D::raw))) {
         Vec3i lc, hc;
         auto rank = proc_offset_to_rank(offset);
 
@@ -254,8 +221,8 @@ rank CartGrid::neighbor_rank(nidx i)
 lgidx CartGrid::cell_neighbor_index(lidx cellidx, int neigh)
 {
     auto c = unlinearize(cellidx);
-    auto nc
-        = util::vadd_mod(c, impl::cart_neigh_offset[neigh], m_ghost_grid_size);
+    auto nc = util::vadd_mod(c, util::NeighborOffsets3D::raw[neigh],
+                             m_ghost_grid_size);
     return linearize(nc);
 }
 

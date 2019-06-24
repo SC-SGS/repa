@@ -22,6 +22,7 @@
 
 #include "kd_tree.hpp"
 #include "util/linearize.hpp"
+#include "util/neighbor_offsets.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -470,7 +471,7 @@ lgidx KDTreeGrid::cell_neighbor_index(lidx cellidx, int neigh)
                                          m_local_ghostdomain_size);
 
     // Shift cellvector to the choosen neighbor
-    const Vec3i &offset = m_neighbor_offsets[neigh];
+    const Vec3i &offset = util::NeighborOffsets3D::raw[neigh];
     for (int dim = 0; dim < 3; dim++) {
         cellvector[dim] += offset[dim];
     }

@@ -76,37 +76,6 @@ private:
 
     std::vector<GhostExchangeDesc> m_boundary_info;
 
-    const std::vector<Vec3i> m_neighbor_offsets = {// Cell itself
-                                                   {0, 0, 0},
-                                                   // Half shell begin
-                                                   {1, 0, 0},
-                                                   {-1, 1, 0},
-                                                   {0, 1, 0},
-                                                   {1, 1, 0},
-                                                   {-1, -1, 1},
-                                                   {0, -1, 1},
-                                                   {1, -1, 1},
-                                                   {-1, 0, 1},
-                                                   {0, 0, 1},
-                                                   {1, 0, 1},
-                                                   {-1, 1, 1},
-                                                   {0, 1, 1},
-                                                   {1, 1, 1},
-                                                   // Full shell begin
-                                                   {-1, -1, -1},
-                                                   {0, -1, -1},
-                                                   {1, -1, -1},
-                                                   {-1, 0, -1},
-                                                   {0, 0, -1},
-                                                   {1, 0, -1},
-                                                   {-1, 1, -1},
-                                                   {0, 1, -1},
-                                                   {1, 1, -1},
-                                                   {-1, -1, 0},
-                                                   {0, -1, 0},
-                                                   {1, -1, 0},
-                                                   {-1, 0, 0}};
-
 private:
     /** Returns the grid dimensions of the global simulation box in cells. */
     Vec3i grid_dimensions();
