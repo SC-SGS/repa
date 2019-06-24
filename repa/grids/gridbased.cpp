@@ -321,7 +321,7 @@ rank GridBasedGrid::neighbor_rank(nidx i)
 
 lgidx GridBasedGrid::cell_neighbor_index(lidx cellidx, int neigh)
 {
-    return global_to_local[gbox.neighbor(cells[cellidx], neigh)];
+    return global_to_local.at(gbox.neighbor(cells[cellidx], neigh));
 }
 
 std::vector<GhostExchangeDesc> GridBasedGrid::get_boundary_info()
@@ -331,32 +331,17 @@ std::vector<GhostExchangeDesc> GridBasedGrid::get_boundary_info()
 
 lidx GridBasedGrid::position_to_cell_index(double pos[3])
 {
-#ifdef GRID_DEBUG
-    if (position_to_rank(pos) != comm_cart.rank())
-        throw std::domain_error("Particle not in local box");
-#endif
-
-    auto i = global_to_local[gbox.cell_at_pos(pos)];
-#ifdef GRID_DEBUG
-    if (i >= n_local_cells()) {
-        auto r = position_to_rank(pos);
-        std::cout << "GHOST_LAYER POSITION_TO_CELL detected." << std::endl;
-        std::cout << "Particle: " << pos[0] << " " << pos[1] << " " << pos[2]
-                  << std::endl;
-        std::cout << "Cell " << i << " nlocalcells: " << n_local_cells()
-                  << " nghostcells: " << n_ghost_cells() << std::endl;
-        std::cout << "Position_to_rank: " << r << std::endl;
-
-        std::cout << "Cell " << i << " has coords: ";
-        auto mp = gbox.midpoint(cells[i]);
-        std::cout << mp[0] << ", " << mp[1] << ", " << mp[2] << std::endl;
-
-        throw std::runtime_error(
-            "Gridbased: Call to position_to_cell for ghost layer cell.");
+    lidx c;
+    try {
+        c = global_to_local.at(gbox.cell_at_pos(pos));
     }
-#endif
-
-    return i;
+    catch (...) {
+        throw std::domain_error("Position not in local subdomain.");
+    }
+    // global_to_local also resolves ghost indices.
+    if (c >= n_local_cells())
+        throw std::domain_error("Position not in local subdomain.");
+    return c;
 }
 
 rank GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
@@ -402,7 +387,12 @@ rank GridBasedGrid::position_to_rank(double pos[3])
 nidx GridBasedGrid::position_to_neighidx(double pos[3])
 {
     rank rank = position_to_rank(pos);
-    return neighbor_idx[rank];
+    try {
+        return neighbor_idx.at(rank);
+    }
+    catch (...) {
+        throw std::domain_error("Position not in neighboring subdomain.");
+    }
 }
 
 Vec3d GridBasedGrid::cell_size()
