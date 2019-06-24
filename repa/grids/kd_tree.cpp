@@ -291,51 +291,49 @@ void KDTreeGrid::init_neighborhood_information()
             if (!node.inner())
                 this->init_neighborhood_information(node.rank());
         });
-
-    // m_boundary_info holds entries for all processes, however, only
-    // neighboring processes are filled. Additionally, it can be, that the
-    // process may or may not send/recv to/from itself. Simply discard empty
-    // entries here:
-    // TODO: Change definition and fill procedure to not include unnecessary
-    // entries.
-    auto tmp = std::move(m_boundary_info);
-    m_neighbor_processes.clear();
-    m_boundary_info.clear();
-    for (auto &t : tmp) {
-        if (!t.recv.empty() && !t.send.empty()) {
-            m_neighbor_processes.push_back(t.dest);
-            m_boundary_info.emplace_back(std::move(t));
-        }
-    }
 }
 
 void KDTreeGrid::init_neighborhood_information(int neighbor_rank)
 {
-    // Add process to neighbor processes
-    int neighbor_index = m_neighbor_processes.size();
-    m_neighbor_processes.push_back(neighbor_rank);
-    m_neighbor_processes_inverse[neighbor_rank] = neighbor_index;
+    GhostExchangeDesc gexd;
+    gexd.dest = neighbor_rank;
 
     // Initialize neighborhood information about ghostcells that the local
     // process is receiving from the neighbor process.
     Domain neighbor_subdomain = m_kdtree.subdomain_bounds(neighbor_rank);
-    init_recv_cells(neighbor_rank, neighbor_subdomain);
+    init_recv_cells(gexd, neighbor_subdomain);
 
     // Initialize neighborhood information about localcells that the local
     // neighbor process is sending to the neighbor process.
     Domain neighbor_ghostdomain = ghostdomain_bounds(neighbor_subdomain);
-    init_send_cells(neighbor_rank, neighbor_ghostdomain);
+    init_send_cells(gexd, neighbor_ghostdomain);
+
+    if (gexd.send.empty()) { // send.empty() == recv.empty(), so test only one.
+        // This can only be the case if neighbor_rank == comm_cart.rank()
+        // and there are enough processes such that no self communication
+        // is necessary.
+        if (neighbor_rank != comm_cart.rank()) {
+            throw std::runtime_error("Empty ghost exchange detected");
+        }
+
+        // Simply do not add this descriptor to the neighbors
+        return;
+    }
+    // Add process to neighbor processes
+    m_neighbor_processes_inverse[neighbor_rank] = m_neighbor_processes.size();
+    m_neighbor_processes.push_back(neighbor_rank);
+    m_boundary_info.emplace_back(std::move(gexd));
 }
 
-void KDTreeGrid::init_recv_cells(int neighbor_rank,
+void KDTreeGrid::init_recv_cells(GhostExchangeDesc &gexd,
                                  const Domain &neighbor_subdomain)
 {
     // Get overlapping cells between the neighbor subdomain and the local
     // ghostdomain.
     std::vector<Vec3i> intersecting_cellvectors
         = cells(intersection_domains(neighbor_subdomain, m_local_ghostdomain,
-                                     true, neighbor_rank == comm_cart.rank()));
-    m_boundary_info[neighbor_rank].recv.reserve(intersecting_cellvectors.size());
+                                     true, gexd.dest == comm_cart.rank()));
+    gexd.recv.reserve(intersecting_cellvectors.size());
 
     for (const Vec3i &intersecting_cellvector : intersecting_cellvectors) {
         // Convert global cellvector to local cellvector relative to
@@ -350,22 +348,23 @@ void KDTreeGrid::init_recv_cells(int neighbor_rank,
             local_cellvector, m_local_ghostdomain_size)];
 
         // Convert cell-id to ghostcell-id
-        assert(ghostidx >= m_nb_of_local_cells && ghostidx < m_nb_of_ghost_cells + m_nb_of_local_cells);
+        assert(ghostidx >= m_nb_of_local_cells
+               && ghostidx < m_nb_of_ghost_cells + m_nb_of_local_cells);
 
         // Update datastructures
-        m_boundary_info[neighbor_rank].recv.push_back(ghostidx);
+        gexd.recv.push_back(ghostidx);
     }
 }
 
-void KDTreeGrid::init_send_cells(int neighbor_rank,
+void KDTreeGrid::init_send_cells(GhostExchangeDesc &gexd,
                                  const Domain &neighbor_ghostdomain)
 {
     // Get overlapping cells between the neighbor ghostdomain and the local
     // domain.
     std::vector<Vec3i> intersecting_cellvectors
         = cells(intersection_domains(m_local_subdomain, neighbor_ghostdomain,
-                                     false, neighbor_rank == comm_cart.rank()));
-    m_boundary_info[neighbor_rank].send.reserve(intersecting_cellvectors.size());
+                                     false, gexd.dest == comm_cart.rank()));
+    gexd.send.reserve(intersecting_cellvectors.size());
 
     for (const Vec3i &intersecting_cellvector : intersecting_cellvectors) {
         // Convert global cellvector to local cellvector relative to
@@ -379,7 +378,7 @@ void KDTreeGrid::init_send_cells(int neighbor_rank,
         int lidx = util::linearize(local_cellvector, m_local_subdomain_size);
 
         // Update datastructure
-        m_boundary_info[neighbor_rank].send.push_back(lidx);
+        gexd.send.push_back(lidx);
     }
 }
 
@@ -389,10 +388,7 @@ void KDTreeGrid::clear_lookup_datastructures()
     m_neighbor_processes_inverse.clear();
     m_index_permutations.clear();
     m_index_permutations_inverse.clear();
-    for (GhostExchangeDesc &desc : m_boundary_info) {
-        desc.recv.clear();
-        desc.send.clear();
-    }
+    m_boundary_info.clear();
 }
 
 void KDTreeGrid::reinitialize()
@@ -422,13 +418,6 @@ KDTreeGrid::KDTreeGrid(const boost::mpi::communicator &comm,
     m_kdtree = kdpart::make_parttree(nb_of_subdomains, Vec3i{{0, 0, 0}},
                                      m_global_domain_size, load_function,
                                      kdpart::quality_splitting);
-
-    // Prepare datastructure for boundary info.
-    // Destination ranks never change.
-    m_boundary_info.resize(comm_cart.size());
-    for (int i = 0; i < m_boundary_info.size(); i++) {
-        m_boundary_info[i].dest = i;
-    }
 
     reinitialize();
 }

@@ -74,10 +74,6 @@ private:
     /** Maps rank to neighbor id (nidx) or -1 if rank is no neighbor. */
     std::vector<int> m_neighbor_processes_inverse;
 
-    /**
-     * The ghost-exchange-descriptions inside this datastructure are ordered
-     * by destination rank. This allows easy look-ups.
-     */
     std::vector<GhostExchangeDesc> m_boundary_info;
 
     const std::vector<Vec3i> m_neighbor_offsets = {// Cell itself
@@ -204,10 +200,12 @@ private:
     void init_neighborhood_information(int neighbor_rank);
 
     /** Init receiving ghostcells. */
-    void init_recv_cells(int neighbor_rank, const Domain &neighbor_subdomain);
+    void init_recv_cells(GhostExchangeDesc &gexd,
+                         const Domain &neighbor_subdomain);
 
     /** Init sending local cells. */
-    void init_send_cells(int neighbor_rank, const Domain &neighbor_ghostdomain);
+    void init_send_cells(GhostExchangeDesc &gexd,
+                         const Domain &neighbor_ghostdomain);
 
     void clear_lookup_datastructures();
 
