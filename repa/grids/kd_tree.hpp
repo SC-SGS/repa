@@ -140,18 +140,6 @@ private:
      */
     static bool is_ghost_cell(const Vec3i &cell, const Vec3i &ghostdomain_size);
 
-    /**
-     * Linearizes a 3d vector to a 1d index respective to the given
-     * domain size constraints.
-     */
-    static int linearize(const Vec3i &cell_position, const Vec3i &domain_size);
-
-    /**
-     * Unlinearizes a 1d index to a 3d vector respective to the given domain
-     * size constraints.
-     */
-    static Vec3i unlinearize(int cell_index, const Vec3i &domain_size);
-
     /** Returns true if the given domain contains the given cell vector. */
     static bool domain_contains_cell(const Domain &domain, const Vec3i &cell);
 
