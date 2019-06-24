@@ -374,8 +374,10 @@ void KDTreeGrid::init_recv_cells(int neighbor_rank,
                                                    m_local_ghostdomain_size)];
 
         // Convert cell-id to ghostcell-id
+#ifndef NDEBUG
         int gidx = lgidx - m_nb_of_local_cells;
         assert(gidx >= 0 && gidx < m_nb_of_ghost_cells);
+#endif
 
         // Update datastructures
         m_boundary_info[neighbor_rank].recv.push_back(lgidx);
