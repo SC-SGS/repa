@@ -18,7 +18,6 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #pragma once
 
 #include "globox.hpp"
@@ -46,8 +45,9 @@ struct Diffusion : public ParallelLCGrid {
     lidx position_to_cell_index(double pos[3]) override;
     rank position_to_rank(double pos[3]) override;
     nidx position_to_neighidx(double pos[3]) override;
-    bool repartition(const repart::Metric &m,
-                     std::function<void()> exchange_start_callback) override;
+    bool repartition(CellMetric m,
+                     CellCellMetric ccm,
+                     Thunk exchange_start_callback) override;
 
     struct NeighSend {
         int basecell;
@@ -91,7 +91,8 @@ private:
 
     // Computes vector of vectors of cells which has to be send to neighbours
     std::vector<std::vector<int>>
-    compute_send_list(std::vector<double> &&sendLoads, const repart::Metric &m);
+    compute_send_list(std::vector<double> &&sendLoads,
+                      const std::vector<double> &weights);
 
     MPI_Comm neighcomm;
 

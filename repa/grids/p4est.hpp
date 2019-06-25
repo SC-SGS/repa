@@ -43,10 +43,10 @@ struct LocalShell {
                     // cell, 2: ghost cell)
     int boundary;   // Bit mask storing boundary info. MSB ...
                     // z_r,z_l,y_r,y_l,x_r,x_l LSB Cells with shell-type 0 or
-                  // those located within the domain are always 0 Cells with
-                  // shell-type 1 store information about which face is a
-                  // boundary Cells with shell-type 2 are set if the are in the
-                  // periodic halo
+                    // those located within the domain are always 0 Cells with
+                    // shell-type 1 store information about which face is a
+    // boundary Cells with shell-type 2 are set if the are in the
+    // periodic halo
     std::array<int, 26>
         neighbor; // unique index of the fullshell neighborhood cells (as in
                   // p8est); only 26 because cell itself is not included.
@@ -94,8 +94,9 @@ struct P4estGrid : public ParallelLCGrid {
     lidx position_to_cell_index(double pos[3]) override;
     rank position_to_rank(double pos[3]) override;
     nidx position_to_neighidx(double pos[3]) override;
-    bool repartition(const repart::Metric &m,
-                     std::function<void()> exchange_start_callback) override;
+    bool repartition(CellMetric m,
+                     CellCellMetric ccm,
+                     Thunk exchange_start_callback) override;
 
 private:
     int m_grid_level;

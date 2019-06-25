@@ -92,8 +92,9 @@ nidx HybridGPDiff::position_to_neighidx(double pos[3])
     return active_implementation->position_to_neighidx(pos);
 }
 
-bool HybridGPDiff::repartition(const repart::Metric &m,
-                               std::function<void()> exchange_start_callback)
+bool HybridGPDiff::repartition(CellMetric m,
+                               CellCellMetric ccm,
+                               Thunk exchange_start_callback)
 {
 
     if (switch_to_state != state)
@@ -110,7 +111,7 @@ bool HybridGPDiff::repartition(const repart::Metric &m,
         break;
     }
 
-    return active_implementation->repartition(m, exchange_start_callback);
+    return active_implementation->repartition(m, ccm, exchange_start_callback);
 }
 
 void HybridGPDiff::switch_implementation()

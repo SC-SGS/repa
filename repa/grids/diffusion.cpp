@@ -210,10 +210,15 @@ void Diffusion::clear_unknown_cell_ownership()
     }
 }
 
-bool Diffusion::repartition(const repart::Metric &m,
-                            std::function<void()> exchange_start_callback)
+bool Diffusion::repartition(CellMetric m, CellCellMetric ccm,
+                            Thunk exchange_start_callback)
 {
     auto cellweights = m();
+    if (cellweights.size() != n_local_cells()) {
+        throw std::runtime_error(
+            "Metric only supplied " + std::to_string(cellweights.size())
+            + "weights. Necessary: " + std::to_string(n_local_cells()));
+    }
 #ifdef DIFFUSION_DEBUG
     static int nrepartcalls = 0;
     nrepartcalls++;
@@ -269,7 +274,7 @@ bool Diffusion::repartition(const repart::Metric &m,
         // First element of each vector is the rank to which the sells should
         // be send. The other elements in the vectors are the global cell IDs
         // of the cells.
-        toSend = compute_send_list(std::move(send_volume), m);
+        toSend = compute_send_list(std::move(send_volume), cellweights);
 
         // Update partition array
         for (size_t i = 0; i < toSend.size(); ++i) {
@@ -433,9 +438,8 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm, Vec3d box_size,
  */
 std::vector<std::vector<int>>
 Diffusion::compute_send_list(std::vector<double> &&send_loads,
-                             const repart::Metric &m)
+                             const std::vector<double> &weights)
 {
-    auto weights = m();
     std::vector<std::tuple<int, double, int>> plist;
     for (size_t i = 0; i < borderCells.size(); i++) {
         // Profit when sending this cell away

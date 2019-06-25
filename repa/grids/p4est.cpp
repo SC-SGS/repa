@@ -496,14 +496,21 @@ Vec3i P4estGrid::grid_size()
     return m_grid_size;
 }
 
-bool P4estGrid::repartition(const repart::Metric &m,
-                            std::function<void()> exchange_start_callback)
+bool P4estGrid::repartition(CellMetric m,
+                            CellCellMetric ccm,
+                            Thunk exchange_start_callback)
 {
+    UNUSED(ccm);
     // If this method exits early, successive calls to reinitialize() will
     // partition the grid uniformly.
     m_repartstate.reset();
 
     std::vector<double> weights = m();
+    if (weights.size() != n_local_cells()) {
+        throw std::runtime_error(
+            "Metric only supplied " + std::to_string(weights.size())
+            + "weights. Necessary: " + std::to_string(n_local_cells()));
+    }
 
     // Determine prefix and target load
     double localsum

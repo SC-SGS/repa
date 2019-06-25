@@ -207,8 +207,8 @@ public:
 
     virtual nidx position_to_neighidx(double pos[3]) override;
 
-    virtual bool repartition(const repart::Metric &m,
-                             std::function<void()> cb) override;
+    virtual bool
+    repartition(CellMetric m, CellCellMetric ccm, Thunk cb) override;
 };
 
 } // namespace grids

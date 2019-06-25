@@ -27,7 +27,6 @@
 #include <vector>
 
 #include "common_types.hpp"
-#include "repart/metric.hpp"
 
 namespace repa {
 namespace grids {
@@ -153,12 +152,13 @@ struct ParallelLCGrid {
      * Be careful: If the call returns true also old cell indices are
      * invalidated and silently get a new meaning.
      *
-     * @param exchange_start_callback is a function which starts the data
-     * migration. This function is only called if the return value is "true".
-     * Also, it is called as soon as "position_to_rank" can safely be called.
+     * @param exchange_start_callback is a function with no arguments which
+     * starts the data migration. This function is only called if the return
+     * value is "true". Also, it is called as soon as "position_to_rank" can
+     * safely be called.
      */
-    virtual bool repartition(const repart::Metric &m,
-                             std::function<void()> exchange_start_callback)
+    virtual bool
+    repartition(CellMetric m, CellCellMetric ccm, Thunk exchange_start_callback)
         = 0;
 
     struct UnknwonCommandError : public std::exception {

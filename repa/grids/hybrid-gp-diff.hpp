@@ -45,8 +45,9 @@ struct HybridGPDiff : public ParallelLCGrid {
     lidx position_to_cell_index(double pos[3]) override;
     rank position_to_rank(double pos[3]) override;
     nidx position_to_neighidx(double pos[3]) override;
-    bool repartition(const repart::Metric &m,
-                     std::function<void()> exchange_start_callback) override;
+    bool repartition(CellMetric m,
+                     CellCellMetric ccm,
+                     Thunk exchange_start_callback) override;
 
     void command(std::string s) override;
 

@@ -26,7 +26,6 @@ set(repa_SRC
     grids/cart.cpp
     grids/util/mpi_type.cpp
     grids/util/neighbor_offsets.cpp
-    repart/metric.cpp
     grid_types.cpp
     pargrid_factory.cpp
     pargrid.cpp
@@ -37,8 +36,7 @@ set(repa_HDR
     pargrid.hpp
     pargrid_factory.hpp
     common_types.hpp
-    generic_dd_grid_types.hpp
-    repart/metric.hpp
+    grid_types.hpp
 )
 
 add_library(repa SHARED ${repa_SRC})

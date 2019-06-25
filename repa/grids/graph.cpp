@@ -112,11 +112,17 @@ nidx Graph::position_to_neighidx(double pos[3])
  * that corresponds to the cell.
  * Partitioning is performed in parallel via ParMETIS.
  */
-bool Graph::repartition(const repart::Metric &m,
-                        std::function<void()> exchange_start_callback)
+bool Graph::repartition(CellMetric m,
+                        CellCellMetric ccm,
+                        Thunk exchange_start_callback)
 {
     static constexpr idx_t w_fac = 100;
     auto vertex_weights = m();
+    if (vertex_weights.size() != n_local_cells()) {
+        throw std::runtime_error(
+            "Metric only supplied " + std::to_string(vertex_weights.size())
+            + "weights. Necessary: " + std::to_string(n_local_cells()));
+    }
 
     idx_t nglocells = static_cast<idx_t>(gbox.ncells());
     idx_t ncells_per_proc = static_cast<idx_t>(
@@ -191,7 +197,7 @@ bool Graph::repartition(const repart::Metric &m,
         // weight. Also leave out the loop (i, i), i.e. start at n = 1.
         for (int n = 1; n < 27; ++n) {
             auto neigh = cell_neighbor_index(i, n);
-            w[n] = static_cast<idx_t>(m.cell_cell_weight(i, neigh)) * w_fac + 1;
+            w[n] = static_cast<idx_t>(ccm(i, neigh)) * w_fac + 1;
 #ifdef GRAPH_DEBUG
             ENSURE(w[n] > 0);
             if (neigh < n_local_cells()) {

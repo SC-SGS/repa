@@ -32,3 +32,5 @@
 
 // Currently only full-periodic grids are supported
 #define PERIODIC(x) (1)
+
+#define UNUSED(x) ((void) (x))

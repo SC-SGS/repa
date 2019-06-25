@@ -20,6 +20,8 @@
 #pragma once
 
 #include <array>
+#include <vector>
+#include <functional>
 
 namespace repa {
 
@@ -28,5 +30,9 @@ using Vec3 = std::array<T, 3>;
 
 typedef Vec3<int> Vec3i;
 typedef Vec3<double> Vec3d;
+
+typedef std::function<std::vector<double>(void)> CellMetric;
+typedef std::function<double(int, int)> CellCellMetric;
+typedef std::function<void(void)> Thunk;
 
 }

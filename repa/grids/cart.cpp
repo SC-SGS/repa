@@ -307,12 +307,12 @@ Vec3i CartGrid::grid_size()
     return gs;
 }
 
-#define UNUSED(x) ((void)(x))
-
-bool CartGrid::repartition(const repart::Metric &m,
-                           std::function<void()> exchange_start_callback)
+bool CartGrid::repartition(CellMetric m,
+                           CellCellMetric ccm,
+                           Thunk exchange_start_callback)
 {
     UNUSED(m);
+    UNUSED(ccm);
     UNUSED(exchange_start_callback);
     return false;
 }
