@@ -22,17 +22,16 @@
  */
 
 #define BOOST_TEST_MODULE grid_types
+#include "testenv.hpp"
 #include <boost/test/included/unit_test.hpp>
-
-#include <boost/mpi/communicator.hpp>
-#include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
 /**
  * Relative distance between a and b.
  * Only meaningfully defined for floating point types.
  */
-template <typename T, typename = std::enable_if_t<std::is_floating_point<T>::value>>
+template <typename T,
+          typename = std::enable_if_t<std::is_floating_point<T>::value>>
 T relative_distance(T a, T b)
 {
     return std::fabs((a - b) / std::min(a, b));
@@ -41,38 +40,30 @@ T relative_distance(T a, T b)
 /**
  * Returns true if the relative distance between a and b is smaller than eps.
  */
-template <typename T, typename = std::enable_if_t<std::is_floating_point<T>::value>>
+template <typename T,
+          typename = std::enable_if_t<std::is_floating_point<T>::value>>
 bool is_close(T a, T b, T eps = T{1e-14})
 {
     return relative_distance(a, b) < eps;
 }
 
+static void
+test(repa::grids::ParallelLCGrid *grid, const repa::Vec3d &box, double mings)
+{
+    auto grid_size = grid->grid_size();
+    auto cell_size = grid->cell_size();
+    for (size_t i = 0; i < grid_size.size(); ++i) {
+        BOOST_TEST((cell_size[i] > 0.));
+        BOOST_TEST((grid_size[i] > 0));
+        BOOST_TEST(grid_size[i] >= mings);
+        BOOST_TEST(is_close(grid_size[i] * cell_size[i], box[i]));
+    }
+}
 
 BOOST_AUTO_TEST_CASE(test_grid_types)
 {
-    boost::mpi::environment env;
-    boost::mpi::communicator comm;
-
-    for (const auto gt : repa::supported_grid_types()) {
-        if (comm.rank() == 0) {
-            std::cout << "Checking grid '" << repa::grid_type_to_string(gt)
-                      << "'" << std::endl;
-        }
-
-        const repa::Vec3d box = {{20., 20., 20.}};
-        const double mings = 1.0;
-        auto up = repa::make_pargrid(gt, comm, box, mings);
-        BOOST_TEST(up.get() != nullptr);
-
-        auto grid_size = up->grid_size();
-        auto cell_size = up->cell_size();
-        for (size_t i = 0; i < box.size(); ++i) {
-            BOOST_TEST((cell_size[i] > 0.));
-            BOOST_TEST((grid_size[i] > 0));
-            BOOST_TEST(grid_size[i] >= mings);
-            BOOST_TEST(is_close(grid_size[i] * cell_size[i], box[i]));
-        }
-    }
-
-    relative_distance(1.0, 2.0);
+    repa::Vec3d box = {{20., 20., 20.}};
+    double mings = 1.0;
+    RepartTestEnv env(box, mings);
+    env.run_for_all_grid_types(test, box, mings);
 }

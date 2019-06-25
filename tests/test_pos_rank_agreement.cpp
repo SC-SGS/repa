@@ -30,6 +30,7 @@
 #include <boost/serialization/vector.hpp>
 #include <random>
 #include <repa/repa.hpp>
+#include "testenv.hpp"
 
 template <typename T>
 static void test_agreement(const boost::mpi::communicator &comm, T value)
@@ -104,8 +105,8 @@ static void test_position(const boost::mpi::communicator &comm,
     test_agreement(comm, rank);
 }
 
-static void test(const boost::mpi::communicator &comm,
-                 repa::grids::ParallelLCGrid *grid,
+static void test(repa::grids::ParallelLCGrid *grid,
+                 const boost::mpi::communicator &comm,
                  const repa::Vec3d &box)
 {
     // Test reguar grid
@@ -140,16 +141,8 @@ static void test(const boost::mpi::communicator &comm,
 
 BOOST_AUTO_TEST_CASE(test_pos_rank_agreement)
 {
-    boost::mpi::environment env;
-    boost::mpi::communicator comm;
-
-    for (const auto gt : repa::supported_grid_types()) {
-        if (comm.rank() == 0) {
-            std::cout << "Checking grid '" << repa::grid_type_to_string(gt)
-                      << "'" << std::endl;
-        }
-        repa::Vec3d box = {{20., 20., 20.}};
-        auto up = repa::make_pargrid(gt, comm, box, 1.0);
-        test(comm, up.get(), box);
-    }
+    repa::Vec3d box = {{20., 20., 20.}};
+    double mings = 1.0;
+    RepartTestEnv env(box, mings);
+    env.run_for_all_grid_types(test, std::ref(env.get_comm()), box);
 }

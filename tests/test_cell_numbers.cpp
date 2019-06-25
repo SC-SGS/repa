@@ -24,13 +24,14 @@
 #define BOOST_TEST_MODULE cell_numbers
 #include <boost/test/included/unit_test.hpp>
 
+#include "testenv.hpp"
 #include <boost/mpi/collectives.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
-static void test(const boost::mpi::communicator &comm,
-                 repa::grids::ParallelLCGrid *grid)
+static void test(repa::grids::ParallelLCGrid *grid,
+                 const boost::mpi::communicator &comm)
 {
     int nlocalcells = grid->n_local_cells();
     BOOST_TEST(nlocalcells >= 0);
@@ -47,15 +48,8 @@ static void test(const boost::mpi::communicator &comm,
 
 BOOST_AUTO_TEST_CASE(test_cell_numbers)
 {
-    boost::mpi::environment env;
-    boost::mpi::communicator comm;
-
-    for (const auto gt : repa::supported_grid_types()) {
-        if (comm.rank() == 0) {
-            std::cout << "Checking grid '" << repa::grid_type_to_string(gt)
-                      << "'" << std::endl;
-        }
-        auto up = repa::make_pargrid(gt, comm, {{20., 20., 20.}}, 1.0);
-        test(comm, up.get());
-    }
+    repa::Vec3d box = {{20., 20., 20.}};
+    double mings = 1.0;
+    RepartTestEnv env(box, mings);
+    env.run_for_all_grid_types(test, std::ref(env.get_comm()));
 }

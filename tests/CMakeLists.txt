@@ -25,3 +25,4 @@ define_test(NAME test_process_neighborhood_symmetry SRC test_process_neighborhoo
 define_test(NAME test_all_ghost_cells_valid SRC test_all_ghost_cells_valid.cpp)
 define_test(NAME test_ghost_exchange_volume SRC test_ghost_exchange_volume.cpp)
 define_test(NAME test_pos_rank_agreement SRC test_pos_rank_agreement.cpp)
+define_test(NAME test_repart SRC test_repart.cpp)

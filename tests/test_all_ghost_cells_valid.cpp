@@ -25,6 +25,7 @@
 #define BOOST_TEST_MODULE ghost_cells_valid
 #include <boost/test/included/unit_test.hpp>
 
+#include "testenv.hpp"
 #include <algorithm>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
@@ -109,15 +110,8 @@ static void test(repa::grids::ParallelLCGrid *grid)
 
 BOOST_AUTO_TEST_CASE(test_all_ghost_cells_valid)
 {
-    boost::mpi::environment env;
-    boost::mpi::communicator comm;
-
-    for (const auto gt : repa::supported_grid_types()) {
-        if (comm.rank() == 0) {
-            std::cout << "Checking grid '" << repa::grid_type_to_string(gt)
-                      << "'" << std::endl;
-        }
-        auto up = repa::make_pargrid(gt, comm, {{20., 20., 20.}}, 1.0);
-        test(up.get());
-    }
+    repa::Vec3d box = {{20., 20., 20.}};
+    double mings = 1.0;
+    RepartTestEnv env(box, mings);
+    env.run_for_all_grid_types(test);
 }

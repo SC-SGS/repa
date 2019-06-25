@@ -1,0 +1,104 @@
+
+#pragma once
+#include <boost/test/included/unit_test.hpp>
+
+#include "repa/repa.hpp"
+#include <boost/mpi/communicator.hpp>
+#include <boost/mpi/environment.hpp>
+#include <random>
+
+struct TestEnv {
+    boost::mpi::environment env;
+    boost::mpi::communicator comm;
+    repa::Vec3d box;
+    double mings;
+
+    TestEnv(const repa::Vec3d &box, double min_grid_size)
+        : box(box), mings(min_grid_size)
+    {
+    }
+
+    const boost::mpi::communicator &get_comm()
+    {
+        return comm;
+    }
+
+protected:
+    template <typename Func, typename PPFunc, typename... Args>
+    void __run_for_all_grid_type_impl(repa::GridType gt,
+                                      Func testf,
+                                      PPFunc preprocess,
+                                      Args... args)
+    {
+        if (comm.rank() == 0) {
+            std::cout << "Checking grid '" << repa::grid_type_to_string(gt)
+                      << "'" << std::endl;
+        }
+
+        auto up = repa::make_pargrid(gt, comm, box, mings);
+        BOOST_TEST(up.get() != nullptr);
+
+        preprocess(up.get());
+        testf(up.get(), args...);
+    }
+
+    template <typename Func, typename PPFunc, typename... Args>
+    void __run_for_all_all_grid_types_impl(Func testf,
+                                           PPFunc preprocess,
+                                           Args... args)
+    {
+        for (const auto gt : repa::supported_grid_types()) {
+            __run_for_all_grid_type_impl(gt, testf, preprocess, args...);
+        }
+    }
+};
+
+struct StaticTestEnv : public TestEnv {
+    StaticTestEnv(const repa::Vec3d &box, double min_grid_size)
+        : TestEnv(box, min_grid_size)
+    {
+    }
+
+    template <typename Func, typename... Args>
+    void run_for_all_grid_types(Func testf, Args... args)
+    {
+        auto no_preprocessing = [](repa::grids::ParallelLCGrid *) {};
+        __run_for_all_all_grid_types_impl(testf, no_preprocessing, args...);
+    }
+};
+
+static void repartition_randomly(repa::grids::ParallelLCGrid *grid)
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(1., 10.);
+
+    auto random_dbl = [&gen, &dis]() { return dis(gen); };
+
+    auto nlc = grid->n_local_cells();
+    auto random_cellweights = [&random_dbl, nlc]() {
+        std::vector<double> w(nlc);
+        std::generate(std::begin(w), std::end(w), random_dbl);
+        return w;
+    };
+    auto noop = []() {};
+    auto random_dbl2 = [&random_dbl](int, int) { return random_dbl(); };
+
+    BOOST_CHECK_NO_THROW(
+        grid->repartition(random_cellweights, random_dbl2, noop));
+}
+
+struct RepartTestEnv : public TestEnv {
+    RepartTestEnv(const repa::Vec3d &box, double min_grid_size)
+        : TestEnv(box, min_grid_size)
+    {
+    }
+
+    template <typename Func, typename... Args>
+    void run_for_all_grid_types(Func testf, Args... args)
+    {
+        auto no_preprocessing = [](repa::grids::ParallelLCGrid *) {};
+        __run_for_all_all_grid_types_impl(testf, no_preprocessing, args...);
+        __run_for_all_all_grid_types_impl(testf, repartition_randomly, args...);
+    }
+};
