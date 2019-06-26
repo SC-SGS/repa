@@ -24,16 +24,17 @@
 #define BOOST_TEST_MODULE process_neighborhood_symmetry
 #include <boost/test/included/unit_test.hpp>
 
+#include "testenv.hpp"
 #include <boost/mpi/collectives.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #include <boost/serialization/vector.hpp>
 #include <repa/repa.hpp>
-#include "testenv.hpp"
 
-static void test(repa::grids::ParallelLCGrid *grid,
-                 const boost::mpi::communicator &comm)
+boost::mpi::environment env;
 
+static void test(const boost::mpi::communicator &comm,
+                 repa::grids::ParallelLCGrid *grid)
 {
     std::vector<int> neighranks;
     neighranks.reserve(grid->n_neighbors());
@@ -65,8 +66,12 @@ static void test(repa::grids::ParallelLCGrid *grid,
 
 BOOST_AUTO_TEST_CASE(test_process_neighborhood_symmetry)
 {
+    using std::placeholders::_1;
+    boost::mpi::communicator comm;
     repa::Vec3d box = {{20., 20., 20.}};
     double mings = 1.0;
-    RepartTestEnv env(box, mings);
-    env.run_for_all_grid_types(test, std::ref(env.get_comm()));
+    new_test_env(comm, box, mings)
+        .with_repart()
+        .all_grids()
+        .run(std::bind(test, std::cref(comm), _1));
 }

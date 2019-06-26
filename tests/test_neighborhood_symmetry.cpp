@@ -24,10 +24,11 @@
 #define BOOST_TEST_MODULE neighborhood_symmetry
 #include <boost/test/included/unit_test.hpp>
 
-#include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 #include "testenv.hpp"
+
+boost::mpi::environment env;
 
 static bool has_neighbor(repa::grids::ParallelLCGrid *grid,
                          repa::grids::lidx d,
@@ -61,8 +62,8 @@ static void test(repa::grids::ParallelLCGrid *grid)
 
 BOOST_AUTO_TEST_CASE(test_neighborhood_symmetry)
 {
+    boost::mpi::communicator comm;
     repa::Vec3d box = {{20., 20., 20.}};
     double mings = 1.0;
-    RepartTestEnv env(box, mings);
-    env.run_for_all_grid_types(test);
+    new_test_env(comm, box, mings).with_repart().all_grids().run(test);
 }

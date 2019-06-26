@@ -21,71 +21,11 @@
 
 #include "repa/repa.hpp"
 #include <boost/mpi/communicator.hpp>
-#include <boost/mpi/environment.hpp>
 #include <random>
+#include <set>
+#include <functional>
 
-struct TestEnv {
-    boost::mpi::environment env;
-    boost::mpi::communicator comm;
-    repa::Vec3d box;
-    double mings;
-
-    TestEnv(const repa::Vec3d &box, double min_grid_size)
-        : box(box), mings(min_grid_size)
-    {
-    }
-
-    const boost::mpi::communicator &get_comm()
-    {
-        return comm;
-    }
-
-protected:
-    template <typename Func, typename PPFunc, typename... Args>
-    void __run_for_all_grid_type_impl(repa::GridType gt,
-                                      Func testf,
-                                      PPFunc preprocess,
-                                      Args... args)
-    {
-        if (comm.rank() == 0) {
-            std::cout << "Checking grid '" << repa::grid_type_to_string(gt)
-                      << "'" << std::endl;
-        }
-
-        std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
-        BOOST_CHECK_NO_THROW(up = repa::make_pargrid(gt, comm, box, mings));
-        BOOST_TEST(up.get() != nullptr);
-
-        preprocess(up.get());
-        testf(up.get(), args...);
-    }
-
-    template <typename Func, typename PPFunc, typename... Args>
-    void __run_for_all_all_grid_types_impl(Func testf,
-                                           PPFunc preprocess,
-                                           Args... args)
-    {
-        for (const auto gt : repa::supported_grid_types()) {
-            __run_for_all_grid_type_impl(gt, testf, preprocess, args...);
-        }
-    }
-};
-
-struct StaticTestEnv : public TestEnv {
-    StaticTestEnv(const repa::Vec3d &box, double min_grid_size)
-        : TestEnv(box, min_grid_size)
-    {
-    }
-
-    template <typename Func, typename... Args>
-    void run_for_all_grid_types(Func testf, Args... args)
-    {
-        auto no_preprocessing = [](repa::grids::ParallelLCGrid *) {};
-        __run_for_all_all_grid_types_impl(testf, no_preprocessing, args...);
-    }
-};
-
-static void repartition_randomly(repa::grids::ParallelLCGrid *grid)
+inline void repartition_randomly(repa::grids::ParallelLCGrid *grid)
 {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -100,23 +40,90 @@ static void repartition_randomly(repa::grids::ParallelLCGrid *grid)
         return w;
     };
     auto noop = []() {};
-    auto random_dbl2 = [&random_dbl](int, int) { return random_dbl(); };
+    auto ccm = [](int, int) { return 1.0; };
 
-    BOOST_CHECK_NO_THROW(
-        grid->repartition(random_cellweights, random_dbl2, noop));
+    BOOST_CHECK_NO_THROW(grid->repartition(random_cellweights, ccm, noop));
 }
 
-struct RepartTestEnv : public TestEnv {
-    RepartTestEnv(const repa::Vec3d &box, double min_grid_size)
-        : TestEnv(box, min_grid_size)
+namespace {
+struct TEnv {
+    boost::mpi::communicator comm;
+    repa::Vec3d box;
+    double mings;
+    std::set<repa::GridType> grids;
+    bool repart;
+
+    TEnv(const boost::mpi::communicator &comm, repa::Vec3d box, double mings)
+        : comm(comm, boost::mpi::comm_duplicate),
+          box(std::move(box)),
+          mings(mings)
     {
     }
 
-    template <typename Func, typename... Args>
-    void run_for_all_grid_types(Func testf, Args... args)
+    TEnv &with_repart()
     {
-        auto no_preprocessing = [](repa::grids::ParallelLCGrid *) {};
-        __run_for_all_all_grid_types_impl(testf, no_preprocessing, args...);
-        __run_for_all_all_grid_types_impl(testf, repartition_randomly, args...);
+        repart = true;
+        return *this;
+    }
+
+    TEnv &without_repart()
+    {
+        repart = false;
+        return *this;
+    }
+
+    TEnv &all_grids()
+    {
+        grids = repa::supported_grid_types();
+        return *this;
+    }
+
+    TEnv &only(std::set<repa::GridType> s)
+    {
+        grids.clear();
+        auto supported = repa::supported_grid_types();
+        for (const auto gt: s) {
+            if (supported.find(gt) != std::end(supported))
+                grids.insert(gt);
+        }
+        return *this;
+    }
+
+    TEnv &exclude(std::set<repa::GridType> s)
+    {
+        for (const auto gt : s)
+            grids.erase(gt);
+        return *this;
+    }
+
+    template <typename Func>
+    void run(Func test_func)
+    {
+        for (const auto gt : grids) {
+            if (comm.rank() == 0) {
+                std::cout << "Checking grid '" << repa::grid_type_to_string(gt)
+                          << "'" << std::endl;
+            }
+
+            std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
+            BOOST_CHECK_NO_THROW(up = repa::make_pargrid(gt, comm, box, mings));
+            BOOST_TEST(up.get() != nullptr);
+
+            test_func(up.get());
+
+            if (!repart)
+                continue;
+            repartition_randomly(up.get());
+
+            test_func(up.get());
+        }
     }
 };
+} // namespace
+
+TEnv new_test_env(const boost::mpi::communicator &comm,
+                  repa::Vec3d box,
+                  double mings)
+{
+    return TEnv{comm, box, mings};
+}

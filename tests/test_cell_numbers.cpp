@@ -30,8 +30,10 @@
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
-static void test(repa::grids::ParallelLCGrid *grid,
-                 const boost::mpi::communicator &comm)
+boost::mpi::environment env;
+
+static void test(const boost::mpi::communicator &comm,
+                 repa::grids::ParallelLCGrid *grid)
 {
     int nlocalcells = grid->n_local_cells();
     BOOST_TEST(nlocalcells >= 0);
@@ -48,8 +50,12 @@ static void test(repa::grids::ParallelLCGrid *grid,
 
 BOOST_AUTO_TEST_CASE(test_cell_numbers)
 {
+    using std::placeholders::_1;
+    boost::mpi::communicator comm;
     repa::Vec3d box = {{20., 20., 20.}};
     double mings = 1.0;
-    RepartTestEnv env(box, mings);
-    env.run_for_all_grid_types(test, std::ref(env.get_comm()));
+    new_test_env(comm, box, mings)
+        .with_repart()
+        .all_grids()
+        .run(std::bind(test, std::cref(comm), _1));
 }

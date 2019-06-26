@@ -23,8 +23,11 @@
 
 #define BOOST_TEST_MODULE grid_types
 #include "testenv.hpp"
+#include <boost/mpi/environment.hpp>
 #include <boost/test/included/unit_test.hpp>
 #include <repa/repa.hpp>
+
+boost::mpi::environment env;
 
 /**
  * Relative distance between a and b.
@@ -48,7 +51,7 @@ bool is_close(T a, T b, T eps = T{1e-14})
 }
 
 static void
-test(repa::grids::ParallelLCGrid *grid, const repa::Vec3d &box, double mings)
+test(const repa::Vec3d &box, double mings, repa::grids::ParallelLCGrid *grid)
 {
     auto grid_size = grid->grid_size();
     auto cell_size = grid->cell_size();
@@ -62,8 +65,11 @@ test(repa::grids::ParallelLCGrid *grid, const repa::Vec3d &box, double mings)
 
 BOOST_AUTO_TEST_CASE(test_grid_types)
 {
+    using std::placeholders::_1;
+    boost::mpi::communicator comm;
     repa::Vec3d box = {{20., 20., 20.}};
     double mings = 1.0;
-    RepartTestEnv env(box, mings);
-    env.run_for_all_grid_types(test, box, mings);
+    new_test_env(comm, box, mings)
+        .with_repart()
+        .run(std::bind(test, std::cref(box), mings, _1));
 }

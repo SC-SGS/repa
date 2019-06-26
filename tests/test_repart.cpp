@@ -28,6 +28,8 @@
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
+boost::mpi::environment env;
+
 struct CallCounter {
     CallCounter() : cnt(0)
     {

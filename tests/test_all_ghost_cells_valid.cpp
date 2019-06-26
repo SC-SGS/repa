@@ -27,9 +27,10 @@
 
 #include "testenv.hpp"
 #include <algorithm>
-#include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
+
+boost::mpi::environment env;
 
 using CVBIt = std::vector<bool>::const_iterator;
 static bool all_true(const CVBIt &first, const CVBIt &last)
@@ -110,8 +111,8 @@ static void test(repa::grids::ParallelLCGrid *grid)
 
 BOOST_AUTO_TEST_CASE(test_all_ghost_cells_valid)
 {
+    boost::mpi::communicator comm;
     repa::Vec3d box = {{20., 20., 20.}};
     double mings = 1.0;
-    RepartTestEnv env(box, mings);
-    env.run_for_all_grid_types(test);
+    new_test_env(comm, box, mings).with_repart().all_grids().run(test);
 }

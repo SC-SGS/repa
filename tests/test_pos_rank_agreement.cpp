@@ -24,13 +24,15 @@
 #define BOOST_TEST_MODULE pos_rank_agreement
 #include <boost/test/included/unit_test.hpp>
 
+#include "testenv.hpp"
 #include <boost/mpi/collectives.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #include <boost/serialization/vector.hpp>
 #include <random>
 #include <repa/repa.hpp>
-#include "testenv.hpp"
+
+boost::mpi::environment env;
 
 template <typename T>
 static void test_agreement(const boost::mpi::communicator &comm, T value)
@@ -105,9 +107,9 @@ static void test_position(const boost::mpi::communicator &comm,
     test_agreement(comm, rank);
 }
 
-static void test(repa::grids::ParallelLCGrid *grid,
-                 const boost::mpi::communicator &comm,
-                 const repa::Vec3d &box)
+static void test(const boost::mpi::communicator &comm,
+                 const repa::Vec3d &box,
+                 repa::grids::ParallelLCGrid *grid)
 {
     // Test reguar grid
     auto cell_size = grid->cell_size();
@@ -139,10 +141,31 @@ static void test(repa::grids::ParallelLCGrid *grid,
     }
 }
 
-BOOST_AUTO_TEST_CASE(test_pos_rank_agreement)
+// Gridbased and Diffusion do not allow for position_to_rank after
+// repartitioning, so test statically.
+BOOST_AUTO_TEST_CASE(test_pos_rank_agreement_local_methods)
 {
+    using std::placeholders::_1;
+    boost::mpi::communicator comm;
     repa::Vec3d box = {{20., 20., 20.}};
     double mings = 1.0;
-    RepartTestEnv env(box, mings);
-    env.run_for_all_grid_types(test, std::ref(env.get_comm()), box);
+    new_test_env(comm, box, mings)
+        .without_repart()
+        .only({repa::GridType::DIFF, repa::GridType::GRIDBASED,
+               repa::GridType::HYB_GP_DIFF})
+        .run(std::bind(test, std::cref(comm), std::cref(box), _1));
+}
+
+BOOST_AUTO_TEST_CASE(test_pos_rank_agreement_global_methods)
+{
+    using std::placeholders::_1;
+    boost::mpi::communicator comm;
+    repa::Vec3d box = {{20., 20., 20.}};
+    double mings = 1.0;
+    new_test_env(comm, box, mings)
+        .with_repart()
+        .all_grids()
+        .exclude({repa::GridType::DIFF, repa::GridType::GRIDBASED,
+                  repa::GridType::HYB_GP_DIFF})
+        .run(std::bind(test, std::cref(comm), std::cref(box), _1));
 }
