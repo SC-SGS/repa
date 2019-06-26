@@ -32,7 +32,8 @@
  * Relative distance between a and b.
  * Only meaningfully defined for floating point types.
  */
-template <typename T, typename = std::enable_if_t<std::is_floating_point<T>::value>>
+template <typename T,
+          typename = std::enable_if_t<std::is_floating_point<T>::value>>
 T relative_distance(T a, T b)
 {
     return std::fabs((a - b) / std::min(a, b));
@@ -41,12 +42,12 @@ T relative_distance(T a, T b)
 /**
  * Returns true if the relative distance between a and b is smaller than eps.
  */
-template <typename T, typename = std::enable_if_t<std::is_floating_point<T>::value>>
+template <typename T,
+          typename = std::enable_if_t<std::is_floating_point<T>::value>>
 bool is_close(T a, T b, T eps = T{1e-14})
 {
     return relative_distance(a, b) < eps;
 }
-
 
 BOOST_AUTO_TEST_CASE(test_grid_types)
 {
@@ -61,7 +62,8 @@ BOOST_AUTO_TEST_CASE(test_grid_types)
 
         const repa::Vec3d box = {{20., 20., 20.}};
         const double mings = 1.0;
-        auto up = repa::make_pargrid(gt, comm, box, mings);
+        std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
+        BOOST_CHECK_NO_THROW(up = repa::make_pargrid(gt, comm, box, mings));
         BOOST_TEST(up.get() != nullptr);
 
         auto grid_size = up->grid_size();
