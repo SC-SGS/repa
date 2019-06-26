@@ -35,6 +35,8 @@ function(define_test)
     target_link_libraries(${TEST_NAME}
                           PRIVATE repa
                                   Boost::unit_test_framework
+                                  Boost::mpi
+                                  Boost::serialization
                                   ${TEST_LIBRARIES})
 
     target_include_directories(${TEST_NAME}

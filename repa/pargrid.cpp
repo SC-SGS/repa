@@ -24,7 +24,7 @@
 namespace repa {
 namespace grids {
 
-static boost::mpi::communicator
+static MPI_Comm
 make_cartesian_communicator(const boost::mpi::communicator &comm)
 {
     Vec3i dims = {{0, 0, 0}}, periods = {{1, 1, 1}};
@@ -33,15 +33,14 @@ make_cartesian_communicator(const boost::mpi::communicator &comm)
     MPI_Comm _comm_cart;
     MPI_Cart_create(comm, 3, dims.data(), periods.data(), true, &_comm_cart);
 
-    return boost::mpi::communicator{_comm_cart,
-                                    boost::mpi::comm_take_ownership};
+    return _comm_cart;
 }
 
-ParallelLCGrid::ParallelLCGrid(const boost::mpi::communicator &comm,
+ParallelLCGrid::ParallelLCGrid(const boost::mpi::communicator &_comm,
                                Vec3d box_size,
                                double min_cell_size)
-    : comm(comm, boost::mpi::comm_duplicate),
-      comm_cart(make_cartesian_communicator(comm)),
+    : comm(_comm, boost::mpi::comm_duplicate),
+      comm_cart(make_cartesian_communicator(_comm), boost::mpi::comm_take_ownership),
       box_l(box_size),
       node_grid(util::mpi_cart_get_dims(comm_cart)),
       node_pos(util::mpi_cart_get_coords(comm_cart)),

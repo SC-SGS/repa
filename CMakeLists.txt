@@ -57,7 +57,10 @@ list(APPEND REQ_BOOST_PACKAGES mpi serialization)
 if(WITH_TESTS)
   list(APPEND REQ_BOOST_PACKAGES unit_test_framework)
 endif(WITH_TESTS)
-find_package(Boost "1.53.0" REQUIRED ${REQ_BOOST_PACKAGES})
+if(WITH_TETRA)
+  list(APPEND REQ_BOOST_PACKAGES thread)
+endif(WITH_TETRA)
+find_package(Boost "1.59.0" REQUIRED ${REQ_BOOST_PACKAGES})
 
 add_subdirectory(repa)
 

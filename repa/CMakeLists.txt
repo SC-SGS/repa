@@ -49,7 +49,7 @@ endif(WITH_KDPART AND KDPART_FOUND)
 
 if(WITH_TETRA AND TETRA_FOUND)
   target_include_directories(repa PUBLIC ${TETRA_INCLUDE_DIR})
-  target_link_libraries(repa PUBLIC ${TETRA_LIBRARIES} "-lCGAL" "-lgmp")
+  target_link_libraries(repa PUBLIC ${TETRA_LIBRARIES} "-lCGAL" "-lgmp" "-lboost_thread")
   add_definitions(-DHAVE_TETRA)
 endif(WITH_TETRA AND TETRA_FOUND)
 

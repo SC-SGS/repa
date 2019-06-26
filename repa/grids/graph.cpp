@@ -203,7 +203,7 @@ bool Graph::repartition(CellMetric m,
             if (neigh < n_local_cells()) {
                 // Local symmetry -- only ensures local symmetry, however,
                 // symmetry is also required for cross-boundary edges.
-                ENSURE(w[n] == m.cell_cell_weight(neigh, i) * w_fac + 1);
+                ENSURE(w[n] == ccm(neigh, i) * w_fac + 1);
             }
 #endif
         }
@@ -301,8 +301,8 @@ bool Graph::repartition(CellMetric m,
     for (idx_t w : adjwgt) {
         ENSURE(w != -1);
         ENSURE(w >= 0 && w < 10000000);
-        if (!m.has_cell_cell_metric())
-            ENSURE(w == 1.0 * w_fac + 1);
+        //if (!m.has_cell_cell_metric())
+        //    ENSURE(w == 1.0 * w_fac + 1);
     }
 #endif
 
