@@ -131,8 +131,10 @@ struct GlobalBox {
 
         std::transform(std::begin(util::NeighborOffsets3D::raw),
                        std::end(util::NeighborOffsets3D::raw),
-                       std::begin(m_neigh_offset_1d),
-                       [this](const auto &cell) { return linearize(cell); });
+                       std::begin(m_neigh_offset_1d), [this](const auto &cell) {
+                           return this->linearize(cell);
+                           //     ^^^^^^ Note: gcc-5.x compatibility
+                       });
     }
 
     inline void apply_pbc(index_type_3d cell[3]) const noexcept

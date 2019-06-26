@@ -18,6 +18,7 @@
  */
 
 #include "grid_types.hpp"
+#include <unordered_map>
 
 namespace repa {
 
@@ -56,14 +57,22 @@ static const std::unordered_map<std::string, GridType> grid_type_registry
 #define TETRA_AVAIL false
 #endif
 
+// Note: Enum hash compatibility functor for gcc-5.x support.
+// To be removed in the future.
+struct enum_hash_compat {
+    template <typename T>
+    inline size_t operator()(const T v) const
+    {
+        return static_cast<size_t>(v);
+    }
+};
+
 // Awaiting C++20 which will finally have designated initializers -.-
-static const std::unordered_map<GridType, bool> grid_type_availability
-    = {{GridType::P4EST, P4EST_AVAIL},
-       {GridType::CART, true},
-       {GridType::GRAPH, METIS_AVAIL},
-       {GridType::DIFF, true},
-       {GridType::HYB_GP_DIFF, METIS_AVAIL},
-       {GridType::KD_TREE, KDPART_AVAIL},
+static const std::unordered_map<GridType, bool, enum_hash_compat>
+    grid_type_availability
+    = {{GridType::P4EST, P4EST_AVAIL},       {GridType::CART, true},
+       {GridType::GRAPH, METIS_AVAIL},       {GridType::DIFF, true},
+       {GridType::HYB_GP_DIFF, METIS_AVAIL}, {GridType::KD_TREE, KDPART_AVAIL},
        {GridType::GRIDBASED, true}};
 
 } // namespace
