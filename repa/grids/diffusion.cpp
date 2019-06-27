@@ -432,6 +432,12 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm, Vec3d box_size,
     reinit(true);
 }
 
+Diffusion::~Diffusion()
+{
+    if (neighcomm != MPI_COMM_NULL)
+        MPI_Comm_free(&neighcomm);
+}
+
 /*
  * Computes a vector of vectors. The inner vectors contain a rank of the
  * process where the cells shall send and the cellids of this cells.

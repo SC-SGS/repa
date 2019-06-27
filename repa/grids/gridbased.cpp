@@ -299,6 +299,12 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
     reinit();
 }
 
+GridBasedGrid::~GridBasedGrid()
+{
+    if (neighcomm != MPI_COMM_NULL)
+        MPI_Comm_free(&neighcomm);
+}
+
 lidx GridBasedGrid::n_local_cells()
 {
     return nlocalcells;

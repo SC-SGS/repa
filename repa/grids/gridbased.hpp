@@ -39,6 +39,7 @@ struct GridBasedGrid : public ParallelLCGrid {
     GridBasedGrid(const boost::mpi::communicator &comm,
                   Vec3d box_size,
                   double min_cell_size);
+    ~GridBasedGrid();
     lidx n_local_cells() override;
     gidx n_ghost_cells() override;
     nidx n_neighbors() override;

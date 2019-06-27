@@ -34,6 +34,7 @@ struct Diffusion : public ParallelLCGrid {
     Diffusion(const boost::mpi::communicator &comm,
               Vec3d box_size,
               double min_cell_size);
+    ~Diffusion();
     lidx n_local_cells() override;
     gidx n_ghost_cells() override;
     nidx n_neighbors() override;
