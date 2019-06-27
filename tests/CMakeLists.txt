@@ -19,10 +19,10 @@
 include(define_test)
 
 define_test(NAME test_grid_types SRC test_grid_types.cpp)
+define_test(NAME test_repart SRC test_repart.cpp)
 define_test(NAME test_cell_numbers SRC test_cell_numbers.cpp)
 define_test(NAME test_neighborhood_symmetry SRC test_neighborhood_symmetry.cpp)
 define_test(NAME test_process_neighborhood_symmetry SRC test_process_neighborhood_symmetry.cpp)
 define_test(NAME test_all_ghost_cells_valid SRC test_all_ghost_cells_valid.cpp)
 define_test(NAME test_ghost_exchange_volume SRC test_ghost_exchange_volume.cpp)
 define_test(NAME test_pos_rank_agreement SRC test_pos_rank_agreement.cpp)
-define_test(NAME test_repart SRC test_repart.cpp)
