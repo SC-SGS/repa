@@ -24,9 +24,9 @@
 #define BOOST_TEST_MODULE neighborhood_symmetry
 #include <boost/test/included/unit_test.hpp>
 
+#include "testenv.hpp"
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
-#include "testenv.hpp"
 
 boost::mpi::environment env;
 
@@ -41,8 +41,9 @@ static bool has_neighbor(repa::grids::ParallelLCGrid *grid,
     return false;
 }
 
-static void test(repa::grids::ParallelLCGrid *grid)
+static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
+    (void)t;
     for (int c = 0; c < grid->n_local_cells(); ++c) {
         for (int j = 0; j < 27; ++j) {
             int d = grid->cell_neighbor_index(c, j);
@@ -62,8 +63,5 @@ static void test(repa::grids::ParallelLCGrid *grid)
 
 BOOST_AUTO_TEST_CASE(test_neighborhood_symmetry)
 {
-    boost::mpi::communicator comm;
-    repa::Vec3d box = {{20., 20., 20.}};
-    double mings = 1.0;
-    new_test_env(comm, box, mings).with_repart().all_grids().run(test);
+    default_test_env().with_repart().all_grids().run(test);
 }

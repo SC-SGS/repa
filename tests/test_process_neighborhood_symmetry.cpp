@@ -33,9 +33,9 @@
 
 boost::mpi::environment env;
 
-static void test(const boost::mpi::communicator &comm,
-                 repa::grids::ParallelLCGrid *grid)
+static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
+    const auto &comm = t.comm;
     std::vector<int> neighranks;
     neighranks.reserve(grid->n_neighbors());
 
@@ -66,12 +66,5 @@ static void test(const boost::mpi::communicator &comm,
 
 BOOST_AUTO_TEST_CASE(test_process_neighborhood_symmetry)
 {
-    using std::placeholders::_1;
-    boost::mpi::communicator comm;
-    repa::Vec3d box = {{20., 20., 20.}};
-    double mings = 1.0;
-    new_test_env(comm, box, mings)
-        .with_repart()
-        .all_grids()
-        .run(std::bind(test, std::cref(comm), _1));
+    default_test_env().with_repart().all_grids().run(test);
 }

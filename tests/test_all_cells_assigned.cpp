@@ -60,20 +60,19 @@ test_exactly_one_assigned_process(const boost::mpi::communicator &comm,
     BOOST_TEST(nresp == 1);
 }
 
-static void test(const boost::mpi::communicator &comm,
-                 const repa::Vec3d &box,
-                 repa::grids::ParallelLCGrid *grid)
+static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     // Test reguar grid
     auto cell_size = grid->cell_size();
     repa::Vec3d pos;
 
-    for (pos[0] = .5 * cell_size[0]; pos[0] < box[0]; pos[0] += cell_size[0]) {
-        for (pos[1] = .5 * cell_size[1]; pos[1] < box[1];
+    for (pos[0] = .5 * cell_size[0]; pos[0] < t.box[0];
+         pos[0] += cell_size[0]) {
+        for (pos[1] = .5 * cell_size[1]; pos[1] < t.box[1];
              pos[1] += cell_size[1]) {
-            for (pos[2] = .5 * cell_size[2]; pos[2] < box[2];
+            for (pos[2] = .5 * cell_size[2]; pos[2] < t.box[2];
                  pos[2] += cell_size[2]) {
-                test_exactly_one_assigned_process(comm, grid, pos);
+                test_exactly_one_assigned_process(t.comm, grid, pos);
             }
         }
     }
@@ -83,12 +82,5 @@ static void test(const boost::mpi::communicator &comm,
 // repartitioning, so test statically.
 BOOST_AUTO_TEST_CASE(test_all_cells_assigned)
 {
-    using std::placeholders::_1;
-    boost::mpi::communicator comm;
-    repa::Vec3d box = {{20., 20., 20.}};
-    double mings = 1.0;
-    new_test_env(comm, box, mings)
-        .with_repart()
-        .all_grids()
-        .run(std::bind(test, std::cref(comm), std::cref(box), _1));
+    default_test_env().with_repart().all_grids().run(test);
 }

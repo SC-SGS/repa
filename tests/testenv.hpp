@@ -21,9 +21,9 @@
 
 #include "repa/repa.hpp"
 #include <boost/mpi/communicator.hpp>
+#include <functional>
 #include <random>
 #include <set>
-#include <functional>
 
 inline void repartition_randomly(repa::grids::ParallelLCGrid *grid)
 {
@@ -60,6 +60,14 @@ struct TEnv {
     {
     }
 
+    TEnv(): mings(1.0)
+    {
+        const double blen
+            = mings * 5
+              * std::ceil(std::sqrt(static_cast<double>(comm.size())));
+        box = {{blen, blen, blen}};
+    }
+
     TEnv &with_repart()
     {
         repart = true;
@@ -82,7 +90,7 @@ struct TEnv {
     {
         grids.clear();
         auto supported = repa::supported_grid_types();
-        for (const auto gt: s) {
+        for (const auto gt : s) {
             if (supported.find(gt) != std::end(supported))
                 grids.insert(gt);
         }
@@ -109,21 +117,19 @@ struct TEnv {
             BOOST_CHECK_NO_THROW(up = repa::make_pargrid(gt, comm, box, mings));
             BOOST_TEST(up.get() != nullptr);
 
-            test_func(up.get());
+            test_func(*this, up.get());
 
             if (!repart)
                 continue;
             repartition_randomly(up.get());
 
-            test_func(up.get());
+            test_func(*this, up.get());
         }
     }
 };
 } // namespace
 
-TEnv new_test_env(const boost::mpi::communicator &comm,
-                  repa::Vec3d box,
-                  double mings)
+inline TEnv default_test_env()
 {
-    return TEnv{comm, box, mings};
+    return TEnv{};
 }

@@ -50,26 +50,19 @@ bool is_close(T a, T b, T eps = T{1e-14})
     return relative_distance(a, b) < eps;
 }
 
-static void
-test(const repa::Vec3d &box, double mings, repa::grids::ParallelLCGrid *grid)
+static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     auto grid_size = grid->grid_size();
     auto cell_size = grid->cell_size();
     for (size_t i = 0; i < grid_size.size(); ++i) {
         BOOST_TEST((cell_size[i] > 0.));
         BOOST_TEST((grid_size[i] > 0));
-        BOOST_TEST(grid_size[i] >= mings);
-        BOOST_TEST(is_close(grid_size[i] * cell_size[i], box[i]));
+        BOOST_TEST(grid_size[i] >= t.mings);
+        BOOST_TEST(is_close(grid_size[i] * cell_size[i], t.box[i]));
     }
 }
 
 BOOST_AUTO_TEST_CASE(test_grid_types)
 {
-    using std::placeholders::_1;
-    boost::mpi::communicator comm;
-    repa::Vec3d box = {{20., 20., 20.}};
-    double mings = 1.0;
-    new_test_env(comm, box, mings)
-        .with_repart()
-        .run(std::bind(test, std::cref(box), mings, _1));
+    default_test_env().with_repart().all_grids().run(test);
 }

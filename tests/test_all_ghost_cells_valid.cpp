@@ -102,8 +102,9 @@ static void test_ghost_has_local(repa::grids::ParallelLCGrid *grid)
     BOOST_TEST(all_true(std::begin(used), std::end(used)));
 }
 
-static void test(repa::grids::ParallelLCGrid *grid)
+static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
+    (void)t;
     test_ghost_has_local(grid);
     test_ghost_has_comm(grid);
     test_boundary_has_comm(grid);
@@ -111,8 +112,5 @@ static void test(repa::grids::ParallelLCGrid *grid)
 
 BOOST_AUTO_TEST_CASE(test_all_ghost_cells_valid)
 {
-    boost::mpi::communicator comm;
-    repa::Vec3d box = {{20., 20., 20.}};
-    double mings = 1.0;
-    new_test_env(comm, box, mings).with_repart().all_grids().run(test);
+    default_test_env().with_repart().all_grids().run(test);
 }

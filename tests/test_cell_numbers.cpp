@@ -32,30 +32,30 @@
 
 boost::mpi::environment env;
 
-static void test(const boost::mpi::communicator &comm,
-                 repa::grids::ParallelLCGrid *grid)
+static bool if_then(bool a, bool b)
+{
+    return !a || b;
+}
+
+static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     int nlocalcells = grid->n_local_cells();
     BOOST_TEST(nlocalcells >= 0);
 
     int nglobalcells
-        = boost::mpi::all_reduce(comm, nlocalcells, std::plus<int>{});
+        = boost::mpi::all_reduce(t.comm, nlocalcells, std::plus<int>{});
     BOOST_TEST(nglobalcells > 0);
 
     auto gs = grid->grid_size();
     BOOST_TEST((nglobalcells == gs[0] * gs[1] * gs[2]));
 
-    BOOST_TEST(grid->n_ghost_cells() <= nglobalcells);
+    // Full-halo grids might have more ghost than local cells on 1 process only
+    // and very small grids.
+    BOOST_TEST(
+        if_then(t.comm.size() >= 2, grid->n_ghost_cells() <= nglobalcells));
 }
 
 BOOST_AUTO_TEST_CASE(test_cell_numbers)
 {
-    using std::placeholders::_1;
-    boost::mpi::communicator comm;
-    repa::Vec3d box = {{20., 20., 20.}};
-    double mings = 1.0;
-    new_test_env(comm, box, mings)
-        .with_repart()
-        .all_grids()
-        .run(std::bind(test, std::cref(comm), _1));
+    default_test_env().with_repart().all_grids().run(test);
 }

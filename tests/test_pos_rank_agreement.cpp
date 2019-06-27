@@ -107,10 +107,10 @@ static void test_position(const boost::mpi::communicator &comm,
     test_agreement(comm, rank);
 }
 
-static void test(const boost::mpi::communicator &comm,
-                 const repa::Vec3d &box,
-                 repa::grids::ParallelLCGrid *grid)
+static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
+    const auto &comm = t.comm;
+    const auto &box = t.box;
     // Test reguar grid
     auto cell_size = grid->cell_size();
     repa::Vec3d pos;
@@ -145,27 +145,19 @@ static void test(const boost::mpi::communicator &comm,
 // repartitioning, so test statically.
 BOOST_AUTO_TEST_CASE(test_pos_rank_agreement_local_methods)
 {
-    using std::placeholders::_1;
-    boost::mpi::communicator comm;
-    repa::Vec3d box = {{20., 20., 20.}};
-    double mings = 1.0;
-    new_test_env(comm, box, mings)
+    default_test_env()
         .without_repart()
         .only({repa::GridType::DIFF, repa::GridType::GRIDBASED,
                repa::GridType::HYB_GP_DIFF})
-        .run(std::bind(test, std::cref(comm), std::cref(box), _1));
+        .run(test);
 }
 
 BOOST_AUTO_TEST_CASE(test_pos_rank_agreement_global_methods)
 {
-    using std::placeholders::_1;
-    boost::mpi::communicator comm;
-    repa::Vec3d box = {{20., 20., 20.}};
-    double mings = 1.0;
-    new_test_env(comm, box, mings)
+    default_test_env()
         .with_repart()
         .all_grids()
         .exclude({repa::GridType::DIFF, repa::GridType::GRIDBASED,
                   repa::GridType::HYB_GP_DIFF})
-        .run(std::bind(test, std::cref(comm), std::cref(box), _1));
+        .run(test);
 }

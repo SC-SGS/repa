@@ -24,6 +24,7 @@
 #define BOOST_TEST_MODULE repart
 #include <boost/test/included/unit_test.hpp>
 
+#include "testenv.hpp"
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
@@ -52,8 +53,9 @@ bool if_then(bool a, bool b)
     return !a || b;
 }
 
-static void test(repa::grids::ParallelLCGrid *grid)
+static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
+    (void)t;
     auto nlc = grid->n_local_cells();
 
     auto all_ones = [nlc]() { return std::vector<double>(nlc, 1.0); };
@@ -72,17 +74,5 @@ static void test(repa::grids::ParallelLCGrid *grid)
 BOOST_AUTO_TEST_CASE(test_repart)
 {
     boost::mpi::environment env;
-    boost::mpi::communicator comm;
-
-    for (const auto gt : repa::supported_grid_types()) {
-        if (comm.rank() == 0) {
-            std::cout << "Checking grid '" << repa::grid_type_to_string(gt)
-                      << "'" << std::endl;
-        }
-
-        const repa::Vec3d box = {{20., 20., 20.}};
-        const double mings = 1.0;
-        auto up = repa::make_pargrid(gt, comm, box, mings);
-        test(up.get());
-    }
+    default_test_env().without_repart().all_grids().run(test);
 }

@@ -80,9 +80,9 @@ static std::vector<int> neighranks(repa::grids::ParallelLCGrid *grid)
     return res;
 }
 
-static void test(repa::grids::ParallelLCGrid *grid,
-                 const boost::mpi::communicator &comm)
+static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
+    const auto &comm = t.comm;
     auto gexds = grid->get_boundary_info();
     auto neighborranks = neighranks(grid);
 
@@ -167,12 +167,5 @@ static void test(repa::grids::ParallelLCGrid *grid,
 
 BOOST_AUTO_TEST_CASE(test_ghost_exchange_volume)
 {
-    using std::placeholders::_1;
-    boost::mpi::communicator comm;
-    repa::Vec3d box = {{20., 20., 20.}};
-    double mings = 1.0;
-    new_test_env(comm, box, mings)
-        .with_repart()
-        .all_grids()
-        .run(std::bind(test, _1, std::cref(comm)));
+    default_test_env().with_repart().all_grids().run(test);
 }
