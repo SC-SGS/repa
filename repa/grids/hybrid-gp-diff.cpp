@@ -33,6 +33,7 @@ HybridGPDiff::HybridGPDiff(const boost::mpi::communicator &comm,
       diff_impl(comm, box_size, min_cell_size),
       graph_impl(comm, box_size, min_cell_size),
       state(State::GRAPH),
+      switch_to_state(State::GRAPH),
       active_implementation(&graph_impl)
 {
 }
