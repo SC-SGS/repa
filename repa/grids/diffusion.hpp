@@ -50,6 +50,8 @@ struct Diffusion : public ParallelLCGrid {
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;
 
+    int global_hash(lgidx cellidx) override;
+
     struct NeighSend {
         int basecell;
         std::array<int, 26> neighranks;

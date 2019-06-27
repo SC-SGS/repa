@@ -240,6 +240,7 @@ void P4estGrid::create_grid()
         = std::unique_ptr<sc_array_t>(sc_array_new(sizeof(int)));
     // Collect info about local cells
     m_p8est_shell.clear(); // Need to clear because we push_back
+    m_global_idx.clear();
     m_p8est_shell.reserve(num_cells);
     for (int i = 0; i < m_num_local_cells; ++i) {
         p8est_quadrant_t *q
@@ -261,6 +262,7 @@ void P4estGrid::create_grid()
                                    bndry ? impl::CellType::boundary
                                          : impl::CellType::inner,
                                    bndry, x, y, z);
+        m_global_idx.push_back(impl::cell_morton_idx(xyz[0] * (1 << m_grid_level), xyz[1] * (1 << m_grid_level), xyz[2] * (1 << m_grid_level)));
 
         // Neighborhood
         for (int n = 0; n < 26; ++n) {
@@ -300,6 +302,7 @@ void P4estGrid::create_grid()
 
         m_p8est_shell.emplace_back(g, p8est_mesh->ghost_to_proc[g],
                                    impl::CellType::ghost, 0, x, y, z);
+        m_global_idx.push_back(impl::cell_morton_idx(xyz[0] * (1 << m_grid_level), xyz[1] * (1 << m_grid_level), xyz[2] * (1 << m_grid_level)));
     }
 }
 
@@ -558,6 +561,12 @@ bool P4estGrid::repartition(CellMetric m,
 
     return true;
 }
+
+int P4estGrid::global_hash(lgidx cellidx)
+{
+    return m_global_idx.at(cellidx);
+}
+
 } // namespace grids
 } // namespace repa
 

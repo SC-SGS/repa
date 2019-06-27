@@ -672,5 +672,10 @@ void Diffusion::reinit(bool init)
 #endif
 }
 
+int Diffusion::global_hash(lgidx cellidx)
+{
+    return cells[cellidx];
+}
+
 } // namespace grids
 } // namespace repa

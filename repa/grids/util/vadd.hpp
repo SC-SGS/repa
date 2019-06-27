@@ -21,6 +21,7 @@
 
 #include "common_types.hpp"
 #include <type_traits>
+#include <cmath>
 
 namespace repa {
 namespace util {

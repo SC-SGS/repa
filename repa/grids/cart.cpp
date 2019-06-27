@@ -317,5 +317,18 @@ bool CartGrid::repartition(CellMetric m,
     return false;
 }
 
+int CartGrid::global_hash(lgidx cellidx)
+{
+    Vec3i idx3d = unlinearize(cellidx);
+    Vec3i dom = grid_size();
+    Vec3i offset;
+
+    for (size_t i = 0; i < idx3d.size(); ++i)
+        offset[i] = m_procgrid_pos[i] * m_grid_size[i] - 1; // -1 for ghosts
+
+    auto glo3didx = util::vadd_mod(idx3d, offset, dom);
+    return util::linearize(glo3didx, dom);
+}
+
 } // namespace grids
 } // namespace repa

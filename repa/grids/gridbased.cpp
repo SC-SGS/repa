@@ -578,6 +578,11 @@ void GridBasedGrid::command(std::string s)
     }
 }
 
+int GridBasedGrid::global_hash(lgidx cellidx)
+{
+    return cells[cellidx];
+}
+
 } // namespace grids
 } // namespace repa
 

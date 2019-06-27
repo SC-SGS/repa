@@ -157,10 +157,6 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
                     BOOST_TEST(if_then(sc1 != sc2, rc1 != rc2));
                 }
             }
-
-            // TODO: Cannot check contents, since indices are process local.
-            //       Need ability to transform local cells to unique (global)
-            //       id.
         }
     }
 }

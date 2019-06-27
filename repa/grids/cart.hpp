@@ -53,6 +53,7 @@ struct CartGrid : public ParallelLCGrid {
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;
 
+    int global_hash(lgidx cellidx) override;
 private:
     // Cell size (box_l / m_grid_size)
     std::array<double, 3> m_cell_size, m_inv_cell_size;

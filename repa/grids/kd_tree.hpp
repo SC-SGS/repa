@@ -209,6 +209,8 @@ public:
 
     virtual bool
     repartition(CellMetric m, CellCellMetric ccm, Thunk cb) override;
+
+    int global_hash(lgidx cellidx) override;
 };
 
 } // namespace grids

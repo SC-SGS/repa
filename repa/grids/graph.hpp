@@ -51,6 +51,8 @@ struct Graph : public ParallelLCGrid {
                      Thunk exchange_start_callback) override;
     ~Graph();
 
+    int global_hash(lgidx cellidx) override;
+
 private:
     friend struct HybridGPDiff; // Needs access to "partition" vector
     // Number of local cells
