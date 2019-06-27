@@ -38,7 +38,7 @@ Vec3<T> vadd_mod(const Vec3<T> &a, const Vec3<T> &b, const Vec3<T> &mod)
 
     for (typename Vec3<T>::size_type i = 0; i < a.size(); ++i) {
         if (r[i] < T(0) || r[i] >= mod[i])
-            r[i] -= (r[i] / mod[i]) * mod[i];
+            r[i] -= static_cast<T>(std::floor(static_cast<double>(r[i]) / mod[i])) * mod[i];
     }
     return r;
 }
