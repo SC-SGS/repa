@@ -25,13 +25,13 @@
 #include <boost/mpi.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/vector.hpp>
+#include <boost/mpi/datatype.hpp>
 #include <mpi.h>
 
 #include "util/ensure.hpp"
-#include "util/mpi_type.hpp"
 #include "util/push_back_unique.hpp"
 
-#define MPI_IDX_T util::mpi_type<idx_t>::type
+#define MPI_IDX_T boost::mpi::get_mpi_datatype(static_cast<idx_t>(0))
 
 #ifndef NDEBUG
 #define GRAPH_DEBUG
