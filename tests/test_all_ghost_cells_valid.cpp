@@ -30,7 +30,6 @@
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
-boost::mpi::environment env;
 
 using CVBIt = std::vector<bool>::const_iterator;
 static bool all_true(const CVBIt &first, const CVBIt &last)
@@ -112,5 +111,6 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 
 BOOST_AUTO_TEST_CASE(test_all_ghost_cells_valid)
 {
+    boost::mpi::environment env;
     default_test_env().with_repart().all_grids().run(test);
 }

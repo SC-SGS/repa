@@ -27,7 +27,6 @@
 #include <boost/test/included/unit_test.hpp>
 #include <repa/repa.hpp>
 
-boost::mpi::environment env;
 
 /**
  * Relative distance between a and b.
@@ -64,5 +63,6 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 
 BOOST_AUTO_TEST_CASE(test_grid_types)
 {
+    boost::mpi::environment env;
     default_test_env().with_repart().all_grids().run(test);
 }

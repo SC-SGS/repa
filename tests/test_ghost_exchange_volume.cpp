@@ -31,8 +31,6 @@
 #include <boost/serialization/vector.hpp>
 #include <repa/repa.hpp>
 
-boost::mpi::environment env;
-
 // Serialization for GhostExchangeDesc in order to gather and check them.
 namespace boost {
 namespace serialization {
@@ -163,5 +161,6 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 
 BOOST_AUTO_TEST_CASE(test_ghost_exchange_volume)
 {
+    boost::mpi::environment env;
     default_test_env().with_repart().all_grids().run(test);
 }

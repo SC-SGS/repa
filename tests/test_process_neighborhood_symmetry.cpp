@@ -31,8 +31,6 @@
 #include <boost/serialization/vector.hpp>
 #include <repa/repa.hpp>
 
-boost::mpi::environment env;
-
 static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     const auto &comm = t.comm;
@@ -66,5 +64,6 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 
 BOOST_AUTO_TEST_CASE(test_process_neighborhood_symmetry)
 {
+    boost::mpi::environment env;
     default_test_env().with_repart().all_grids().run(test);
 }

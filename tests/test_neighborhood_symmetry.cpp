@@ -28,7 +28,6 @@
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
-boost::mpi::environment env;
 
 static bool has_neighbor(repa::grids::ParallelLCGrid *grid,
                          repa::grids::lidx d,
@@ -63,5 +62,6 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 
 BOOST_AUTO_TEST_CASE(test_neighborhood_symmetry)
 {
+    boost::mpi::environment env;
     default_test_env().with_repart().all_grids().run(test);
 }
