@@ -57,6 +57,8 @@ struct GridBasedGrid : public ParallelLCGrid {
 
     void command(std::string s) override;
 
+    int global_hash(lgidx cellidx) override;
+
 private:
     // Indicator if the decomposition currently is a regular grid,
     // which is the case directly after instantiation.

@@ -31,8 +31,6 @@
 #include <boost/serialization/vector.hpp>
 #include <repa/repa.hpp>
 
-boost::mpi::environment env;
-
 // Serialization for GhostExchangeDesc in order to gather and check them.
 namespace boost {
 namespace serialization {
@@ -157,15 +155,12 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
                     BOOST_TEST(if_then(sc1 != sc2, rc1 != rc2));
                 }
             }
-
-            // TODO: Cannot check contents, since indices are process local.
-            //       Need ability to transform local cells to unique (global)
-            //       id.
         }
     }
 }
 
 BOOST_AUTO_TEST_CASE(test_ghost_exchange_volume)
 {
+    boost::mpi::environment env;
     default_test_env().with_repart().all_grids().run(test);
 }

@@ -166,6 +166,11 @@ void HybridGPDiff::command(std::string s)
     }
 }
 
+int HybridGPDiff::global_hash(lgidx cellidx)
+{
+    return active_implementation->global_hash(cellidx);
+}
+
 } // namespace grids
 } // namespace repa
 

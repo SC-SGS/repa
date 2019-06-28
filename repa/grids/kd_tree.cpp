@@ -23,6 +23,7 @@
 #include "kd_tree.hpp"
 #include "util/linearize.hpp"
 #include "util/neighbor_offsets.hpp"
+#include "util/vadd.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -550,6 +551,18 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
     cb();
     reinitialize();
     return true;
+}
+
+int KDTreeGrid::global_hash(lgidx cellidx)
+{
+    Vec3i idx3d = util::unlinearize(m_index_permutations_inverse[cellidx],
+                                    m_local_ghostdomain_size);
+    Vec3i offset;
+    for (size_t i = 0; i < idx3d.size(); ++i)
+        offset[i] = m_local_subdomain.first[i] - 1; // -1 for ghost
+
+    auto gloidx3d = util::vadd_mod(idx3d, offset, m_global_domain_size);
+    return util::linearize(gloidx3d, m_global_domain_size);
 }
 
 } // namespace grids

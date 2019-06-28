@@ -31,8 +31,6 @@
 #include <random>
 #include <repa/repa.hpp>
 
-boost::mpi::environment env;
-
 static void
 test_exactly_one_assigned_process(const boost::mpi::communicator &comm,
                                   repa::grids::ParallelLCGrid *grid,
@@ -82,5 +80,6 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 // repartitioning, so test statically.
 BOOST_AUTO_TEST_CASE(test_all_cells_assigned)
 {
+    boost::mpi::environment env;
     default_test_env().with_repart().all_grids().run(test);
 }

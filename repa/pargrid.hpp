@@ -184,6 +184,18 @@ struct ParallelLCGrid {
         throw UnknwonCommandError{s};
     };
 
+    /** Returns a globally unique id for a local cell.
+     * This id is uniquely assigned to the global cell
+     * corresponding to a local one, i.e. two different
+     * processes will return the same global_hash
+     * if the (most likely different) local cellidxs correspond to the same
+     * global cell.
+     *
+     * This function is useful for testing purposes only.
+     *
+     */
+    virtual int global_hash(lgidx cellidx) = 0;
+
 protected:
     boost::mpi::communicator comm, comm_cart;
     Vec3d box_l;

@@ -32,8 +32,6 @@
 #include <random>
 #include <repa/repa.hpp>
 
-boost::mpi::environment env;
-
 template <typename T>
 static void test_agreement(const boost::mpi::communicator &comm, T value)
 {
@@ -141,19 +139,16 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
     }
 }
 
-// Gridbased and Diffusion do not allow for position_to_rank after
-// repartitioning, so test statically.
-BOOST_AUTO_TEST_CASE(test_pos_rank_agreement_local_methods)
+BOOST_AUTO_TEST_CASE(test_pos_rank_agreement)
 {
+    boost::mpi::environment env;
+    // Gridbased and Diffusion do not allow for position_to_rank after
+    // repartitioning, so test statically.
     default_test_env()
         .without_repart()
         .only({repa::GridType::DIFF, repa::GridType::GRIDBASED,
                repa::GridType::HYB_GP_DIFF})
         .run(test);
-}
-
-BOOST_AUTO_TEST_CASE(test_pos_rank_agreement_global_methods)
-{
     default_test_env()
         .with_repart()
         .all_grids()
