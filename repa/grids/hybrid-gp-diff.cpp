@@ -20,8 +20,11 @@
 //#ifdef HAVE_METIS
 
 #include "hybrid-gp-diff.hpp"
-#include "util/mpi_type.hpp"
+#include <boost/mpi/datatype.hpp>
 #include <mpi.h>
+
+#define MPI_ELEM_DECLTYPE_T(arr)                                               \
+    boost::mpi::get_mpi_datatype(decltype(arr)::value_type{})
 
 namespace repa {
 namespace grids {

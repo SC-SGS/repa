@@ -24,7 +24,6 @@ set(repa_SRC
     grids/kd_tree.cpp
     grids/hybrid-gp-diff.cpp
     grids/cart.cpp
-    grids/util/mpi_type.cpp
     grids/util/neighbor_offsets.cpp
     grid_types.cpp
     pargrid_factory.cpp
