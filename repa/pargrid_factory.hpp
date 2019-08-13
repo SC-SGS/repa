@@ -26,11 +26,15 @@
 namespace repa {
 /** Grid factory method.
  * To be called on every node.
+ * 
+ * @param gt Grid type to instantiate
+ * @param comm Communicator to use
+ * @param box_size Domain
+ * @param min_cell_size Minimum cell size
  */
 std::unique_ptr<grids::ParallelLCGrid>
 make_pargrid(GridType gt,
              const boost::mpi::communicator &comm,
              Vec3d box_size,
              double min_cell_size);
-
 } // namespace repa
