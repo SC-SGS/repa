@@ -115,8 +115,9 @@ private:
     // helper data structures
     std::vector<int> m_node_first_cell_idx;
     std::vector<impl::LocalShell> m_p8est_shell;
-    std::vector<int> m_global_idx; //< Global virtual morton index of cells (for
-                                   //global_hash()) could be removed in non-test builds.
+    std::vector<int>
+        m_global_idx; //< Global virtual morton index of cells (for
+                      // global_hash()) could be removed in non-test builds.
 
     // comm data structures
     std::vector<GhostExchangeDesc> m_exdescs;
