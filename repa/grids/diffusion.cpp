@@ -31,7 +31,6 @@
 
 #ifndef NDEBUG
 #define DIFFUSION_DEBUG
-#define DIFFUSION_DEBUG_OUTPUT
 #endif
 
 namespace boost {
@@ -230,28 +229,6 @@ bool Diffusion::repartition(CellMetric m, CellCellMetric ccm,
     double local_load
         = std::accumulate(std::begin(cellweights), std::end(cellweights), 0.0);
 
-#ifdef DIFFUSION_DEBUG_OUTPUT
-    std::vector<double> ls(comm_cart.size());
-    MPI_Gather(&local_load, 1, MPI_DOUBLE, ls.data(), 1, MPI_DOUBLE, 0,
-               comm_cart);
-    if (comm_cart.rank() == 0) {
-        std::cout << "Loads: ";
-        std::copy(std::begin(ls), std::end(ls),
-                  std::ostream_iterator<double>(std::cout, " "));
-
-        auto average = std::accumulate(std::begin(ls), std::end(ls), 0.0)
-                       / comm_cart.size();
-        std::cout << "\tAverage: " << average;
-
-        std::transform(std::begin(ls), std::end(ls), std::begin(ls),
-                       [average](double l) { return std::fabs(l - average); });
-        double mdev = *std::max_element(std::begin(ls), std::end(ls));
-        std::cout << "\tMax dev.: " << mdev << std::endl;
-
-        std::cout << std::endl;
-    }
-#endif
-
     std::vector<double> send_volume
         = compute_send_volume(neighcomm, local_load);
 #ifdef DIFFUSION_DEBUG
@@ -262,13 +239,6 @@ bool Diffusion::repartition(CellMetric m, CellCellMetric ccm,
 
     if (std::any_of(std::begin(send_volume), std::end(send_volume),
                     [](double d) { return d > 0.0; })) {
-
-#ifdef DIFFUSION_DEBUG_OUTPUT
-        std::cout << "[" << comm_cart.rank() << "] Send volume: ";
-        std::copy(std::begin(send_volume), std::end(send_volume),
-                  std::ostream_iterator<double>(std::cout, " "));
-        std::cout << std::endl;
-#endif
 
         // Create list of border cells which can be send to neighbors.
         // First element of each vector is the rank to which the sells should
@@ -294,10 +264,6 @@ bool Diffusion::repartition(CellMetric m, CellCellMetric ccm,
     std::vector<boost::mpi::request> rreq_cells(neighbors.size());
 
     for (int i = 0; i < neighbors.size(); ++i) {
-        //#ifdef DIFFUSION_DEBUG
-        //    std::printf("Repart %i. [%i] Sending %zu cells to %i\n",
-        //    nrepartcalls, comm_cart.rank(), toSend[i].size(), neighbors[i]);
-        //#endif
         // Push back the rank, that is save an extra communication of
         // "neighbors" and interleave it into "toSend"
         toSend[i].push_back(neighbors[i]);
@@ -315,24 +281,6 @@ bool Diffusion::repartition(CellMetric m, CellCellMetric ccm,
     }
 
     boost::mpi::wait_all(std::begin(rreq_cells), std::end(rreq_cells));
-
-    //#ifdef DIFFUSION_DEBUG
-    //  std::printf("Received_cells.size() = %zu Neighbors.size() = %zu\n",
-    //  received_cells.size(), neighbors.size()); for (size_t from = 0; from <
-    //  received_cells.size(); ++from) {
-    //    for (size_t to = 0; to < received_cells[from].size(); ++to) {
-    //      std::printf("received_cells[%zu][%zu].size() = %zu", from, to,
-    //      received_cells[from][to].size()); std::fflush(stdout);
-    //
-    //      if (received_cells[from][to].size() > 0)
-    //        std::printf("; last element = %i",
-    //        received_cells[from][to].back());
-    //
-    //      std::printf("\n");
-    //      std::fflush(stdout);
-    //    }
-    //  }
-    //#endif
 
     // Update the partition entry for all received cells.
     for (size_t from = 0; from < received_cells.size(); ++from) {
@@ -388,10 +336,7 @@ bool Diffusion::repartition(CellMetric m, CellCellMetric ccm,
     }
 
     boost::mpi::wait_all(std::begin(rreq_neigh), std::end(rreq_neigh));
-
-    // Update neighbourhood
     updateReceivedNeighbourhood(received_neighborhood);
-
     boost::mpi::wait_all(std::begin(sreq_neigh), std::end(sreq_neigh));
 
 #ifdef DIFFUSION_DEBUG
