@@ -33,7 +33,11 @@
 namespace repa {
 namespace grids {
 
-/** TODO: comment
+/** Implements a grid-based load-balancing scheme.
+ * A regular grid partitioning grid is layed over the regular cell grid.
+ * The vertices of the partitioning grid are shifted towards local load
+ * centers for overloaded subdomains.
+ * This keeps the communication structure between processes constant.
  */
 struct GridBasedGrid : public ParallelLCGrid {
     GridBasedGrid(const boost::mpi::communicator &comm,
