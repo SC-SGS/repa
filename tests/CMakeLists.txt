@@ -20,6 +20,7 @@ include(define_test)
 
 define_test(NAME test_grid_types SRC test_grid_types.cpp)
 define_test(NAME test_repart SRC test_repart.cpp)
+define_test(NAME test_extra_params SRC test_extra_params.cpp)
 define_test(NAME test_cell_numbers SRC test_cell_numbers.cpp)
 define_test(NAME test_neighborhood_symmetry SRC test_neighborhood_symmetry.cpp)
 define_test(NAME test_process_neighborhood_symmetry SRC test_process_neighborhood_symmetry.cpp)

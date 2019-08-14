@@ -50,17 +50,22 @@ struct TEnv {
     boost::mpi::communicator comm;
     repa::Vec3d box;
     double mings;
+    repa::ExtraParams ep;
     std::set<repa::GridType> grids;
     bool repart;
 
-    TEnv(const boost::mpi::communicator &comm, repa::Vec3d box, double mings)
+    TEnv(const boost::mpi::communicator &comm,
+         repa::Vec3d box,
+         double mings,
+         repa::ExtraParams ep = repa::ExtraParams{})
         : comm(comm, boost::mpi::comm_duplicate),
           box(std::move(box)),
-          mings(mings)
+          mings(mings),
+          ep(ep)
     {
     }
 
-    TEnv() : mings(1.0)
+    TEnv(repa::ExtraParams ep = repa::ExtraParams{}) : mings(1.0), ep(ep)
     {
         // Devise some appropriately sized grid suitable for all methods.
         repa::Vec3i dims = {{0, 0, 0}};
@@ -115,7 +120,7 @@ struct TEnv {
             }
 
             std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
-            BOOST_CHECK_NO_THROW(up = repa::make_pargrid(gt, comm, box, mings));
+            BOOST_CHECK_NO_THROW(up = repa::make_pargrid(gt, comm, box, mings, ep));
             BOOST_TEST(up.get() != nullptr);
 
             test_func(*this, up.get());
@@ -130,7 +135,7 @@ struct TEnv {
 };
 } // namespace
 
-inline TEnv default_test_env()
+inline TEnv default_test_env(repa::ExtraParams ep = repa::ExtraParams{})
 {
-    return TEnv{};
+    return TEnv{ep};
 }

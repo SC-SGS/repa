@@ -289,11 +289,16 @@ void GridBasedGrid::reinit()
 
 GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                              Vec3d box_size,
-                             double min_cell_size)
+                             double min_cell_size,
+                             ExtraParams ep)
     : ParallelLCGrid(comm, box_size, min_cell_size),
       mu(1.0),
       gbox(box_size, min_cell_size),
-      neighcomm(MPI_COMM_NULL)
+      neighcomm(MPI_COMM_NULL),
+      subdomain_midpoint(ep.subdomain_midpoint
+                             ? ep.subdomain_midpoint
+                             : decltype(subdomain_midpoint){std::bind(
+                                   &GridBasedGrid::get_subdomain_center, this)})
 {
     init_partitioning();
     reinit();
@@ -411,39 +416,27 @@ Vec3i GridBasedGrid::grid_size()
     return gbox.grid_size();
 }
 
-Vec3d GridBasedGrid::center_of_load()
+Vec3d GridBasedGrid::get_subdomain_center()
 {
-    /* FIXME: how to abstract?
-    int npart = 0;
     Vec3d c = {{0., 0., 0.}};
-
-    for (const auto& p: local_cells.particles()) {
-      npart++;
-      for (int d = 0; d < 3; ++d)
-        c[d] += p.r.p[d];
-    }
 
     // If no particles: Use subdomain midpoint.
     // (Calculated as mispoint of all cells).
-    if (npart == 0) {
-      for (int i = 0; i < n_local_cells(); ++i) {
+    for (int i = 0; i < n_local_cells(); ++i) {
         auto mp = gbox.midpoint(cells[i]);
         for (int d = 0; d < 3; ++d)
-          c[d] += mp[d];
-        npart++; // Used as normalizer
-      }
+            c[d] += mp[d];
     }
 
+    const int n = n_local_cells();
     for (int d = 0; d < 3; ++d)
-      c[d] /= npart;
+        c[d] /= n;
 
     return c;
-    */
-
-    return {{0., 0., 0.}};
 }
 
-bool GridBasedGrid::repartition(CellMetric m, CellCellMetric ccm,
+bool GridBasedGrid::repartition(CellMetric m,
+                                CellCellMetric ccm,
                                 Thunk exchange_start_callback)
 {
     // The node displacement is calculated according to
@@ -462,7 +455,7 @@ bool GridBasedGrid::repartition(CellMetric m, CellCellMetric ccm,
     }
     double lambda_p
         = std::accumulate(std::begin(weights), std::end(weights), 0.0);
-    auto r_p = center_of_load();
+    auto r_p = this->subdomain_midpoint();
 
     std::vector<double> lambda(nneigh);
     MPI_Neighbor_allgather(&lambda_p, 1, MPI_DOUBLE, lambda.data(), 1,

@@ -29,6 +29,19 @@
 #include "common_types.hpp"
 
 namespace repa {
+
+/** Interface for implementations to query additional information
+ * from the caller.
+ * Used in the factory method make_pargrid in pargrid_factory.hpp
+ */
+struct ExtraParams {
+    /**
+     * For the gridbased method.
+     * Not required, but strongly recommended.
+     */
+    std::function<Vec3d(void)> subdomain_midpoint = nullptr;
+};
+
 namespace grids {
 
 /** Some typedefs to document what an integer is supposed to mean

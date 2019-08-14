@@ -33,7 +33,8 @@ namespace {
 ParallelLCGrid *make_pargrid_impl(GridType gt,
                                   const boost::mpi::communicator &comm,
                                   Vec3d box_size,
-                                  double min_cell_size)
+                                  double min_cell_size,
+                                  ExtraParams ep)
 {
     switch (gt) {
 
@@ -77,7 +78,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
 
     case GridType::GRIDBASED:
         //#ifdef HAVE_TETRA
-        return new GridBasedGrid(comm, box_size, min_cell_size);
+        return new GridBasedGrid(comm, box_size, min_cell_size, ep);
         //#else
         //    throw std::invalid_argument("This ESPRsSo has not been compiled
         //    with Tetra support.");
@@ -94,10 +95,11 @@ std::unique_ptr<grids::ParallelLCGrid>
 make_pargrid(GridType gt,
              const boost::mpi::communicator &comm,
              Vec3d box_size,
-             double min_cell_size)
+             double min_cell_size,
+             ExtraParams ep)
 {
     return std::unique_ptr<grids::ParallelLCGrid>(
-        grids::make_pargrid_impl(gt, comm, box_size, min_cell_size));
+        grids::make_pargrid_impl(gt, comm, box_size, min_cell_size, ep));
 }
 
 } // namespace repa

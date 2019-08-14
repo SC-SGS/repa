@@ -1,0 +1,72 @@
+/**
+ * Copyright 2017-2019 Steffen Hirschmann
+ *
+ * This file is part of Repa.
+ *
+ * Repa is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Repa is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/**
+ * Tests if all processes agree on pos_to_rank
+ */
+
+#define BOOST_TEST_MODULE extra_params
+#include <boost/test/included/unit_test.hpp>
+
+#include "testenv.hpp"
+#include <boost/mpi/collectives.hpp>
+#include <boost/mpi/communicator.hpp>
+#include <boost/mpi/environment.hpp>
+#include <random>
+#include <repa/repa.hpp>
+
+/** Helper struct that counts the number of times ep.subdomain_center
+ * has been called.
+ */
+static struct EPCallCount {
+    int ncalls = 0;
+    repa::ExtraParams ep;
+
+    repa::Vec3d operator()()
+    {
+        ncalls++;
+        return {0, 0, 0};
+    }
+
+    EPCallCount()
+        : ep(repa::ExtraParams{std::bind(&EPCallCount::operator(), this)})
+    {
+    }
+} epcallcount;
+
+static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+{
+    static int ncalls = 0;
+    // On second call (the call to 'test' after repartition),
+    // ExtraParams::subdomain_midpoint must have been called.
+    // Before that it must not have been called.
+    BOOST_CHECK(ncalls == epcallcount.ncalls);
+    ncalls++;
+}
+
+// Only check for gridbased since it is currently the only grid using
+// ExtraParams
+BOOST_AUTO_TEST_CASE(test_extra_params)
+{
+    boost::mpi::environment env;
+    default_test_env(epcallcount.ep)
+        .with_repart()
+        .only({repa::GridType::GRIDBASED})
+        .run(test);
+}

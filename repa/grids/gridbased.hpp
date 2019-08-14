@@ -38,7 +38,8 @@ namespace grids {
 struct GridBasedGrid : public ParallelLCGrid {
     GridBasedGrid(const boost::mpi::communicator &comm,
                   Vec3d box_size,
-                  double min_cell_size);
+                  double min_cell_size,
+                  ExtraParams ep);
     ~GridBasedGrid();
     lidx n_local_cells() override;
     gidx n_ghost_cells() override;
@@ -125,9 +126,14 @@ private:
     void init_neighbors();
 
     // Returns the center of this subdomain
-    Vec3d center_of_load();
+    Vec3d get_subdomain_center();
 
     rank cart_topology_position_to_rank(Vec3d pos);
+
+    // Function returning the subdomain midpoint.
+    // Either a user-passed function via ExtraParams in the constructor
+    // or get_subdomain_center().
+    decltype(ExtraParams::subdomain_midpoint) subdomain_midpoint;
 };
 } // namespace grids
 } // namespace repa
