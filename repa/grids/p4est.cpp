@@ -131,10 +131,14 @@ gidx cell_morton_idx(int x, int y, int z)
 // coordinates
 // Note: This is a global index on the Z-curve and not a local cell index to
 // cells.
-gidx pos_morton_idx(double box_l[3],
-                    double pos[3],
-                    double cell_size[3],
-                    double inv_cell_size[3])
+static gidx pos_morton_idx(Vec3d pos, const Vec3d &inv_cell_size)
+{
+    return impl::cell_morton_idx(pos[0] * inv_cell_size[0],
+                                 pos[1] * inv_cell_size[1],
+                                  pos[2] * inv_cell_size[2]});
+}
+
+static inline Vec3i coord_to_cellindex(Vec3d coord, int tree_level)
 {
     for (int d = 0; d < 3; ++d) {
         double errmar = 0.5 * ROUND_ERROR_PREC * box_l[d];
@@ -433,8 +437,8 @@ lidx P4estGrid::position_to_cell_index(double pos[3])
         return sidx < idx;
     };
 
-    auto needle = impl::pos_morton_idx(box_l.data(), pos, m_cell_size.data(),
-                                       m_inv_cell_size.data());
+    auto needle
+        = impl::pos_morton_idx({pos[0], pos[1], pos[2]}, m_inv_cell_size);
 
     auto shell_local_end = std::begin(m_p8est_shell) + n_local_cells();
     auto it
@@ -459,8 +463,7 @@ rank P4estGrid::position_to_rank(double pos[3])
     // Therefore, use the global first cell indices.
     auto it = std::upper_bound(
         std::begin(m_node_first_cell_idx), std::end(m_node_first_cell_idx),
-        impl::pos_morton_idx(box_l.data(), pos, m_cell_size.data(),
-                             m_inv_cell_size.data()),
+        impl::pos_morton_idx({pos[0], pos[1], pos[2]}, m_inv_cell_size),
         [](int i, int64_t idx) { return i < idx; });
 
     return std::distance(std::begin(m_node_first_cell_idx), it) - 1;
