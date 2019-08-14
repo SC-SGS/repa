@@ -26,7 +26,7 @@
 namespace repa {
 namespace grids {
 
-/** TODO: comment
+/** Regular Cartesian process grid; equally sized boxes.
  *
  * Cells are ordered on the ghost grid according to a simple row-wise ordering
  * (see impl::linearize). All 3d indices live on the ghost grid, i.e.

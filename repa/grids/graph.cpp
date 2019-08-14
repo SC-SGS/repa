@@ -128,23 +128,11 @@ bool Graph::repartition(CellMetric m,
     idx_t ncells_per_proc = static_cast<idx_t>(
         std::ceil(static_cast<double>(nglocells) / comm_cart.size()));
 
-#ifdef GRAPH_DEBUG
-    // if (comm_cart.rank() == 0)
-    //  std::cout << "Graph::repartition with comm_cart.size() = " <<
-    //  comm_cart.size() << std::endl;
-#endif
-
     // Vertex ranges per process
     std::vector<idx_t> vtxdist(comm_cart.size() + 1);
     for (int i = 0; i < comm_cart.size(); ++i)
         vtxdist[i] = i * ncells_per_proc;
     vtxdist[comm_cart.size()] = nglocells;
-
-#ifdef GRAPH_DEBUG
-    // std::cout << "Vtxdist: ";
-    // std::copy(std::begin(vtxdist), std::end(vtxdist),
-    // std::ostream_iterator<idx_t>(std::cout, " ")); std::cout << std::endl;
-#endif
 
 #ifdef GRAPH_DEBUG
     ENSURE(vtxdist.size() == comm_cart.size() + 1);
@@ -248,12 +236,6 @@ bool Graph::repartition(CellMetric m,
     xadj[nvtx] = 26 * nvtx;
 
 #ifdef GRAPH_DEBUG
-    // std::cout << "xadj: ";
-    // std::copy(std::begin(xadj), std::end(xadj),
-    // std::ostream_iterator<idx_t>(std::cout, " ")); std::cout << std::endl;
-#endif
-
-#ifdef GRAPH_DEBUG
     ENSURE(nvtx == vtxdist[comm_cart.rank() + 1] - vtxdist[comm_cart.rank()]);
     ENSURE(nvtx <= nglocells);
     ENSURE(xadj.size() == nvtx + 1);
@@ -336,10 +318,6 @@ bool Graph::repartition(CellMetric m,
     idx_t edgecut;
     std::vector<idx_t> part(nvtx, -1);
 
-    // if (comm_cart.rank() == 0)
-    //  std::cout << "Calling ParMETIS_V3_PartKway with " << nglocells << "
-    //  total vertices for " << nparts << " subdomains." << std::endl;
-
     if (ParMETIS_V3_PartKway(vtxdist.data(), xadj.data(), adjncy.data(),
                              vwgt.data(), adjwgt.data(), &wgtflag, &numflag,
                              &ncon, &nparts, tpwgts.data(), &ubvec, options,
@@ -365,13 +343,9 @@ bool Graph::repartition(CellMetric m,
     std::fill(std::begin(partition), std::end(partition),
               static_cast<idx_t>(-1));
 #endif
-    // int li = 0;
-    // for (idx_t i = vtxdist[comm_cart.rank()]; i < vtxdist[comm_cart.rank() +
-    // 1]; ++i) {
-    //  partition[i] = part[li++];
-    //}
 
     // MPI expects integer recvcounts and displacements for MPI_Allgatherv.
+    // Copy idx_t vector to int vector.
     std::vector<int> recvcount(comm_cart.size()), displ(comm_cart.size());
     for (size_t i = 0; i < comm_cart.size(); ++i) {
         recvcount[i] = static_cast<int>(vtxdist[i + 1] - vtxdist[i]);

@@ -30,6 +30,9 @@
 namespace repa {
 namespace grids {
 
+/** Diffusively load-balanced grid.
+ * Processes iteratively exchange boundary cells with neighbors.
+ */
 struct Diffusion : public ParallelLCGrid {
     Diffusion(const boost::mpi::communicator &comm,
               Vec3d box_size,

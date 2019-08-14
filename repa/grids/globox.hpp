@@ -32,6 +32,8 @@ namespace repa {
 namespace grids {
 namespace globox {
 
+/** Random access iterator class for iterating over neighborhoods of cells.
+ */
 template <typename GloBox>
 struct NeighborIterator
     : public boost::iterator_facade<NeighborIterator<GloBox>,
@@ -105,6 +107,9 @@ div_3(const T1 &a, const T2 &b)
     return {{a[0] / b[0], a[1] / b[1], a[2] / b[2]}};
 }
 
+/** Global cell ordering.
+ * 
+ */
 template <typename index1d, typename index3d = index1d>
 struct GlobalBox {
     typedef index1d index_type_1d;
@@ -118,7 +123,10 @@ struct GlobalBox {
 
     std::array<index_type_1d, 27> m_neigh_offset_1d;
 
-    // Initialize with Espresso internals
+    /** Initialization with a regular grid
+     * @param box_l box size
+     * @param max_range minimum cell size
+     */
     GlobalBox(Vec3d box_l, double max_range)
         : m_cell_grid({{static_cast<index_type_3d>(box_l[0] / max_range),
                         static_cast<index_type_3d>(box_l[1] / max_range),
@@ -137,6 +145,8 @@ struct GlobalBox {
                        });
     }
 
+    /** Wraps 3d indices to their periodic image in the primary box.
+     */
     inline void apply_pbc(index_type_3d cell[3]) const noexcept
     {
         for (int d = 0; d < 3; d++) {
@@ -145,6 +155,10 @@ struct GlobalBox {
         }
     }
 
+    /** Returns the index of a neighboring cell
+     * @param index index of the center cell
+     * @param neigh index (0, 27] of the neighbor
+     */
     inline index_type_1d neighbor(index_type_1d index, int neigh) const
     {
         if (neigh < 0 || neigh >= 27)
@@ -164,18 +178,27 @@ struct GlobalBox {
         return ni;
     }
 
+    /** Returns a range object that allows iterating over the full
+     * shell neighborhood (including the center cell "index" itself)
+     */
     using NeighIt = NeighborIterator<GlobalBox>;
     boost::iterator_range<NeighIt> full_shell_neigh(index_type_1d index)
     {
         return {NeighIt(this, index, 0), NeighIt()};
     }
 
+    /** Returns a range object that allows iterating over the full
+     * shell neighborhood without the center cell ("index").
+     */
     boost::iterator_range<NeighIt>
     full_shell_neigh_without_center(index_type_1d index)
     {
         return {NeighIt(this, index, 1), NeighIt()};
     }
 
+    /** Returns the index of the cell at position "pos".
+     * @param pos coordinates of the position in [0.0, box_l[i])
+     */
     inline index_type_1d cell_at_pos(const double pos[3]) const noexcept
     {
         cell_index_type cell;
@@ -186,22 +209,30 @@ struct GlobalBox {
         return linearize(cell);
     }
 
+    /** Returns the number of cells
+     */
     inline index_type_1d ncells() const noexcept
     {
         return static_cast<index_type_1d>(m_cell_grid[0]) * m_cell_grid[1]
                * m_cell_grid[2];
     }
 
+    /** Returns the resulting cell size, greater or equal to max_range.
+     */
     inline position_type cell_size() const noexcept
     {
         return m_cell_size;
     }
 
+    /** Returns the number of cells in each dimension
+     */
     inline cell_index_type grid_size() const noexcept
     {
         return m_cell_grid;
     }
 
+    /** Returns the midpoint of a cell
+     */
     inline position_type midpoint(index_type_1d index) const
     {
         auto ii = unlinearize(index);
