@@ -74,56 +74,48 @@ static inline int count_trailing_zeros(int x)
     return z;
 }
 
-// Creates the bitmask for the integer LocalShell::boundary from a given
-// x, y, z coordinate.
-static int local_boundary_bitset(int x, int y, int z, int grid_size[3])
+/** Returns a bitset representing the boundary information of cell "idx".
+ * Info is stored this way:
+ * Bit 0  / Bit 1   / Bit 2  / Bit 3   / Bit 4  / Bit 5
+ * X left / X right / Y left / Y right / Z left / Z right
+ * Ordering: LSB ... MSB
+ */
+static int local_boundary_bitset(Vec3i idx, const Vec3i &grid_size)
 {
     int ret = 0;
-    if (PERIODIC(0) && x == 0)
-        ret |= 1;
-    if (PERIODIC(0) && x == grid_size[0] - 1)
-        ret |= 2;
-    if (PERIODIC(1) && y == 0)
-        ret |= 4;
-    if (PERIODIC(1) && y == grid_size[1] - 1)
-        ret |= 8;
-    if (PERIODIC(2) && z == 0)
-        ret |= 16;
-    if (PERIODIC(2) && z == grid_size[2] - 1)
-        ret |= 32;
+    for (int i = 0; i < 3; ++i) {
+        if (PERIODIC(i) && idx[i] == 0)
+            ret |= 1 << (2 * i);
+        if (PERIODIC(i) && idx[i] == grid_size[i] - 1)
+            ret |= 1 << (2 * i + 1);
+    }
     return ret;
 }
 
 // Returns a global SFC-curve index for a given cell.
 // Note: This is a global index on the Z-curve and not a local cell index to
 // cells.
-gidx cell_morton_idx(int x, int y, int z)
+static gidx cell_morton_idx(Vec3i idx)
 {
 #ifdef __BMI2__
     static constexpr unsigned mask_x = 0x49249249;
     static constexpr unsigned mask_y = 0x92492492;
     static constexpr unsigned mask_z = 0x24924924;
-    return _pdep_u32(x, mask_x) | _pdep_u32(y, mask_y) | _pdep_u32(z, mask_z);
+    return _pdep_u32(idx[0], mask_x) | _pdep_u32(idx[1], mask_y)
+           | _pdep_u32(idx[2], mask_z);
 #else
-    gidx idx = 0;
-    int pos = 1;
+    gidx res = 0;
+    int res_bit = 1;
 
-    for (int i = 0; i < 21; ++i) {
-        if ((x & 1))
-            idx += pos;
-        x >>= 1;
-        pos <<= 1;
-        if ((y & 1))
-            idx += pos;
-        y >>= 1;
-        pos <<= 1;
-        if ((z & 1))
-            idx += pos;
-        z >>= 1;
-        pos <<= 1;
+    for (int bit = 0; bit < 21; ++bit) {
+        int mask = 1 << bit;
+        for (int i = 0; i < 3; ++i) {
+            if (idx[i] & mask)
+                res |= res_bit;
+            res_bit <<= 1;
+        }
     }
-
-    return idx;
+    return res;
 #endif
 }
 
@@ -133,26 +125,31 @@ gidx cell_morton_idx(int x, int y, int z)
 // cells.
 static gidx pos_morton_idx(Vec3d pos, const Vec3d &inv_cell_size)
 {
-    return impl::cell_morton_idx(pos[0] * inv_cell_size[0],
-                                 pos[1] * inv_cell_size[1],
-                                  pos[2] * inv_cell_size[2]});
+    const Vec3i idx = {static_cast<int>(pos[0] * inv_cell_size[0]),
+                       static_cast<int>(pos[1] * inv_cell_size[1]),
+                       static_cast<int>(pos[2] * inv_cell_size[2])};
+    return impl::cell_morton_idx(idx);
 }
 
 static inline Vec3i coord_to_cellindex(Vec3d coord, int tree_level)
 {
-    for (int d = 0; d < 3; ++d) {
-        double errmar = 0.5 * ROUND_ERROR_PREC * box_l[d];
-        if (pos[d] < 0 && pos[d] > -errmar)
-            pos[d] = 0;
-        else if (pos[d] >= box_l[d] && pos[d] < box_l[d] + errmar)
-            pos[d] = pos[d] - 0.5 * cell_size[d];
-        // In the other two cases ("pos[d] <= -errmar" and
-        // "pos[d] >= box_l[d] + errmar") pos is correct.
-    }
+    int scaling = 1 << tree_level;
+    Vec3i idx;
+    for (size_t i = 0; i < 3; ++i)
+        idx[i] = coord[i] * scaling;
+    return idx;
+}
 
-    return impl::cell_morton_idx(pos[0] * inv_cell_size[0],
-                                 pos[1] * inv_cell_size[1],
-                                 pos[2] * inv_cell_size[2]);
+/** Scale coordinate coord, where 0.0 <= coord[i] < 1.0
+ * to a cell index where 0 <= result[i] < maxidx,
+ * where maxidx is determined by the tree/grid level.
+ */
+static inline Vec3i coord_to_cellindex(Vec3d coord, const Vec3i &tree_level)
+{
+    Vec3i idx;
+    for (size_t i = 0; i < 3; ++i)
+        idx[i] = coord[i] * (1 << tree_level[i]);
+    return idx;
 }
 
 } // namespace impl
@@ -202,12 +199,11 @@ void P4estGrid::create_grid()
     m_node_first_cell_idx.resize(comm_cart.size() + 1);
     for (int i = 0; i < comm_cart.size(); ++i) {
         p8est_quadrant_t *q = &m_p8est->global_first_position[i];
-        double xyz[3];
+        Vec3d xyz;
         p8est_qcoord_to_vertex(m_p8est_conn.get(), q->p.which_tree, q->x, q->y,
-                               q->z, xyz);
+                               q->z, xyz.data());
         m_node_first_cell_idx[i] = impl::cell_morton_idx(
-            xyz[0] * (1 << m_grid_level), xyz[1] * (1 << m_grid_level),
-            xyz[2] * (1 << m_grid_level));
+            impl::coord_to_cellindex(xyz, m_grid_level));
     }
 
     // Total number of quads
@@ -237,26 +233,23 @@ void P4estGrid::create_grid()
     for (int i = 0; i < m_num_local_cells; ++i) {
         p8est_quadrant_t *q
             = p8est_mesh_get_quadrant(m_p8est.get(), p8est_mesh.get(), i);
-        double xyz[3];
+        Vec3d xyz;
         p8est_qcoord_to_vertex(m_p8est_conn.get(), p8est_mesh->quad_to_tree[i],
-                               q->x, q->y, q->z, xyz);
+                               q->x, q->y, q->z, xyz.data());
 
-        int ql = 1 << p8est_tree_array_index(m_p8est->trees,
-                                             p8est_mesh->quad_to_tree[i])
-                          ->maxlevel;
-        int x = xyz[0] * ql;
-        int y = xyz[1] * ql;
-        int z = xyz[2] * ql;
+        Vec3i idx = impl::coord_to_cellindex(
+            xyz,
+            p8est_tree_array_index(m_p8est->trees, p8est_mesh->quad_to_tree[i])
+                ->maxlevel);
 
         // Cell on domain boundaries?
-        int bndry = impl::local_boundary_bitset(x, y, z, m_grid_size.data());
+        int bndry = impl::local_boundary_bitset(idx, m_grid_size);
         m_p8est_shell.emplace_back(i, comm_cart.rank(),
                                    bndry ? impl::CellType::boundary
                                          : impl::CellType::inner,
-                                   bndry, x, y, z);
-        m_global_idx.push_back(impl::cell_morton_idx(
-            xyz[0] * (1 << m_grid_level), xyz[1] * (1 << m_grid_level),
-            xyz[2] * (1 << m_grid_level)));
+                                   bndry, idx[0], idx[1], idx[2]);
+        m_global_idx.push_back(
+            impl::cell_morton_idx(impl::coord_to_cellindex(xyz, m_grid_level)));
 
         // Neighborhood
         for (int n = 0; n < 26; ++n) {
@@ -283,22 +276,19 @@ void P4estGrid::create_grid()
     for (int g = 0; g < m_num_ghost_cells; ++g) {
         p8est_quadrant_t *q
             = p8est_quadrant_array_index(&p8est_ghost->ghosts, g);
-        double xyz[3];
+        Vec3d xyz;
         p8est_qcoord_to_vertex(m_p8est_conn.get(), q->p.piggy3.which_tree, q->x,
-                               q->y, q->z, xyz);
+                               q->y, q->z, xyz.data());
 
-        int ql = 1 << p8est_tree_array_index(m_p8est->trees,
-                                             q->p.piggy3.which_tree)
-                          ->maxlevel;
-        int x = xyz[0] * ql;
-        int y = xyz[1] * ql;
-        int z = xyz[2] * ql;
+        Vec3i idx = impl::coord_to_cellindex(
+            xyz, p8est_tree_array_index(m_p8est->trees, q->p.piggy3.which_tree)
+                     ->maxlevel);
 
         m_p8est_shell.emplace_back(g, p8est_mesh->ghost_to_proc[g],
-                                   impl::CellType::ghost, 0, x, y, z);
-        m_global_idx.push_back(impl::cell_morton_idx(
-            xyz[0] * (1 << m_grid_level), xyz[1] * (1 << m_grid_level),
-            xyz[2] * (1 << m_grid_level)));
+                                   impl::CellType::ghost, 0, idx[0], idx[1],
+                                   idx[2]);
+        m_global_idx.push_back(
+            impl::cell_morton_idx(impl::coord_to_cellindex(xyz, m_grid_level)));
     }
 }
 
@@ -432,8 +422,7 @@ std::vector<GhostExchangeDesc> P4estGrid::get_boundary_info()
 lidx P4estGrid::position_to_cell_index(double pos[3])
 {
     auto shellidxcomp = [](const impl::LocalShell &s, int idx) {
-        int64_t sidx
-            = impl::cell_morton_idx(s.coord[0], s.coord[1], s.coord[2]);
+        int64_t sidx = impl::cell_morton_idx(s.coord);
         return sidx < idx;
     };
 
@@ -450,8 +439,7 @@ lidx P4estGrid::position_to_cell_index(double pos[3])
 
     if (it != shell_local_end &&
         // Exclude finding cell 0 (lower_bound) if 0 is not the wanted result
-        impl::cell_morton_idx(it->coord[0], it->coord[1], it->coord[2])
-            == needle)
+        impl::cell_morton_idx(it->coord) == needle)
         return std::distance(std::begin(m_p8est_shell), it);
     else
         throw std::domain_error("Pos not in local domain.");
