@@ -156,39 +156,27 @@ gidx pos_morton_idx(double box_l[3],
 // Compute the grid- and bricksize according to box_l and maxrange
 void P4estGrid::set_optimal_cellsize()
 {
-    Vec3i ncells = {{1, 1, 1}};
+    // Compute number of cells and the cell size
+    for (size_t i = 0; i < 3; ++i) {
+        if (max_range > ROUND_ERROR_PREC * box_l[i])
+            m_grid_size[i] = std::max<int>(box_l[i] / max_range, 1);
+        else
+            m_grid_size[i] = 1;
 
-    // Compute number of cells
-    if (max_range > ROUND_ERROR_PREC * box_l[0]) {
-        ncells[0] = std::max<int>(box_l[0] / max_range, 1);
-        ncells[1] = std::max<int>(box_l[1] / max_range, 1);
-        ncells[2] = std::max<int>(box_l[2] / max_range, 1);
+        m_cell_size[i] = box_l[i] / m_grid_size[i];
+        m_inv_cell_size[i] = 1.0 / m_cell_size[i];
     }
 
-    m_grid_size[0] = ncells[0];
-    m_grid_size[1] = ncells[1];
-    m_grid_size[2] = ncells[2];
-
-    // Divide all dimensions by biggest common power of 2
-    m_grid_level
-        = impl::count_trailing_zeros(ncells[0] | ncells[1] | ncells[2]);
-
-    m_brick_size[0] = ncells[0] >> m_grid_level;
-    m_brick_size[1] = ncells[1] >> m_grid_level;
-    m_brick_size[2] = ncells[2] >> m_grid_level;
+    // Set number of trees to biggest common power of 2 of all dimensions
+    m_grid_level = impl::count_trailing_zeros(m_grid_size[0] | m_grid_size[1]
+                                              | m_grid_size[2]);
+    for (size_t i = 0; i < 3; ++i)
+        m_brick_size[i] = m_grid_size[i] >> m_grid_level;
 }
 
 void P4estGrid::create_grid()
 {
     set_optimal_cellsize();
-
-    m_cell_size[0] = box_l[0] / m_grid_size[0];
-    m_cell_size[1] = box_l[1] / m_grid_size[1];
-    m_cell_size[2] = box_l[2] / m_grid_size[2];
-
-    m_inv_cell_size[0] = 1.0 / m_cell_size[0];
-    m_inv_cell_size[1] = 1.0 / m_cell_size[1];
-    m_inv_cell_size[2] = 1.0 / m_cell_size[2];
 
     if (!m_repartstate.after_repart) {
         // Keep old connectivity as the p4est destructor needs it
@@ -262,7 +250,9 @@ void P4estGrid::create_grid()
                                    bndry ? impl::CellType::boundary
                                          : impl::CellType::inner,
                                    bndry, x, y, z);
-        m_global_idx.push_back(impl::cell_morton_idx(xyz[0] * (1 << m_grid_level), xyz[1] * (1 << m_grid_level), xyz[2] * (1 << m_grid_level)));
+        m_global_idx.push_back(impl::cell_morton_idx(
+            xyz[0] * (1 << m_grid_level), xyz[1] * (1 << m_grid_level),
+            xyz[2] * (1 << m_grid_level)));
 
         // Neighborhood
         for (int n = 0; n < 26; ++n) {
@@ -302,7 +292,9 @@ void P4estGrid::create_grid()
 
         m_p8est_shell.emplace_back(g, p8est_mesh->ghost_to_proc[g],
                                    impl::CellType::ghost, 0, x, y, z);
-        m_global_idx.push_back(impl::cell_morton_idx(xyz[0] * (1 << m_grid_level), xyz[1] * (1 << m_grid_level), xyz[2] * (1 << m_grid_level)));
+        m_global_idx.push_back(impl::cell_morton_idx(
+            xyz[0] * (1 << m_grid_level), xyz[1] * (1 << m_grid_level),
+            xyz[2] * (1 << m_grid_level)));
     }
 }
 
