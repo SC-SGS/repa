@@ -25,7 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <tetra.hpp>
+#include <tetra/tetra.hpp>
 
 #include "globox.hpp"
 #include "pargrid.hpp"

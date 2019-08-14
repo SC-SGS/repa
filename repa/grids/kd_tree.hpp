@@ -29,7 +29,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include <kdpart.h>
+#include <kdpart/kdpart.h>
 
 #include "_compat.hpp"
 #include "pargrid.hpp"

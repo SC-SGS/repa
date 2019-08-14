@@ -19,7 +19,7 @@
 set(KDPART_DIR "" CACHE PATH "kdpart directory")
 
 find_path(KDPART_INCLUDE_DIR
-          kdpart.h
+          kdpart/kdpart.h
           HINTS ${KDPART_DIR}
           ENV C_INCLUDE_PATH
           PATH_SUFFIXES include)

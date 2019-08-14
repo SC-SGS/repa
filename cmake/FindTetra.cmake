@@ -19,7 +19,7 @@
 set(TETRA_DIR "" CACHE PATH "Tetra directory")
 
 find_path(TETRA_INCLUDE_DIR
-          tetra.hpp
+          tetra/tetra.hpp
           HINTS ${TETRA_DIR}
           ENV C_INCLUDE_PATH
           PATH_SUFFIXES include)
