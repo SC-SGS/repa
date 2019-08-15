@@ -18,8 +18,6 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-//#ifdef HAVE_TETRA
-
 #include "gridbased.hpp"
 
 #include <algorithm>
@@ -188,14 +186,14 @@ void GridBasedGrid::init_octagons()
 {
     boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
 
-    my_dom = tetra::Octagon(bounding_box(comm_cart.rank()));
+    my_dom = util::tetra::Octagon(bounding_box(comm_cart.rank()));
 
     neighbor_doms.clear();
     neighbor_doms.reserve(neighbor_ranks.size());
 
     for (size_t i = 0; i < neighbor_ranks.size(); ++i) {
         neighbor_doms.push_back(
-            tetra::Octagon(bounding_box(neighbor_ranks[i])));
+            util::tetra::Octagon(bounding_box(neighbor_ranks[i])));
     }
 }
 
@@ -578,5 +576,3 @@ int GridBasedGrid::global_hash(lgidx cellidx)
 
 } // namespace grids
 } // namespace repa
-
-//#endif // HAVE_TETRA

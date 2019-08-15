@@ -19,16 +19,13 @@
 
 #pragma once
 
-//#ifdef HAVE_TETRA
-
 #include <mpi.h>
 #include <unordered_map>
 #include <vector>
 
-#include <tetra/tetra.hpp>
-
 #include "globox.hpp"
 #include "pargrid.hpp"
+#include "util/tetra.hpp"
 
 namespace repa {
 namespace grids {
@@ -81,10 +78,10 @@ private:
     int nlocalcells, nghostcells;
 
     // Triangulation data structure for this subdomain
-    tetra::Octagon my_dom;
+    util::tetra::Octagon my_dom;
 
     // Triangulation data structure for the neighboring subdomains
-    std::vector<tetra::Octagon> neighbor_doms;
+    std::vector<util::tetra::Octagon> neighbor_doms;
     // Ranks of the neigbors. Note that the number of neighbors
     // is constant and the neighbors themselves do *not*
     // change over time.
@@ -141,5 +138,3 @@ private:
 };
 } // namespace grids
 } // namespace repa
-
-//#endif //HAVE_TETRA
