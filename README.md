@@ -18,7 +18,7 @@ Note, that Boost::MPI must be compiled with the chosen MPI distribution.
 
 - [Boost](https://www.boost.org/) (unit_test) for tests
 - [KDPart](https://github.com/hirschsn/kdpart) for kd-tree-based load-balancing method
-- [Tetra](https://github.com/hirschsn/tetra) (and its dependency [CGAL](https://www.cgal.org/)) for grid-based load-balancing method
+- [CGAL](https://www.cgal.org/) for grid-based load-balancing method
 - [ParMETIS](http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview) for graph-partitioning-based load-balancing method
 
 Same note as above goes for KDPart and ParMETIS.
@@ -34,7 +34,6 @@ Install dependencies:
 ```sh
 $ mkdir dep && cd dep
 $ sh -c 'git clone https://github.com/hirschsn/kdpart && cd kdpart && make'
-$ sh -c 'git clone https://github.com/hirschsn/tetra && cd tetra && make'
 $ DEP_DIR="$(pwd)"
 ```
 
@@ -43,7 +42,7 @@ $ DEP_DIR="$(pwd)"
 ```sh
 $ git clone https://github.com/hirschsn/repa && cd repa
 $ mkdir build && cd build
-$ cmake .. -GNinja -DKDPART_DIR=$(DEP_DIR)/kdpart -DTETRA_DIR=$(DEP_DIR)/tetra
+$ cmake .. -GNinja -DKDPART_DIR=$(DEP_DIR)/kdpart
 $ ninja
 $ ninja test
 ```
