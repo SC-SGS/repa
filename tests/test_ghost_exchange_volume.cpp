@@ -120,8 +120,8 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
     std::vector<decltype(gexds)> gexdss;
     boost::mpi::all_gather(comm, gexds, gexdss);
 
-    auto find_comm = [](std::vector<repa::grids::GhostExchangeDesc> &gs,
-                        int rank) {
+    auto find_comm = [](const std::vector<repa::grids::GhostExchangeDesc> &gs,
+                        int rank) -> const repa::grids::GhostExchangeDesc& {
         auto it
             = std::find_if(std::begin(gs), std::end(gs),
                            [rank](const auto &g) { return g.dest == rank; });
@@ -132,7 +132,7 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
     // Check if send indices fit receive indices on the other side.
     for (int r = 0; r < comm.size(); ++r) {
         for (const auto &rg : gexdss[r]) {
-            auto counterpart = find_comm(gexdss[rg.dest], r);
+            const auto& counterpart = find_comm(gexdss[rg.dest], r);
             // Check for matching sizes
             BOOST_TEST((rg.send.size() == counterpart.recv.size()));
             BOOST_TEST((rg.recv.size() == counterpart.send.size()));
