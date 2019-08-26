@@ -118,6 +118,8 @@ private:
 
     // Initializes the partitioning to a regular Cartesian grid.
     void init_partitioning();
+    // Checks is "pos" is also accepted by a neighboring octagon.
+    bool does_neighbor_accept(Vec3d pos);
     // Reinitializes the internal data of this class
     void reinit();
     // Initializes "my_dom" and "neighbor_doms"
