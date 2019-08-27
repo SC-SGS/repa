@@ -243,18 +243,6 @@ struct GlobalBox {
         return midpoint;
     }
 
-    /** Returns the position of the lower left hand corner of a cell
-     */
-    inline position_type lower_left(index_type_1d index) const
-    {
-        auto ii = unlinearize(index);
-        position_type ll;
-
-        for (int d = 0; d < 3; ++d)
-            ll[d] = m_cell_size[d] * ii[d];
-        return ll;
-    }
-
 private:
     // This is a template because we need it for index_type_3d and int.
     template <typename T>
