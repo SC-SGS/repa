@@ -17,6 +17,7 @@
 #
 
 set(repa_SRC
+    grids/glomethod.cpp
     grids/graph.cpp
     grids/gridbased.cpp
     grids/diffusion.cpp

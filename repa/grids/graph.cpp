@@ -23,9 +23,9 @@
 #include "graph.hpp"
 #include <algorithm>
 #include <boost/mpi.hpp>
+#include <boost/mpi/datatype.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/vector.hpp>
-#include <boost/mpi/datatype.hpp>
 #include <mpi.h>
 
 #include "util/ensure.hpp"
@@ -40,68 +40,15 @@
 namespace repa {
 namespace grids {
 
-lidx Graph::n_local_cells()
+Graph::Graph(const boost::mpi::communicator &comm,
+             Vec3d box_size,
+             double min_cell_size)
+    : GloMethod(comm, box_size, min_cell_size)
 {
-    return localCells;
 }
 
-gidx Graph::n_ghost_cells()
+Graph::~Graph()
 {
-    return ghostCells;
-}
-
-nidx Graph::n_neighbors()
-{
-    return neighbors.size();
-}
-
-rank Graph::neighbor_rank(nidx i)
-{
-    return neighbors[i];
-}
-
-Vec3d Graph::cell_size()
-{
-    return gbox.cell_size();
-}
-
-Vec3i Graph::grid_size()
-{
-    return gbox.grid_size();
-}
-
-lgidx Graph::cell_neighbor_index(lidx cellidx, int neigh)
-{
-    return global_to_local[gbox.neighbor(cells[cellidx], neigh)];
-}
-
-std::vector<GhostExchangeDesc> Graph::get_boundary_info()
-{
-    return exchangeVector;
-}
-
-lidx Graph::position_to_cell_index(const double pos[3])
-{
-    if (position_to_rank(pos) != comm_cart.rank())
-        throw std::domain_error("Particle not in local box");
-
-    return global_to_local[gbox.cell_at_pos(pos)];
-}
-
-rank Graph::position_to_rank(const double pos[3])
-{
-    return static_cast<rank>(partition[gbox.cell_at_pos(pos)]);
-}
-
-nidx Graph::position_to_neighidx(const double pos[3])
-{
-    rank rank = position_to_rank(pos);
-    auto ni = std::find(std::begin(neighbors), std::end(neighbors), rank);
-
-    if (ni != std::end(neighbors))
-        return std::distance(std::begin(neighbors), ni);
-    else
-        throw std::domain_error("Position not within a neighbor process.");
 }
 
 /*
@@ -112,9 +59,8 @@ nidx Graph::position_to_neighidx(const double pos[3])
  * that corresponds to the cell.
  * Partitioning is performed in parallel via ParMETIS.
  */
-bool Graph::repartition(CellMetric m,
-                        CellCellMetric ccm,
-                        Thunk exchange_start_callback)
+
+bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 {
     static constexpr idx_t w_fac = 100;
     auto vertex_weights = m();
@@ -283,7 +229,7 @@ bool Graph::repartition(CellMetric m,
     for (idx_t w : adjwgt) {
         ENSURE(w != -1);
         ENSURE(w >= 0 && w < 10000000);
-        //if (!m.has_cell_cell_metric())
+        // if (!m.has_cell_cell_metric())
         //    ENSURE(w == 1.0 * w_fac + 1);
     }
 #endif
@@ -331,9 +277,11 @@ bool Graph::repartition(CellMetric m,
         }
     }
 
+    // Copy idx_t to rank.
+    std::vector<rank> parti{part};
 #ifdef GRAPH_DEBUG
-    ENSURE(part.size() == nvtx);
-    for (int r : part) {
+    ENSURE(parti.size() == nvtx);
+    for (auto r : parti) {
         ENSURE(r != -1);
         ENSURE(0 <= r && r < comm_cart.size());
     }
@@ -351,7 +299,7 @@ bool Graph::repartition(CellMetric m,
         recvcount[i] = static_cast<int>(vtxdist[i + 1] - vtxdist[i]);
         displ[i] = static_cast<int>(vtxdist[i]);
     }
-    MPI_Allgatherv(part.data(), nvtx, MPI_IDX_T, partition.data(),
+    MPI_Allgatherv(parti.data(), nvtx, MPI_IDX_T, partition.data(),
                    recvcount.data(), displ.data(), MPI_IDX_T, comm_cart);
 #ifdef GRAPH_DEBUG
     ENSURE(partition.size() == nglocells);
@@ -378,157 +326,7 @@ bool Graph::repartition(CellMetric m,
     ENSURE(std::accumulate(std::begin(nlcs), std::end(nlcs), 0) == nglocells);
 #endif
 
-    // Position to rank is answered solely via the "partition" vector.
-    // So the particle migration is ready to go.
-    exchange_start_callback();
-
-    init();
-
     return true;
-}
-
-Graph::Graph(const boost::mpi::communicator &comm,
-             Vec3d box_size,
-             double min_cell_size)
-    : ParallelLCGrid(comm, box_size, min_cell_size),
-      gbox(box_size, min_cell_size)
-{
-    int nglocells = gbox.ncells();
-    int ncells_per_proc = static_cast<int>(
-        std::ceil(static_cast<double>(nglocells) / comm_cart.size()));
-
-    // Initial partitioning
-    partition.resize(nglocells);
-
-    // Line-wise init
-    for (int i = 0; i < nglocells; ++i) {
-        partition[i] = i / ncells_per_proc;
-    }
-
-    //// Init to equally sized boxes on Cartesian grid
-    // int dims[3] = {0, 0, 0};
-    // MPI_Dims_create(comm_cart.size(), 3, dims);
-
-    // auto cellgrid = gbox.grid_size();
-    // Vec3i cells_per_proc = {{
-    //    static_cast<int>(std::ceil(static_cast<double>(cellgrid[0]) /
-    //    dims[0])), static_cast<int>(std::ceil(static_cast<double>(cellgrid[1])
-    //    / dims[1])),
-    //    static_cast<int>(std::ceil(static_cast<double>(cellgrid[2]) /
-    //    dims[2])),
-    //}};
-
-    // for (int i = 0; i < nglocells; ++i) {
-    //  auto cellidx = gbox.unlinearize(i);
-    //  // Transform cellidx to 3d proc coord
-    //  for (int i = 0; i < 3; ++i)
-    //    cellidx[i] /= cells_per_proc[i];
-    //  int rank;
-    //  MPI_Cart_rank(comm_cart, cellidx.data(), &rank);
-    //  partition[i] = rank;
-    //}
-
-    init();
-}
-
-Graph::~Graph()
-{
-}
-
-/*
- * Rebuild the data structures describing subdomain and communication.
- */
-void Graph::init()
-{
-    const int nglocells = partition.size();
-
-    localCells = 0;
-    ghostCells = 0;
-    cells.clear();
-    global_to_local.clear();
-    neighbors.clear();
-
-    // Extract the local cells from "partition".
-    for (int i = 0; i < nglocells; i++) {
-        if (partition[i] == comm_cart.rank()) {
-            // Vector of own cells
-            cells.push_back(i);
-            // Index mapping from global to local
-            global_to_local[i] = localCells;
-            // Number of own cells
-            localCells++;
-        }
-    }
-
-    // Temporary storage for exchange descriptors.
-    // Will be filled only for neighbors
-    // and moved from later.
-    std::vector<GhostExchangeDesc> tmp_ex_descs(comm_cart.size());
-
-    // Determine ghost cells and communication volume
-    for (int i = 0; i < localCells; i++) {
-        for (int neighborIndex :
-             gbox.full_shell_neigh_without_center(cells[i])) {
-            rank owner = static_cast<rank>(partition[neighborIndex]);
-            if (owner == comm_cart.rank())
-                continue;
-
-            // Find ghost cells. Add only once to "cells" vector.
-            if (global_to_local.find(neighborIndex)
-                == std::end(global_to_local)) {
-                // Add ghost cell to cells vector
-                cells.push_back(neighborIndex);
-                // Index mapping from global to ghost
-                global_to_local[neighborIndex] = localCells + ghostCells;
-                // Number of ghost cells
-                ghostCells++;
-            }
-
-            // Initialize exdesc and add "rank" as neighbor if unknown.
-            if (tmp_ex_descs[owner].dest == -1) {
-                neighbors.push_back(owner);
-                tmp_ex_descs[owner].dest = owner;
-            }
-
-            util::push_back_unique(tmp_ex_descs[owner].recv, neighborIndex);
-            util::push_back_unique(tmp_ex_descs[owner].send, cells[i]);
-        }
-    }
-
-    // Move all existent exchange descriptors from "tmp_ex_descs" to
-    // "exchangeVector".
-    exchangeVector.clear();
-    for (int i = 0; i < comm_cart.size(); ++i) {
-        if (tmp_ex_descs[i].dest != -1) {
-            auto ed = std::move(tmp_ex_descs[i]);
-
-            // Make sure, index ordering is the same on every process
-            // and global to local index conversion
-            std::sort(std::begin(ed.recv), std::end(ed.recv));
-            std::transform(std::begin(ed.recv), std::end(ed.recv),
-                           std::begin(ed.recv),
-                           [this](int i) { return global_to_local[i]; });
-            std::sort(std::begin(ed.send), std::end(ed.send));
-            std::transform(std::begin(ed.send), std::end(ed.send),
-                           std::begin(ed.send),
-                           [this](int i) { return global_to_local[i]; });
-
-            exchangeVector.push_back(std::move(ed));
-        }
-    }
-
-#ifdef GRAPH_DEBUG
-    for (int i = 0; i < comm_cart.size(); ++i) {
-        if (tmp_ex_descs[i].dest != -1)
-            ENSURE(tmp_ex_descs[i].recv.size() == 0
-                   && tmp_ex_descs[i].send.size() == 0);
-    }
-#endif
-}
-
-int Graph::global_hash(lgidx cellidx)
-{
-    return cells[cellidx];
 }
 
 } // namespace grids
