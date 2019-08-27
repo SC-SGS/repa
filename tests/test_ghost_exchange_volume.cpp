@@ -85,6 +85,13 @@ test(const TEnv &t, repa::grids::ParallelLCGrid *grid, repa::GridType gt)
     auto gexds = grid->get_boundary_info();
     auto neighborranks = neighranks(grid);
 
+    // Validity of exchange descriptors
+    for (const auto &g : gexds) {
+        BOOST_TEST((g.dest >= 0 && g.dest < comm.size()));
+        BOOST_TEST(g.recv.size() > 0);
+        BOOST_TEST(g.send.size() > 0);
+    }
+
     // Verify consistency of neighbor information with ghost communications
     // Grid-based grid must only be reverse consistent. Forward consistency is
     // not required due to the changes in 17f4be5.
@@ -101,13 +108,6 @@ test(const TEnv &t, repa::grids::ParallelLCGrid *grid, repa::GridType gt)
             (std::find_if(std::begin(neighborranks), std::end(neighborranks),
                           [&gexd](auto rank) { return gexd.dest == rank; })
              != std::end(neighborranks)));
-    }
-
-    // Validity of exchange descriptors
-    for (const auto &g : gexds) {
-        BOOST_TEST((g.dest >= 0 && g.dest < comm.size()));
-        BOOST_TEST(g.recv.size() > 0);
-        BOOST_TEST(g.send.size() > 0);
     }
 
     // Validity of cell indices
