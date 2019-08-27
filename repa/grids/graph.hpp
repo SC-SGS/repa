@@ -38,8 +38,8 @@ struct Graph : public GloMethod {
           double min_cell_size);
     ~Graph();
 
-    friend struct HybridGPDiff; // Needs access to "partition" vector
 private:
+    friend struct HybridGPDiff; // Needs access to "partition" vector
     virtual bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
 };
 } // namespace grids
