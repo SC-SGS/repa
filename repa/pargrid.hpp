@@ -143,19 +143,19 @@ struct ParallelLCGrid {
     /** Returns the index of a local cell at position "pos".
      * @throws std::domain_error if position is not in the local subdomain.
      */
-    virtual lidx position_to_cell_index(double pos[3]) = 0;
+    virtual lidx position_to_cell_index(const double pos[3]) = 0;
 
     /** Returns the rank of the process which is responsible for the cell at
      * position "pos". Works for the whole domain!
      */
-    virtual rank position_to_rank(double pos[3]) = 0;
+    virtual rank position_to_rank(const double pos[3]) = 0;
 
     /** Returns the index of a neighboring process which is responsible for the
      * cell at position "pos". "Pos" must therefore be *in the ghost layer*.
      *
      * @throws std::domain_error if position is not in the ghost layer.
      */
-    virtual nidx position_to_neighidx(double pos[3]) = 0;
+    virtual nidx position_to_neighidx(const double pos[3]) = 0;
 
     /** *Maybe* repartitions the grid. Returns true if grid has been changed
      * (repartitioned). This means all data of this class is invalidated.

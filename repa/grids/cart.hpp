@@ -46,9 +46,9 @@ struct CartGrid : public ParallelLCGrid {
     Vec3i grid_size() override;
     lgidx cell_neighbor_index(lidx cellidx, int neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
-    lidx position_to_cell_index(double pos[3]) override;
-    rank position_to_rank(double pos[3]) override;
-    nidx position_to_neighidx(double pos[3]) override;
+    lidx position_to_cell_index(const double pos[3]) override;
+    rank position_to_rank(const double pos[3]) override;
+    nidx position_to_neighidx(const double pos[3]) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;

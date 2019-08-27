@@ -61,10 +61,8 @@ static std::vector<int> neighranks(repa::grids::ParallelLCGrid *grid)
 
 static void test_position(const boost::mpi::communicator &comm,
                           repa::grids::ParallelLCGrid *grid,
-                          const repa::Vec3d &opos)
+                          const repa::Vec3d &pos)
 {
-    repa::Vec3d pos{opos}; // Create copy since methods expect "double *", not
-                           // "const double *"
     int rank = grid->position_to_rank(pos.data());
 
     // Check correctness of "rank"

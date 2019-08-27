@@ -34,11 +34,8 @@
 static void
 test_exactly_one_assigned_process(const boost::mpi::communicator &comm,
                                   repa::grids::ParallelLCGrid *grid,
-                                  const repa::Vec3d &opos)
+                                  const repa::Vec3d &pos)
 {
-    repa::Vec3d pos{opos}; // Create copy since methods expect "double *", not
-                           // "const double *"
-
     int cellidx;
     bool has_cell = false;
     try {

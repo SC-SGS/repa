@@ -419,7 +419,7 @@ std::vector<GhostExchangeDesc> P4estGrid::get_boundary_info()
     return m_exdescs;
 }
 
-lidx P4estGrid::position_to_cell_index(double pos[3])
+lidx P4estGrid::position_to_cell_index(const double pos[3])
 {
     auto shellidxcomp = [](const impl::LocalShell &s, int idx) {
         int64_t sidx = impl::cell_morton_idx(s.coord);
@@ -445,7 +445,7 @@ lidx P4estGrid::position_to_cell_index(double pos[3])
         throw std::domain_error("Pos not in local domain.");
 }
 
-rank P4estGrid::position_to_rank(double pos[3])
+rank P4estGrid::position_to_rank(const double pos[3])
 {
     // Cell of pos might not be known on this process (not in m_p8est_shell).
     // Therefore, use the global first cell indices.
@@ -457,7 +457,7 @@ rank P4estGrid::position_to_rank(double pos[3])
     return std::distance(std::begin(m_node_first_cell_idx), it) - 1;
 }
 
-nidx P4estGrid::position_to_neighidx(double pos[3])
+nidx P4estGrid::position_to_neighidx(const double pos[3])
 {
     // Determine the neighbor rank for locally known cell
     // Using position_to_rank here as it is the simpler code. Could also

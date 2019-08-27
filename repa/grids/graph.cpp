@@ -80,7 +80,7 @@ std::vector<GhostExchangeDesc> Graph::get_boundary_info()
     return exchangeVector;
 }
 
-lidx Graph::position_to_cell_index(double pos[3])
+lidx Graph::position_to_cell_index(const double pos[3])
 {
     if (position_to_rank(pos) != comm_cart.rank())
         throw std::domain_error("Particle not in local box");
@@ -88,12 +88,12 @@ lidx Graph::position_to_cell_index(double pos[3])
     return global_to_local[gbox.cell_at_pos(pos)];
 }
 
-rank Graph::position_to_rank(double pos[3])
+rank Graph::position_to_rank(const double pos[3])
 {
     return static_cast<rank>(partition[gbox.cell_at_pos(pos)]);
 }
 
-nidx Graph::position_to_neighidx(double pos[3])
+nidx Graph::position_to_neighidx(const double pos[3])
 {
     rank rank = position_to_rank(pos);
     auto ni = std::find(std::begin(neighbors), std::end(neighbors), rank);

@@ -112,7 +112,7 @@ private:
      * Transforms a global position within the the simulation box to a global
      * cell vector.
      */
-    Vec3i absolute_position_to_cell_position(double absolute_position[3]);
+    Vec3i absolute_position_to_cell_position(const double absolute_position[3]);
 
     void init_local_domain_bounds();
 
@@ -201,11 +201,11 @@ public:
 
     virtual std::vector<GhostExchangeDesc> get_boundary_info() override;
 
-    virtual lidx position_to_cell_index(double pos[3]) override;
+    virtual lidx position_to_cell_index(const double pos[3]) override;
 
-    virtual rank position_to_rank(double pos[3]) override;
+    virtual rank position_to_rank(const double pos[3]) override;
 
-    virtual nidx position_to_neighidx(double pos[3]) override;
+    virtual nidx position_to_neighidx(const double pos[3]) override;
 
     virtual bool
     repartition(CellMetric m, CellCellMetric ccm, Thunk cb) override;

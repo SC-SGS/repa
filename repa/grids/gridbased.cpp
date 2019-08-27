@@ -349,7 +349,7 @@ std::vector<GhostExchangeDesc> GridBasedGrid::get_boundary_info()
     return exchange_vec;
 }
 
-lidx GridBasedGrid::position_to_cell_index(double pos[3])
+lidx GridBasedGrid::position_to_cell_index(const double pos[3])
 {
     lidx c;
     try {
@@ -380,7 +380,7 @@ rank GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
     return rank;
 }
 
-rank GridBasedGrid::position_to_rank(double pos[3])
+rank GridBasedGrid::position_to_rank(const double pos[3])
 {
     // Cell ownership is based on the cell midpoint.
     auto mp = gbox.midpoint(gbox.cell_at_pos(pos));
@@ -415,7 +415,7 @@ rank GridBasedGrid::position_to_rank(double pos[3])
                             "the neighborhood of this process.");
 }
 
-nidx GridBasedGrid::position_to_neighidx(double pos[3])
+nidx GridBasedGrid::position_to_neighidx(const double pos[3])
 {
     rank rank = position_to_rank(pos);
     try {

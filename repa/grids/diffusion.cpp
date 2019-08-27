@@ -167,7 +167,7 @@ std::vector<GhostExchangeDesc> Diffusion::get_boundary_info()
     return exchangeVector;
 }
 
-lidx Diffusion::position_to_cell_index(double pos[3])
+lidx Diffusion::position_to_cell_index(const double pos[3])
 {
     if (position_to_rank(pos) != comm_cart.rank())
         throw std::domain_error("Particle not in local box");
@@ -175,7 +175,7 @@ lidx Diffusion::position_to_cell_index(double pos[3])
     return global_to_local[gbox.cell_at_pos(pos)];
 }
 
-rank Diffusion::position_to_rank(double pos[3])
+rank Diffusion::position_to_rank(const double pos[3])
 {
     auto r = partition[gbox.cell_at_pos(pos)];
     if (r == -1)
@@ -184,7 +184,7 @@ rank Diffusion::position_to_rank(double pos[3])
         return r;
 }
 
-nidx Diffusion::position_to_neighidx(double pos[3])
+nidx Diffusion::position_to_neighidx(const double pos[3])
 {
     rank rank = position_to_rank(pos);
     auto ni = std::find(std::begin(neighbors), std::end(neighbors), rank);

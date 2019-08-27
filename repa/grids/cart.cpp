@@ -243,7 +243,7 @@ std::vector<GhostExchangeDesc> CartGrid::get_boundary_info()
     return m_exdescs;
 }
 
-lidx CartGrid::position_to_cell_index(double pos[3])
+lidx CartGrid::position_to_cell_index(const double pos[3])
 {
     Vec3i c;
 
@@ -258,7 +258,7 @@ lidx CartGrid::position_to_cell_index(double pos[3])
     return linearize(c);
 }
 
-rank CartGrid::position_to_rank(double pos[3])
+rank CartGrid::position_to_rank(const double pos[3])
 {
     Vec3i proc;
     for (int i = 0; i < 3; ++i)
@@ -282,7 +282,7 @@ nidx CartGrid::neighbor_idx(rank r)
     return std::distance(std::begin(m_neighranks), it);
 }
 
-nidx CartGrid::position_to_neighidx(double pos[3])
+nidx CartGrid::position_to_neighidx(const double pos[3])
 {
     // Determine the neighbor rank for locally known cell
     // Using position_to_rank here as it is the simpler code. Could also
