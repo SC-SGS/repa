@@ -120,17 +120,41 @@ struct TEnv {
             }
 
             std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
-            BOOST_CHECK_NO_THROW(up = repa::make_pargrid(gt, comm, box, mings, ep));
+            BOOST_CHECK_NO_THROW(
+                up = repa::make_pargrid(gt, comm, box, mings, ep));
             BOOST_TEST(up.get() != nullptr);
 
-            test_func(*this, up.get());
+            call_test_func(test_func, *this, up.get(), gt);
 
             if (!repart)
                 continue;
             repartition_randomly(up.get());
 
-            test_func(*this, up.get());
+            call_test_func(test_func, *this, up.get(), gt);
         }
+    }
+
+    // Calling - with or without grid type:
+    // Introspection of the test function if it takes an additional "GridType"
+    // parameter.
+    using Fno_gt
+        = std::function<void(const TEnv &, repa::grids::ParallelLCGrid *)>;
+    using Fwith_gt = std::function<void(
+        const TEnv &, repa::grids::ParallelLCGrid *, repa::GridType)>;
+    static inline void call_test_func(Fno_gt f,
+                                      const TEnv &te,
+                                      repa::grids::ParallelLCGrid *grid,
+                                      repa::GridType gt)
+    {
+        f(te, grid);
+    }
+
+    static inline void call_test_func(Fwith_gt f,
+                                      const TEnv &te,
+                                      repa::grids::ParallelLCGrid *grid,
+                                      repa::GridType gt)
+    {
+        f(te, grid, gt);
     }
 };
 } // namespace

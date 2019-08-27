@@ -78,21 +78,24 @@ static std::vector<int> neighranks(repa::grids::ParallelLCGrid *grid)
     return res;
 }
 
-static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void
+test(const TEnv &t, repa::grids::ParallelLCGrid *grid, repa::GridType gt)
 {
     const auto &comm = t.comm;
     auto gexds = grid->get_boundary_info();
     auto neighborranks = neighranks(grid);
 
     // Verify consistency of neighbor information with ghost communications
+    // Grid-based grid must only be reverse consistent. Forward consistency is
+    // not required due to the changes in 17f4be5.
     for (auto rank : neighborranks) {
-        BOOST_TEST(
-            (std::find_if(std::begin(gexds), std::end(gexds),
+        BOOST_TEST(if_then(gt != repa::GridType::GRIDBASED,
+            std::find_if(std::begin(gexds), std::end(gexds),
                           [rank](auto gexd) { return gexd.dest == rank; })
              != std::end(gexds)));
     }
 
-    // Vice versa
+    // Vice versa ("Reverse consistency")
     for (const auto &gexd : gexds) {
         BOOST_TEST(
             (std::find_if(std::begin(neighborranks), std::end(neighborranks),
@@ -129,11 +132,11 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
     boost::mpi::all_gather(comm, gexds, gexdss);
 
     auto find_comm = [](const std::vector<repa::grids::GhostExchangeDesc> &gs,
-                        int rank) -> const repa::grids::GhostExchangeDesc& {
+                        int rank) -> const repa::grids::GhostExchangeDesc & {
         auto it
             = std::find_if(std::begin(gs), std::end(gs),
                            [rank](const auto &g) { return g.dest == rank; });
-        //BOOST_TEST((it != std::end(gs)));
+        // BOOST_TEST((it != std::end(gs)));
         if (it == std::end(gs)) {
             abort();
         }
@@ -143,7 +146,7 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
     // Check if send indices fit receive indices on the other side.
     for (int r = 0; r < comm.size(); ++r) {
         for (const auto &rg : gexdss[r]) {
-            const auto& counterpart = find_comm(gexdss[rg.dest], r);
+            const auto &counterpart = find_comm(gexdss[rg.dest], r);
             // Check for matching sizes
             BOOST_TEST((rg.send.size() == counterpart.recv.size()));
             BOOST_TEST((rg.recv.size() == counterpart.send.size()));
