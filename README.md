@@ -41,9 +41,9 @@ $ DEP_DIR="$(pwd)"
 ```sh
 $ git clone https://github.com/hirschsn/repa && cd repa
 $ mkdir build && cd build
-$ cmake .. -GNinja -DKDPART_DIR=$(DEP_DIR)/kdpart
-$ ninja
-$ ninja test
+$ cmake .. -DKDPART_DIR=$(DEP_DIR)/kdpart
+$ make
+$ make test # Optional
 ```
 
 ## License
