@@ -18,8 +18,6 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-//#ifdef HAVE_METIS
-
 #include "glomethod.hpp"
 #include <algorithm>
 #include <boost/mpi.hpp>
@@ -84,7 +82,12 @@ lidx GloMethod::position_to_cell_index(const double pos[3])
 
 rank GloMethod::position_to_rank(const double pos[3])
 {
-    return partition[gbox.cell_at_pos(pos)];
+    auto r = partition[gbox.cell_at_pos(pos)];
+
+    if (r < 0)
+        throw std::runtime_error("Cell not in scope of process");
+    else
+        return r;
 }
 
 nidx GloMethod::position_to_neighidx(const double pos[3])
@@ -138,7 +141,7 @@ GloMethod::GloMethod(const boost::mpi::communicator &comm,
         partition[i] = i / ncells_per_proc;
     }
 
-    // FIXME: choose init?
+    // TODO: choose init?
 
     //// Init to equally sized boxes on Cartesian grid
     // int dims[3] = {0, 0, 0};
@@ -162,9 +165,11 @@ GloMethod::GloMethod(const boost::mpi::communicator &comm,
     //  MPI_Cart_rank(comm_cart, cellidx.data(), &rank);
     //  partition[i] = rank;
     //}
+}
 
-    // FIXME: parameters possible?
-    init();
+void GloMethod::after_construction()
+{
+    init(true);
 }
 
 GloMethod::~GloMethod()
@@ -174,9 +179,11 @@ GloMethod::~GloMethod()
 /*
  * Rebuild the data structures describing subdomain and communication.
  */
-void GloMethod::init()
+void GloMethod::init(bool firstcall)
 {
     const int nglocells = partition.size();
+
+    pre_init(firstcall);
 
     localCells = 0;
     ghostCells = 0;
@@ -208,6 +215,8 @@ void GloMethod::init()
             rank owner = partition[neighborIndex];
             if (owner == comm_cart.rank())
                 continue;
+
+            init_new_foreign_cell(i, neighborIndex, owner);
 
             // Find ghost cells. Add only once to "cells" vector.
             if (global_to_local.find(neighborIndex)
@@ -260,6 +269,8 @@ void GloMethod::init()
                    && tmp_ex_descs[i].send.size() == 0);
     }
 #endif
+
+    post_init(firstcall);
 }
 
 int GloMethod::global_hash(lgidx cellidx)
@@ -269,5 +280,3 @@ int GloMethod::global_hash(lgidx cellidx)
 
 } // namespace grids
 } // namespace repa
-
-//#endif

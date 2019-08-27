@@ -85,6 +85,10 @@ struct ParallelLCGrid {
     ParallelLCGrid(const boost::mpi::communicator &comm,
                    Vec3d box_size,
                    double min_cell_size);
+    
+    // Must be called directly after construction
+    // Make virtual calls here instead of the constructor.
+    virtual void after_construction(){}
 
     virtual ~ParallelLCGrid(){};
 

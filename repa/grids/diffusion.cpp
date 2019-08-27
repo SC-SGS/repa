@@ -36,7 +36,8 @@
 namespace boost {
 namespace serialization {
 template <typename Archive>
-void load(Archive &ar, repa::grids::Diffusion::NeighSend &n,
+void load(Archive &ar,
+          repa::grids::Diffusion::NeighSend &n,
           const unsigned int /* file_version */)
 {
     ar >> n.basecell;
@@ -44,7 +45,8 @@ void load(Archive &ar, repa::grids::Diffusion::NeighSend &n,
 }
 
 template <typename Archive>
-void save(Archive &ar, const repa::grids::Diffusion::NeighSend &n,
+void save(Archive &ar,
+          const repa::grids::Diffusion::NeighSend &n,
           const unsigned int /* file_version */)
 {
     ar << n.basecell;
@@ -52,7 +54,8 @@ void save(Archive &ar, const repa::grids::Diffusion::NeighSend &n,
 }
 
 template <class Archive>
-void serialize(Archive &ar, repa::grids::Diffusion::NeighSend &n,
+void serialize(Archive &ar,
+               repa::grids::Diffusion::NeighSend &n,
                const unsigned int file_version)
 {
     split_free(ar, n, file_version);
@@ -64,11 +67,15 @@ void serialize(Archive &ar, repa::grids::Diffusion::NeighSend &n,
  * ["first_index", "last_index").
  */
 template <typename T, typename It>
-static void fill_index_range(std::vector<T> &data, It first_index,
-                             It last_index, T val)
+static void
+fill_index_range(std::vector<T> &data, It first_index, It last_index, T val)
 {
     for (; first_index != last_index; ++first_index) {
+#ifdef NDEBUG
         data[*first_index] = val;
+#else
+        data.at(*first_index) = val;
+#endif
     }
 }
 
@@ -127,90 +134,22 @@ static std::vector<double> compute_send_volume(MPI_Comm neighcomm, double load)
 namespace repa {
 namespace grids {
 
-lidx Diffusion::n_local_cells()
-{
-    return localCells;
-}
-
-gidx Diffusion::n_ghost_cells()
-{
-    return ghostCells;
-}
-
-nidx Diffusion::n_neighbors()
-{
-    return neighbors.size();
-}
-
-rank Diffusion::neighbor_rank(nidx i)
-{
-    return neighbors[i];
-}
-
-Vec3d Diffusion::cell_size()
-{
-    return gbox.cell_size();
-}
-
-Vec3i Diffusion::grid_size()
-{
-    return gbox.grid_size();
-}
-
-lgidx Diffusion::cell_neighbor_index(lidx cellidx, int neigh)
-{
-    return global_to_local[gbox.neighbor(cells[cellidx], neigh)];
-}
-
-std::vector<GhostExchangeDesc> Diffusion::get_boundary_info()
-{
-    return exchangeVector;
-}
-
-lidx Diffusion::position_to_cell_index(const double pos[3])
-{
-    if (position_to_rank(pos) != comm_cart.rank())
-        throw std::domain_error("Particle not in local box");
-
-    return global_to_local[gbox.cell_at_pos(pos)];
-}
-
-rank Diffusion::position_to_rank(const double pos[3])
-{
-    auto r = partition[gbox.cell_at_pos(pos)];
-    if (r == -1)
-        throw std::runtime_error("Cell not in scope.");
-    else
-        return r;
-}
-
-nidx Diffusion::position_to_neighidx(const double pos[3])
-{
-    rank rank = position_to_rank(pos);
-    auto ni = std::find(std::begin(neighbors), std::end(neighbors), rank);
-
-    if (ni != std::end(neighbors))
-        return std::distance(std::begin(neighbors), ni);
-    else
-        throw std::domain_error("Rank not a neighbor.");
-}
-
 void Diffusion::clear_unknown_cell_ownership()
 {
     for (int i = 0; i < partition.size(); i++) {
         // Erase partition entry if neither cell itself nor any neighbors
         // are on this process
         auto neighborhood = gbox.full_shell_neigh(i);
-        if (std::none_of(std::begin(neighborhood), std::end(neighborhood),
-                         [this](int cell) {
-                             return partition[cell] == comm_cart.rank();
-                         }))
+        if (partition[i] != -1
+            && std::none_of(std::begin(neighborhood), std::end(neighborhood),
+                            [this](int cell) {
+                                return partition[cell] == comm_cart.rank();
+                            }))
             partition[i] = -1;
     }
 }
 
-bool Diffusion::repartition(CellMetric m, CellCellMetric ccm,
-                            Thunk exchange_start_callback)
+bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 {
     auto cellweights = m();
     if (cellweights.size() != n_local_cells()) {
@@ -218,10 +157,6 @@ bool Diffusion::repartition(CellMetric m, CellCellMetric ccm,
             "Metric only supplied " + std::to_string(cellweights.size())
             + "weights. Necessary: " + std::to_string(n_local_cells()));
     }
-#ifdef DIFFUSION_DEBUG
-    static int nrepartcalls = 0;
-    nrepartcalls++;
-#endif
 
     clear_unknown_cell_ownership();
 
@@ -351,30 +286,16 @@ bool Diffusion::repartition(CellMetric m, CellCellMetric ccm,
     }
 #endif
 
-    exchange_start_callback();
-
-    // Based on partition array the local structures will be rebuilded
-    reinit();
-
     return true;
 }
 /*
  * Initialization
  */
-Diffusion::Diffusion(const boost::mpi::communicator &comm, Vec3d box_size,
+Diffusion::Diffusion(const boost::mpi::communicator &comm,
+                     Vec3d box_size,
                      double min_cell_size)
-    : ParallelLCGrid(comm, box_size, min_cell_size),
-      gbox(box_size, min_cell_size), neighcomm(MPI_COMM_NULL)
+    : GloMethod(comm, box_size, min_cell_size), neighcomm(MPI_COMM_NULL)
 {
-    auto nglocells = gbox.ncells();
-    partition.resize(nglocells);
-    // Build and fill partitions-array initial
-    for (int i = 0; i < nglocells; ++i) {
-        partition[i] = i * comm_cart.size() / nglocells;
-    }
-
-    // Initialize local part of structure
-    reinit(true);
 }
 
 Diffusion::~Diffusion()
@@ -482,124 +403,28 @@ void Diffusion::updateReceivedNeighbourhood(
     }
 }
 
-/*
- * Rebuild the data structures describing subdomain and communication.
- */
-void Diffusion::reinit(bool init)
+void Diffusion::pre_init(bool firstcall)
 {
-    const int nglocells = partition.size();
-
-    localCells = 0;
-    ghostCells = 0;
-    cells.clear();
-    global_to_local.clear();
-    neighbors.clear();
     borderCells.clear();
     borderCellsNeighbors.clear();
 
-    // Extract the local cells from "partition".
-    for (int i = 0; i < nglocells; i++) {
-        if (partition[i] == comm_cart.rank()) {
-            // Vector of own cells
-            cells.push_back(i);
-            // Index mapping from global to local
-            global_to_local[i] = localCells;
-            // Number of own cells
-            localCells++;
-        }
-        else if (!init && partition[i] != -1) {
-            // Erase partition entry if neither cell itself nor any neighbors
-            // are on this process
-            auto neighborhood = gbox.full_shell_neigh(i);
-            if (std::none_of(std::begin(neighborhood), std::end(neighborhood),
-                             [this](int cell) {
-                                 return partition[cell] == comm_cart.rank();
-                             }))
-                partition[i] = -1;
-        }
-    }
+    if (!firstcall)
+        clear_unknown_cell_ownership();
+}
 
-    // Temporary storage for exchange descriptors.
-    // Will be filled only for neighbors
-    // and moved from later.
-    std::vector<GhostExchangeDesc> tmp_ex_descs(comm_cart.size());
-
-    // Determine ghost cells and communication volume
-    for (int i = 0; i < localCells; i++) {
-        for (int neighborIndex :
-             gbox.full_shell_neigh_without_center(cells[i])) {
-            rank owner = static_cast<rank>(partition[neighborIndex]);
-            if (owner == comm_cart.rank())
-                continue;
-
-            // First cell identifying "i" as border cell?
-            if (borderCells.empty() || borderCells.back() != i)
-                borderCells.push_back(i);
-            util::push_back_unique(borderCellsNeighbors[i], owner);
-
-            // Find ghost cells. Add only once to "cells" vector.
-            // Global_to_local has an entry, if this ghost cell has already
-            // been visited
-            if (global_to_local.find(neighborIndex)
-                == std::end(global_to_local)) {
-                // Add ghost cell to cells vector
-                cells.push_back(neighborIndex);
-                // Index mapping from global to ghost
-                global_to_local[neighborIndex] = localCells + ghostCells;
-                // Number of ghost cells
-                ghostCells++;
-            }
-
-            // Initialize exdesc and add "rank" as neighbor if unknown.
-            if (tmp_ex_descs[owner].dest == -1) {
-                neighbors.push_back(owner);
-                tmp_ex_descs[owner].dest = owner;
-            }
-
-            util::push_back_unique(tmp_ex_descs[owner].recv, neighborIndex);
-            util::push_back_unique(tmp_ex_descs[owner].send, cells[i]);
-        }
-    }
-
-    // Move all existent exchange descriptors from "tmp_ex_descs" to
-    // "exchangeVector".
-    exchangeVector.clear();
-    for (int i = 0; i < comm_cart.size(); ++i) {
-        if (tmp_ex_descs[i].dest != -1) {
-            auto ed = std::move(tmp_ex_descs[i]);
-
-            // Make sure, index ordering is the same on every process
-            // and global to local index conversion
-            std::sort(std::begin(ed.recv), std::end(ed.recv));
-            std::transform(std::begin(ed.recv), std::end(ed.recv),
-                           std::begin(ed.recv),
-                           [this](int i) { return global_to_local[i]; });
-            std::sort(std::begin(ed.send), std::end(ed.send));
-            std::transform(std::begin(ed.send), std::end(ed.send),
-                           std::begin(ed.send),
-                           [this](int i) { return global_to_local[i]; });
-
-            exchangeVector.push_back(std::move(ed));
-        }
-    }
-
-#ifdef DIFFUSION_DEBUG
-    for (int i = 0; i < comm_cart.size(); ++i) {
-        if (tmp_ex_descs[i].dest != -1)
-            ENSURE(tmp_ex_descs[i].recv.size() == 0
-                   && tmp_ex_descs[i].send.size() == 0);
-    }
-#endif
-
+void Diffusion::post_init(bool firstcall)
+{
     // Create graph comm with current process structure
     if (neighcomm != MPI_COMM_NULL)
         MPI_Comm_free(&neighcomm);
+
     // Edges to all processes in "neighbors"
     MPI_Dist_graph_create_adjacent(
         comm_cart, neighbors.size(), neighbors.data(),
         static_cast<const int *>(MPI_UNWEIGHTED), neighbors.size(),
         neighbors.data(), static_cast<const int *>(MPI_UNWEIGHTED),
         MPI_INFO_NULL, 0, &neighcomm);
+
 #ifdef DIFFUSION_DEBUG
     int indegree = 0, outdegree = 0, weighted = 0;
     MPI_Dist_graph_neighbors_count(neighcomm, &indegree, &outdegree, &weighted);
@@ -617,9 +442,15 @@ void Diffusion::reinit(bool init)
 #endif
 }
 
-int Diffusion::global_hash(lgidx cellidx)
+void Diffusion::init_new_foreign_cell(lidx localcell,
+                                      lgidx foreigncell,
+                                      rank owner)
 {
-    return cells[cellidx];
+    // First cell identifying "localcell" as border cell?
+    if (borderCells.empty() || borderCells.back() != localcell)
+        borderCells.push_back(localcell);
+
+    util::push_back_unique(borderCellsNeighbors[localcell], owner);
 }
 
 } // namespace grids

@@ -34,6 +34,7 @@ struct HybridGPDiff : public ParallelLCGrid {
     HybridGPDiff(const boost::mpi::communicator &comm,
                  Vec3d box_size,
                  double min_cell_size);
+    void after_construction() override;
     lidx n_local_cells() override;
     gidx n_ghost_cells() override;
     nidx n_neighbors() override;

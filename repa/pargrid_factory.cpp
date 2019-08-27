@@ -36,56 +36,71 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
                                   double min_cell_size,
                                   ExtraParams ep)
 {
+    ParallelLCGrid *r = nullptr;
     switch (gt) {
-
     case GridType::P4EST:
         //#ifdef HAVE_P4EST
-        return new P4estGrid(comm, box_size, min_cell_size);
+        r = new P4estGrid(comm, box_size, min_cell_size);
         //#else
         //    throw std::invalid_argument("P4est not compiled in but requesting
         //    p4est grid.");
         //#endif
+        break;
 
     case GridType::CART:
-        return new CartGrid(comm, box_size, min_cell_size);
+        r = new CartGrid(comm, box_size, min_cell_size);
+        break;
 
     case GridType::GRAPH:
         //#ifdef HAVE_METIS
-        return new Graph(comm, box_size, min_cell_size);
+        r = new Graph(comm, box_size, min_cell_size);
         //#else
         //    throw std::invalid_argument("This ESPResSo has not been compiled
         //    with Metis support.");
         //#endif
+        break;
 
     case GridType::DIFF:
-        return new Diffusion(comm, box_size, min_cell_size);
+        r = new Diffusion(comm, box_size, min_cell_size);
+        break;
 
     case GridType::KD_TREE:
         //#ifdef HAVE_KDPART
-        return new KDTreeGrid(comm, box_size, min_cell_size);
+        r = new KDTreeGrid(comm, box_size, min_cell_size);
         //#else
         //    throw std::invalid_argument("This ESPResSo has not been compiled
         //    with the kdpart-library.");
         //#endif
+        break;
 
     case GridType::HYB_GP_DIFF:
         //#ifdef HAVE_METIS
-        return new HybridGPDiff(comm, box_size, min_cell_size);
+        r = new HybridGPDiff(comm, box_size, min_cell_size);
         //#else
         //    throw std::invalid_argument("This ESPResSo has not been compiled
         //    with Metis support.");
         //#endif
+        break;
 
     case GridType::GRIDBASED:
         //#ifdef HAVE_TETRA
-        return new GridBasedGrid(comm, box_size, min_cell_size, ep);
+        r = new GridBasedGrid(comm, box_size, min_cell_size, ep);
         //#else
         //    throw std::invalid_argument("This ESPRsSo has not been compiled
         //    with Tetra support.");
         //#endif
+        break;
 
     default:
         throw std::invalid_argument("Invalid grid type");
+        break;
+    }
+
+    if (r) {
+        r->after_construction();
+        return r;
+    } else {
+        throw std::runtime_error("Did not construct a grid?");
     }
 }
 } // namespace

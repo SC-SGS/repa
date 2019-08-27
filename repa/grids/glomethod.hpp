@@ -20,8 +20,6 @@
 
 #pragma once
 
-//#ifdef HAVE_METIS
-
 #include "globox.hpp"
 #include "pargrid.hpp"
 #include <array>
@@ -35,6 +33,7 @@ struct GloMethod : public ParallelLCGrid {
     GloMethod(const boost::mpi::communicator &comm,
               Vec3d box_size,
               double min_cell_size);
+    void after_construction() override;
     lidx n_local_cells() override;
     gidx n_ghost_cells() override;
     nidx n_neighbors() override;
@@ -80,11 +79,34 @@ protected:
     // local linearized index or an ghost linearized index.
     std::unordered_map<int, int> global_to_local;
 
+    // Called before init()
+    // To override by subclasses if necessary
+    // Partitioning is done, however all datastructures (but "partition")
+    // are still in the old state (inconsistent to the new partitioning).
+    virtual void pre_init(bool firstcall)
+    {
+    }
+
+    // Called after init()
+    // To override by subclasses if necessary
+    // Partitioning and init fully done.
+    virtual void post_init(bool firstcall)
+    {
+    }
+
+    // Callback for a new border cell
+    // Called during init()
+    // @param localcell local cell index of the border cell
+    // @apram foreigncell global index of the new ghost cell
+    // @param owner owner rank of the ghost cell
+    virtual void
+    init_new_foreign_cell(lidx localcell, int foreigncell, rank owner)
+    {
+    }
+
     // Reinitializes the subdomain and communication data structures
     // after repartitioning.
-    void init();
+    void init(bool firstcall = false);
 };
 } // namespace grids
 } // namespace repa
-
-//#endif // HAVE_METIS

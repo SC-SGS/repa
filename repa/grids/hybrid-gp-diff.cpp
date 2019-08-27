@@ -41,6 +41,11 @@ HybridGPDiff::HybridGPDiff(const boost::mpi::communicator &comm,
 {
 }
 
+void HybridGPDiff::after_construction()
+{
+    active_implementation->after_construction();
+}
+
 lidx HybridGPDiff::n_local_cells()
 {
     return active_implementation->n_local_cells();
@@ -125,7 +130,6 @@ void HybridGPDiff::switch_implementation()
 
     switch (switch_to_state) {
     case State::GRAPH:
-        state = State::GRAPH;
         active_implementation = &graph_impl;
         std::copy(std::begin(diff_impl.partition),
                   std::end(diff_impl.partition),
@@ -137,14 +141,15 @@ void HybridGPDiff::switch_implementation()
         graph_impl.init();
         break;
     case State::DIFF:
-        state = State::DIFF;
         active_implementation = &diff_impl;
         std::copy(std::begin(graph_impl.partition),
                   std::end(graph_impl.partition),
                   std::begin(diff_impl.partition));
-        diff_impl.reinit();
+        diff_impl.init();
         break;
     }
+
+    state = switch_to_state;
 }
 
 void HybridGPDiff::command(std::string s)
