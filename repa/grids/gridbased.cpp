@@ -98,27 +98,8 @@ void GridBasedGrid::init_partitioning()
     is_regular_grid = true;
 
     // Copy data from grid.hpp
-    for (int d = 0; d < 3; ++d) {
+    for (int d = 0; d < 3; ++d)
         gridpoint[d] = (node_pos[d] + 1) * (box_l[d] / node_grid[d]);
-        // NOTE:
-        // If gridpoint[d] intersects a cell midpoint, currently both processes
-        // feel responsible. We could round to circumvent this, i.e.
-        // gridpoint[d] = std::floor(gridpoint[d] / gbox.cell_size()[d])
-        //                    * gbox.cell_size()[d];
-        // But this way, we cannot use grid.hpp for initially resolving
-        // pos-to-proc, because its local_box_l would not be coherent to the
-        // domain boundaries chosen by this line of code. Moreover, this code
-        // implies a different "new" local_box_l for every process, thus making
-        // it hard to initially resolve pos-to-proc. (Note that we initially
-        // need to resolve all positions in the whole domain and not only the
-        // neighborhood.)
-        //
-        // Therefore, we use this hack and hope that no particle goes into the
-        // "gap" caused by it. These particles will be resolved to the wrong
-        // process.
-        if (gridpoint[d] < box_l[d])
-            gridpoint[d] -= 1e-6; // This is unlikely to hit any cell midpoint
-    }
 
     init_neighbors();
     init_octagons();
@@ -156,9 +137,10 @@ void GridBasedGrid::init_neighbors()
                 // Insert "r" as a new neighbor if yet unseen.
                 if (r == comm_cart.rank())
                     continue;
-                if (neighbor_idx.find(r) == neighbor_idx.end()) {
+                if (std::find(std::begin(neighbor_ranks),
+                              std::end(neighbor_ranks), r)
+                    == std::end(neighbor_ranks)) {
                     neighbor_ranks.push_back(r);
-                    neighbor_idx[r] = nneigh;
                     nneigh++;
                 }
 
@@ -169,6 +151,11 @@ void GridBasedGrid::init_neighbors()
             }
         }
     }
+
+    std::sort(std::begin(neighbor_ranks), std::end(neighbor_ranks));
+    // Inverse mapping
+    for (size_t i = 0; i < nneigh; ++i)
+        neighbor_idx[neighbor_ranks[i]] = i;
 
     if (neighcomm != MPI_COMM_NULL)
         MPI_Comm_free(&neighcomm);
@@ -197,6 +184,15 @@ void GridBasedGrid::init_octagons()
     }
 }
 
+bool GridBasedGrid::does_neighbor_accept(Vec3d pos)
+{
+    bool not_mine = false;
+    for (int i = 0; i < neighbor_doms.size(); ++i) {
+        not_mine = not_mine || neighbor_doms[i].contains(pos);
+    }
+    return not_mine;
+}
+
 void GridBasedGrid::reinit()
 {
     nlocalcells = 0;
@@ -210,14 +206,20 @@ void GridBasedGrid::reinit()
     for (int i = 0; i < gbox.ncells(); ++i) {
         auto midpoint = gbox.midpoint(i);
 
-        if (my_dom.contains(midpoint)) {
+        // We use "position_to_rank" here.
+        // Note that .contains() can be true for several octagons (see
+        // comment in "position_to_rank"). Hence, we use position_to_rank
+        // as tie-breaker.
+        // We, however, use my_dom.contains() here as a guard so
+        // "position_to_rank" does not throw.
+        if (my_dom.contains(midpoint)
+            && position_to_rank(midpoint.data()) == comm.rank()) {
             cells.push_back(i);
             global_to_local[i] = nlocalcells;
             nlocalcells++;
         }
     }
 
-    // FIXME: Support single cell
 #ifdef GRID_DEBUG
     printf("[%i] nlocalcells: %i\n", comm_cart.rank(), nlocalcells);
 #endif
@@ -271,6 +273,15 @@ void GridBasedGrid::reinit()
         return global_to_local[i];
 #endif
     };
+
+    // Note:
+    // Due to the definition of cell-ownership it can happen, that a
+    // exchange vector is empty.
+    // Therefore, we delete the empty ones here.
+    exchange_vec.erase(
+        std::remove_if(std::begin(exchange_vec), std::end(exchange_vec),
+                       [](const GhostExchangeDesc &r) { return r.dest == -1; }),
+        std::end(exchange_vec));
 
     for (auto &v : exchange_vec) {
         ENSURE(v.dest != -1);
@@ -371,20 +382,31 @@ rank GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
 
 rank GridBasedGrid::position_to_rank(double pos[3])
 {
-    // Do not attempt to resolve "pos" directly via grid.hpp.
     // Cell ownership is based on the cell midpoint.
-    // So we need to consider the cell midpoint of the
-    // owning cell here, too.
     auto mp = gbox.midpoint(gbox.cell_at_pos(pos));
 
-    if (is_regular_grid) {
-        // Use grid.hpp
+    // This is fragile. Hopefully, MPI_Cart_rank defines cell ownership
+    // as we do below...
+    if (is_regular_grid)
         return cart_topology_position_to_rank(mp);
+
+    // Cell ownerership is not uniquely determined by .contains()
+    // because this function also accepts points on the boundary of an octagon.
+    //
+    // We simply define the owner to be the one with the lowest rank
+    // among all processes where .contains() evaluates to true.
+    //
+    // Note, that neighbor_ranks is ordered by rank.
+    int i;
+    for (i = 0; i < n_neighbors() && neighbor_ranks[i] < comm.rank(); ++i) {
+        if (neighbor_doms[i].contains(mp))
+            return neighbor_ranks[i];
     }
 
     if (my_dom.contains(mp))
-        return comm_cart.rank();
-    for (int i = 0; i < n_neighbors(); ++i) {
+        return comm.rank();
+
+    for (; i < n_neighbors(); ++i) {
         if (neighbor_doms[i].contains(mp))
             return neighbor_ranks[i];
     }
