@@ -274,6 +274,15 @@ void GridBasedGrid::reinit()
 #endif
     };
 
+    // Note:
+    // Due to the definition of cell-ownership it can happen, that a
+    // exchange vector is empty.
+    // Therefore, we delete the empty ones here.
+    exchange_vec.erase(
+        std::remove_if(std::begin(exchange_vec), std::end(exchange_vec),
+                       [](const GhostExchangeDesc &r) { return r.dest == -1; }),
+        std::end(exchange_vec));
+
     for (auto &v : exchange_vec) {
         ENSURE(v.dest != -1);
 
