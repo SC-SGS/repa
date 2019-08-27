@@ -92,6 +92,14 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
              != std::end(gexds)));
     }
 
+    // Vice versa
+    for (const auto &gexd : gexds) {
+        BOOST_TEST(
+            (std::find_if(std::begin(neighborranks), std::end(neighborranks),
+                          [&gexd](auto rank) { return gexd.dest == rank; })
+             != std::end(neighborranks)));
+    }
+
     // Validity of exchange descriptors
     for (const auto &g : gexds) {
         BOOST_TEST((g.dest >= 0 && g.dest < comm.size()));
@@ -125,7 +133,10 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
         auto it
             = std::find_if(std::begin(gs), std::end(gs),
                            [rank](const auto &g) { return g.dest == rank; });
-        BOOST_TEST((it != std::end(gs)));
+        //BOOST_TEST((it != std::end(gs)));
+        if (it == std::end(gs)) {
+            abort();
+        }
         return *it;
     };
 
