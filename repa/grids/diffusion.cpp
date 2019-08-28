@@ -26,9 +26,9 @@
 #include <numeric>
 
 #include "util/ensure.hpp"
+#include "util/fill.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/push_back_unique.hpp"
-#include "util/fill.hpp"
 
 #ifndef NDEBUG
 #define DIFFUSION_DEBUG
@@ -121,15 +121,16 @@ namespace grids {
 
 void Diffusion::clear_unknown_cell_ownership()
 {
-    fill_if_index(
-        std::begin(partition), std::end(partition), -1, [this](size_t i) {
-            auto neighborhood = gbox.full_shell_neigh(i);
-            return std::none_of(std::begin(neighborhood),
-                                std::end(neighborhood), [this](int neighcell) {
-                                    return partition[neighcell]
-                                           == comm_cart.rank();
-                                });
-        });
+    auto is_my_cell = [this](lgidx neighcell) {
+        return partition[neighcell] == comm_cart.rank();
+    };
+
+    fill_if_index(std::begin(partition), std::end(partition), -1,
+                  [this, is_my_cell](size_t glocellidx) {
+                      auto neighborhood = gbox.full_shell_neigh(glocellidx);
+                      return std::none_of(std::begin(neighborhood),
+                                          std::end(neighborhood), is_my_cell);
+                  });
 }
 
 bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
