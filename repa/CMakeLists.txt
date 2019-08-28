@@ -71,6 +71,8 @@ target_link_libraries(repa
                              ${Boost_MPI_LIBRARIES}
                              ${Boost_SERIALIZATION_LIBRARIES})
 target_include_directories(repa PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(repa
+                       PRIVATE ${REPA_DEFAULT_COMPILE_OPTIONS})
 
 install(TARGETS repa
         LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)

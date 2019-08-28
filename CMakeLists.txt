@@ -24,7 +24,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_FLAGS "-Wno-cast-function-type -Wno-unused")
 
 option(WITH_KDPART "Build with ORB LB support" ON)
 option(WITH_P4EST "Build with SFC LB support" ON)
@@ -59,6 +58,24 @@ if(WITH_TESTS)
   list(APPEND REQ_BOOST_PACKAGES unit_test_framework)
 endif(WITH_TESTS)
 find_package(Boost "1.59.0" REQUIRED ${REQ_BOOST_PACKAGES})
+
+# Used for librepa itself as well as all tests
+# Enable warnings on gcc and clang. Add flags for other compilers below.
+set(REPA_DEFAULT_COMPILE_OPTIONS
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:
+      "-Wall"
+      "-Wextra"
+      "-Werror"
+      "-pedantic"
+      "-pedantic-errors"
+      #[[ Exclude common things ]]
+      "-Wno-unused-parameter"
+      "-Wno-sign-compare"
+      #[[ The following flags (without "no-") currently cause warnings
+          in the code. However, they are not enabled by Wall or Wextra.
+          Still list them here as disabled as a reminder. ]]
+      "-Wno-conversion"
+      "-Wno-sign-conversion" >)
 
 add_subdirectory(repa)
 

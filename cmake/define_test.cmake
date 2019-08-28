@@ -41,6 +41,8 @@ function(define_test)
 
     target_include_directories(${TEST_NAME}
                                PRIVATE ${CMAKE_SOURCE_DIR})
+    target_compile_options(${TEST_NAME}
+                           PRIVATE ${REPA_DEFAULT_COMPILE_OPTIONS})
 
     foreach(nproc RANGE 1 ${TEST_MAX_NPROC} 1)
         add_test(NAME "${TEST_NAME}-${nproc}"
