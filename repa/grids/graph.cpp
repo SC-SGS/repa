@@ -245,9 +245,9 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     // Number of wanted subdomains
     idx_t nparts = static_cast<idx_t>(comm_cart.size());
     // Target weights -- must add up to 1.0
-    std::vector<real_t> tpwgts(nparts, 1.0 / nparts);
+    std::vector<real_t> tpwgts(nparts, real_t{1.0} / nparts);
     // Imbalance tolerance
-    real_t ubvec = 1.05; // Recommended by ParMETIS doc
+    real_t ubvec = real_t{1.05}; // Recommended by ParMETIS doc
 
     // METIS options -- ParMETIS does not use METIS's options format
     // idx_t options[METIS_NOPTIONS];
