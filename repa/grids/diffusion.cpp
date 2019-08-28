@@ -28,6 +28,7 @@
 #include "util/ensure.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/push_back_unique.hpp"
+#include "util/fill.hpp"
 
 #ifndef NDEBUG
 #define DIFFUSION_DEBUG
@@ -62,23 +63,6 @@ void serialize(Archive &ar,
 }
 } // namespace serialization
 } // namespace boost
-
-/** Sets "data[i]" to "val" for all i in the half-open interval
- * ["first_index", "last_index").
- */
-template <typename T, typename It>
-static void
-fill_index_range(std::vector<T> &data, It first_index, It last_index, T val)
-{
-    using idx_type = typename It::value_type;
-    std::for_each(first_index, last_index, [&data, &val](idx_type i){
-#ifdef NDEBUG
-        data[i] = val;
-#else
-        data.at(i) = val;
-#endif
-    });
-}
 
 /*
  * Determines the status of each process (underloaded, overloaded)
@@ -137,17 +121,15 @@ namespace grids {
 
 void Diffusion::clear_unknown_cell_ownership()
 {
-    for (int i = 0; i < partition.size(); i++) {
-        // Erase partition entry if neither cell itself nor any neighbors
-        // are on this process
-        auto neighborhood = gbox.full_shell_neigh(i);
-        if (partition[i] != -1
-            && std::none_of(std::begin(neighborhood), std::end(neighborhood),
-                            [this](int cell) {
-                                return partition[cell] == comm_cart.rank();
-                            }))
-            partition[i] = -1;
-    }
+    fill_if_index(
+        std::begin(partition), std::end(partition), -1, [this](size_t i) {
+            auto neighborhood = gbox.full_shell_neigh(i);
+            return std::none_of(std::begin(neighborhood),
+                                std::end(neighborhood), [this](int neighcell) {
+                                    return partition[neighcell]
+                                           == comm_cart.rank();
+                                });
+        });
 }
 
 bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
