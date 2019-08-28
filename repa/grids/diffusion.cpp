@@ -70,13 +70,13 @@ template <typename T, typename It>
 static void
 fill_index_range(std::vector<T> &data, It first_index, It last_index, T val)
 {
-    for (; first_index != last_index; ++first_index) {
+    std::for_each(first_index, last_index, [&data, &val](i){
 #ifdef NDEBUG
-        data[*first_index] = val;
+        data[i] = val;
 #else
-        data.at(*first_index) = val;
+        data.at(i) = val;
 #endif
-    }
+    });
 }
 
 /*
