@@ -70,7 +70,8 @@ template <typename T, typename It>
 static void
 fill_index_range(std::vector<T> &data, It first_index, It last_index, T val)
 {
-    std::for_each(first_index, last_index, [&data, &val](i){
+    using idx_type = typename It::value_type;
+    std::for_each(first_index, last_index, [&data, &val](idx_type i){
 #ifdef NDEBUG
         data[i] = val;
 #else
