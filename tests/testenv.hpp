@@ -114,6 +114,14 @@ struct TEnv {
     void run(Func test_func)
     {
         for (const auto gt : grids) {
+            // Skip unavailable grids
+            if (!repa::has_grid_type(gt))
+                continue;
+
+            // Test consistency of parsing and to_string.
+            BOOST_TEST(
+                (repa::parse_grid_type(repa::grid_type_to_string(gt)) == gt));
+
             if (comm.rank() == 0) {
                 std::cout << "Checking grid '" << repa::grid_type_to_string(gt)
                           << "'" << std::endl;
