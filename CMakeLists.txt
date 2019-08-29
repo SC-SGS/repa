@@ -32,6 +32,7 @@ option(WITH_CGAL "Build with grid-based LB support" ON)
 option(WITH_KDPART "Build with kd grid support" ON)
 
 option(WITH_TESTS "Perform unit tests" ON)
+option(WITH_COVERAGE "Coverage for tests" ON)
 
 if(WITH_KDPART)
   find_package(KDPart REQUIRED)
@@ -76,6 +77,27 @@ set(REPA_DEFAULT_COMPILE_OPTIONS
           Still list them here as disabled as a reminder. ]]
       "-Wno-conversion"
       "-Wno-sign-conversion" >)
+
+if(WITH_TESTS AND WITH_COVERAGE)
+  if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+    message(SEND_ERROR "COVERAGE is only possible with Gnu Compiler Collection.")
+  else()
+    if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+      message(SEND_ERROR "COVERAGE is only compatible with BUILD_TYPE Debug."
+                        " Either disable coverage or set BUILD_TYPE to debug.")
+    else()
+      list(APPEND REPA_DEFAULT_COMPILE_OPTIONS
+                  "-g" "--coverage" "-fprofile-arcs" "-ftest-coverage" "-O0")
+      set(CMAKE_SHARED_LINKER_FLAGS "--coverage -fprofile-arcs -ftest-coverage")
+      set(CMAKE_EXE_LINKER_FLAGS "--coverage -fprofile-arcs -ftest-coverage")
+
+      add_custom_target(coverage
+                        COMMAND ${CMAKE_SOURCE_DIR}/util/coverage.sh
+                        WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+      message(STATUS "Coverage enabled. Use `ninja coverage' after build to execute coverage tests.")
+    endif()
+  endif()
+endif(WITH_TESTS AND WITH_COVERAGE)
 
 add_subdirectory(repa)
 
