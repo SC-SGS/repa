@@ -82,11 +82,6 @@ bool Octagon::contains(const Vec3d &p) const
     return __detail::contains(*oi, p);
 }
 
-bool Octagon::contains(double x, double y, double z) const
-{
-    return contains({{x, y, z}});
-}
-
 void Octagon::operator=(Octagon o)
 {
     swap(*this, o);

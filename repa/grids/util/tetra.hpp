@@ -41,7 +41,6 @@ struct Octagon {
     void operator=(Octagon o);
 
     bool contains(const Vec3d &p) const;
-    bool contains(double x, double y, double z) const;
 
 private:
     std::unique_ptr<__detail::_Octagon_Impl> oi;

@@ -184,15 +184,6 @@ void GridBasedGrid::init_octagons()
     }
 }
 
-bool GridBasedGrid::does_neighbor_accept(Vec3d pos)
-{
-    bool not_mine = false;
-    for (int i = 0; i < neighbor_doms.size(); ++i) {
-        not_mine = not_mine || neighbor_doms[i].contains(pos);
-    }
-    return not_mine;
-}
-
 void GridBasedGrid::reinit()
 {
     nlocalcells = 0;
