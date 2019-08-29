@@ -60,7 +60,7 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
     auto constant_one = [](int i, int j) { return 1.0; };
 
     auto cc = CallCounter{};
-    bool grid_changed;
+    bool grid_changed = false;
     BOOST_CHECK_NO_THROW(
         grid_changed = grid->repartition(all_ones, constant_one, std::ref(cc)));
 
