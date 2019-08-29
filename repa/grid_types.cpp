@@ -77,7 +77,7 @@ static const std::unordered_map<GridType, bool, enum_hash_compat>
 
 } // namespace
 
-inline GridType parse_grid_type(const std::string &desc)
+GridType parse_grid_type(const std::string &desc)
 {
     try {
         return grid_type_registry.at(desc);
