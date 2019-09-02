@@ -284,7 +284,9 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
 
 Diffusion::~Diffusion()
 {
-    if (neighcomm != MPI_COMM_NULL)
+    int finalized = 0;
+    MPI_Finalized(&finalized);
+    if (neighcomm != MPI_COMM_NULL && !finalized)
         MPI_Comm_free(&neighcomm);
 }
 
