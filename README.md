@@ -19,6 +19,7 @@ Note, that Boost::MPI must be compiled with the chosen MPI distribution.
 - [KDPart](https://github.com/hirschsn/kdpart) for kd-tree-based load-balancing method
 - [CGAL](https://www.cgal.org/) for grid-based load-balancing method
 - [ParMETIS](http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview) for graph-partitioning-based load-balancing method
+- [lahnerml's p4est](https://github.com/lahnerml/p4est/tree/p4est-ESPResSo-integration) for SFC-based grid
 
 Same note as above goes for KDPart and ParMETIS.
 
