@@ -278,7 +278,11 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     }
 
     // Copy idx_t to rank.
-    std::vector<rank> parti{part};
+    std::vector<rank> parti;
+    parti.reserve(part.size());
+    std::transform(std::begin(part), std::end(part), std::back_inserter(parti),
+                   [](const auto r) { return static_cast<rank>(r); });
+
 #ifdef GRAPH_DEBUG
     ENSURE(parti.size() == nvtx);
     for (auto r : parti) {
