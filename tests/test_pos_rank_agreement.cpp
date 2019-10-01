@@ -76,7 +76,7 @@ static void test_position(const boost::mpi::communicator &comm,
         // only having a node_grid of 1).
 
         // Check validity of resolved cell
-        int cidx;
+        int cidx = -1;
         BOOST_CHECK_NO_THROW(cidx = grid->position_to_cell_index(pos.data()));
 
         BOOST_TEST(((0 <= cidx) && (cidx < grid->n_local_cells())));
@@ -95,7 +95,7 @@ static void test_position(const boost::mpi::communicator &comm,
                             // stupid, but I currently don't care.
     if (std::find(std::begin(neighborranks), std::end(neighborranks), rank)
         != std::end(neighborranks)) {
-        int nidx;
+        int nidx = -1;
         BOOST_CHECK_NO_THROW(nidx = grid->position_to_neighidx(pos.data()));
         BOOST_TEST(((nidx >= 0) && (nidx <= grid->n_neighbors())));
     }
