@@ -32,8 +32,9 @@ $ apt-get install openmpi-bin libboost-all-dev libparmetis-dev libcgal-dev cmake
 
 Install dependencies:
 ```sh
-$ mkdir dep && cd dep
-$ sh -c 'git clone https://github.com/hirschsn/kdpart && cd kdpart && make'
+$ mkdir -p dep/src && cd dep/src
+$ sh -c 'git clone https://github.com/hirschsn/kdpart && cd kdpart && make && make install PREFIX="$(pwd)/../.."'
+$ sh -c 'git clone --recursive https://github.com/lahnerml/p4est --branch p4est-ESPResSo-integration && cd p4est && ./bootstrap && ./configure --prefix="$(pwd)/../.." && make && make install'
 $ DEP_DIR="$(pwd)"
 ```
 
@@ -42,7 +43,7 @@ $ DEP_DIR="$(pwd)"
 ```sh
 $ git clone https://github.com/hirschsn/repa && cd repa
 $ mkdir build && cd build
-$ cmake .. -DKDPART_DIR=$(DEP_DIR)/kdpart
+$ cmake .. -DKDPART_DIR="${DEP_DIR}" -DP4EST_DIR="${DEP_DIR}"
 $ make
 $ make test # Optional
 ```
