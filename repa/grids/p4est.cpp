@@ -391,7 +391,7 @@ rank P4estGrid::neighbor_rank(nidx i)
     return m_neighranks[i];
 }
 
-lgidx P4estGrid::cell_neighbor_index(lidx cellidx, int neigh)
+lgidx P4estGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
 {
     // Indices of the half shell neighbors in m_p8est_shell
     static const std::array<int, 14> hs_idxs

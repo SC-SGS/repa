@@ -40,7 +40,7 @@ struct GloMethod : public ParallelLCGrid {
     rank neighbor_rank(nidx i) override;
     Vec3d cell_size() override;
     Vec3i grid_size() override;
-    lgidx cell_neighbor_index(lidx cellidx, int neigh) override;
+    lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
     lidx position_to_cell_index(Vec3d pos) override;
     rank position_to_rank(Vec3d pos) override;

@@ -62,7 +62,7 @@ Vec3i GloMethod::grid_size()
     return gbox.grid_size();
 }
 
-lgidx GloMethod::cell_neighbor_index(lidx cellidx, int neigh)
+lgidx GloMethod::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
 {
     return global_to_local[gbox.neighbor(cells[cellidx], neigh)];
 }

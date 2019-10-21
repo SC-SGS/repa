@@ -457,7 +457,7 @@ Vec3i KDTreeGrid::grid_size()
     return m_global_domain_size;
 }
 
-lgidx KDTreeGrid::cell_neighbor_index(lidx cellidx, int neigh)
+lgidx KDTreeGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
 {
     // Preconditions
     if (cellidx < 0 || cellidx >= m_nb_of_local_cells) {

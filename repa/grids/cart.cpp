@@ -218,7 +218,7 @@ rank CartGrid::neighbor_rank(nidx i)
     return m_neighranks[i];
 }
 
-lgidx CartGrid::cell_neighbor_index(lidx cellidx, int neigh)
+lgidx CartGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
 {
     auto c = unlinearize(cellidx);
     auto nc = util::vadd_mod(c, util::NeighborOffsets3D::raw[neigh],

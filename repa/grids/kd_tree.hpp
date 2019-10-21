@@ -197,7 +197,7 @@ public:
 
     virtual Vec3i grid_size() override;
 
-    virtual lgidx cell_neighbor_index(lidx cellidx, int neigh) override;
+    virtual lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
 
     virtual std::vector<GhostExchangeDesc> get_boundary_info() override;
 

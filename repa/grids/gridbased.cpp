@@ -332,7 +332,7 @@ rank GridBasedGrid::neighbor_rank(nidx i)
     return neighbor_ranks[i];
 }
 
-lgidx GridBasedGrid::cell_neighbor_index(lidx cellidx, int neigh)
+lgidx GridBasedGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
 {
     return global_to_local.at(gbox.neighbor(cells[cellidx], neigh));
 }

@@ -76,7 +76,7 @@ Vec3i HybridGPDiff::grid_size()
     return active_implementation->grid_size();
 }
 
-lgidx HybridGPDiff::cell_neighbor_index(lidx cellidx, int neigh)
+lgidx HybridGPDiff::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
 {
     return active_implementation->cell_neighbor_index(cellidx, neigh);
 }

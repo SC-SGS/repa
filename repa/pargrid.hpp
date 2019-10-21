@@ -137,7 +137,7 @@ struct ParallelLCGrid {
      * @throws std::domain_error if 0 > cellidx or cellidx >=
      * get_n_local_cells() or neigh < 0 or neigh >= 26.
      */
-    virtual lgidx cell_neighbor_index(lidx cellidx, int neigh) = 0;
+    virtual lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) = 0;
 
     /** Returns the ghost exchange info.
      * @see GhostExchangeDesc
