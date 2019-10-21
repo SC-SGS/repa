@@ -31,6 +31,7 @@
 #include "util/ensure.hpp"
 #include "util/push_back_unique.hpp"
 #include "util/all_gatherv.hpp"
+#include "util/vector_coerce.hpp"
 
 #define MPI_IDX_T boost::mpi::get_mpi_datatype(static_cast<idx_t>(0))
 
@@ -278,11 +279,8 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
         }
     }
 
-    // Copy idx_t to rank.
-    std::vector<rank> parti;
-    parti.reserve(part.size());
-    std::transform(std::begin(part), std::end(part), std::back_inserter(parti),
-                   [](const auto r) { return static_cast<rank>(r); });
+    // Copy idx_t to rank. Avoid copying if idx_t and rank are the same types.
+    auto parti = util::coerce_vector_to<rank>(part);
 
 #ifdef GRAPH_DEBUG
     ENSURE(parti.size() == nvtx);
@@ -297,7 +295,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
               static_cast<rank>(-1));
 #endif
 
-    util::all_gatherv_displ(comm_cart, parti, vtxdist, partition);
+    util::all_gatherv_displ(comm_cart, parti.cref(), vtxdist, partition);
 
 #ifdef GRAPH_DEBUG
     ENSURE(partition.size() == nglocells);
@@ -312,6 +310,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
         std::begin(partition), std::end(partition), comm_cart.rank()));
 
     std::vector<int> nlcs(comm_cart.size());
+
     MPI_Allgather(&nlc, 1, MPI_INT, nlcs.data(), 1, MPI_INT, comm_cart);
 
     if (comm_cart.rank() == 0) {
