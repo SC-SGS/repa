@@ -30,6 +30,7 @@
 
 #include "util/ensure.hpp"
 #include "util/push_back_unique.hpp"
+#include "util/all_gatherv.hpp"
 
 #define MPI_IDX_T boost::mpi::get_mpi_datatype(static_cast<idx_t>(0))
 
@@ -293,18 +294,11 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
 #ifdef GRAPH_DEBUG
     std::fill(std::begin(partition), std::end(partition),
-              static_cast<idx_t>(-1));
+              static_cast<rank>(-1));
 #endif
 
-    // MPI expects integer recvcounts and displacements for MPI_Allgatherv.
-    // Copy idx_t vector to int vector.
-    std::vector<int> recvcount(comm_cart.size()), displ(comm_cart.size());
-    for (size_t i = 0; i < comm_cart.size(); ++i) {
-        recvcount[i] = static_cast<int>(vtxdist[i + 1] - vtxdist[i]);
-        displ[i] = static_cast<int>(vtxdist[i]);
-    }
-    MPI_Allgatherv(parti.data(), nvtx, MPI_IDX_T, partition.data(),
-                   recvcount.data(), displ.data(), MPI_IDX_T, comm_cart);
+    util::all_gatherv_displ(comm_cart, parti, vtxdist, partition);
+
 #ifdef GRAPH_DEBUG
     ENSURE(partition.size() == nglocells);
     for (int r : partition) {
