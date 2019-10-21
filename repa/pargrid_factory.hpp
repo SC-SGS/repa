@@ -33,6 +33,8 @@ namespace repa {
  * @param box_size Domain
  * @param min_cell_size Minimum cell size
  * @param paramq optional pointer to ParamQuery object
+ * 
+ * @throws UnknwonGridTypeError if grid type is unknown.
  */
 std::unique_ptr<grids::ParallelLCGrid>
 make_pargrid(GridType gt,

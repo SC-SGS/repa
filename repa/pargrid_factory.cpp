@@ -92,7 +92,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         break;
 
     default:
-        throw std::invalid_argument("Invalid grid type");
+        throw UnknownGridTypeError(std::to_string(static_cast<int>(gt)));
         break;
     }
 
