@@ -19,6 +19,7 @@
 include(define_test)
 
 define_test(NAME test_grid_types SRC test_grid_types.cpp)
+define_test(NAME test_unknown_exceptions SRC test_unknown_exceptions.cpp)
 define_test(NAME test_repart SRC test_repart.cpp)
 define_test(NAME test_extra_params SRC test_extra_params.cpp)
 define_test(NAME test_cell_numbers SRC test_cell_numbers.cpp)
