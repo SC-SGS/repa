@@ -147,12 +147,10 @@ struct GlobalBox {
 
     /** Returns the index of a neighboring cell
      * @param index index of the center cell
-     * @param neigh index (0, 27] of the neighbor
+     * @param neigh index [0, 27) of the neighbor
      */
     inline index_type_1d neighbor(index_type_1d index, int neigh) const
     {
-        if (neigh < 0 || neigh >= 27)
-            throw std::out_of_range("Neighbor index out of range.");
         auto idx = unlinearize(index);
         const auto &no = util::NeighborOffsets3D::raw[neigh];
         auto ni = index + m_neigh_offset_1d[neigh];

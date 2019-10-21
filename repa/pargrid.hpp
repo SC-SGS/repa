@@ -135,7 +135,7 @@ struct ParallelLCGrid {
      * @param neigh Neighbor
      *
      * @throws std::domain_error if 0 > cellidx or cellidx >=
-     * get_n_local_cells() or neigh < 0 or neigh >= 26.
+     * get_n_local_cells().
      */
     virtual lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) = 0;
 
