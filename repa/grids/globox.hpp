@@ -145,16 +145,6 @@ struct GlobalBox {
                        });
     }
 
-    /** Wraps 3d indices to their periodic image in the primary box.
-     */
-    inline void apply_pbc(Vec3<index_type_3d> &cell) const noexcept
-    {
-        for (int d = 0; d < 3; d++) {
-            cell[d] -= std::floor(cell[d] / static_cast<double>(m_cell_grid[d]))
-                       * m_cell_grid[d];
-        }
-    }
-
     /** Returns the index of a neighboring cell
      * @param index index of the center cell
      * @param neigh index (0, 27] of the neighbor
