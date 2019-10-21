@@ -94,7 +94,7 @@ bool KDTreeGrid::is_ghost_cell(const Vec3i &cell, const Vec3i &ghostdomain_size)
 }
 
 Vec3i KDTreeGrid::absolute_position_to_cell_position(
-    const double absolute_position[3])
+    const Vec3d &absolute_position)
 {
 #ifndef NDEBUG
     for (int dim = 0; dim < 3; dim++) {
@@ -488,7 +488,7 @@ std::vector<GhostExchangeDesc> KDTreeGrid::get_boundary_info()
     return m_boundary_info;
 }
 
-lidx KDTreeGrid::position_to_cell_index(const double pos[3])
+lidx KDTreeGrid::position_to_cell_index(Vec3d pos)
 {
     Vec3i cellvector = absolute_position_to_cell_position(pos);
 
@@ -508,7 +508,7 @@ lidx KDTreeGrid::position_to_cell_index(const double pos[3])
     return lidx;
 }
 
-rank KDTreeGrid::position_to_rank(const double pos[3])
+rank KDTreeGrid::position_to_rank(Vec3d pos)
 {
     Vec3i cellvector = absolute_position_to_cell_position(pos);
 
@@ -520,7 +520,7 @@ rank KDTreeGrid::position_to_rank(const double pos[3])
     return m_kdtree.responsible_process(cellvector);
 }
 
-nidx KDTreeGrid::position_to_neighidx(const double pos[3])
+nidx KDTreeGrid::position_to_neighidx(Vec3d pos)
 {
     Vec3i cellvector = absolute_position_to_cell_position(pos);
 

@@ -86,17 +86,17 @@ std::vector<GhostExchangeDesc> HybridGPDiff::get_boundary_info()
     return active_implementation->get_boundary_info();
 }
 
-lidx HybridGPDiff::position_to_cell_index(const double pos[3])
+lidx HybridGPDiff::position_to_cell_index(Vec3d pos)
 {
     return active_implementation->position_to_cell_index(pos);
 }
 
-rank HybridGPDiff::position_to_rank(const double pos[3])
+rank HybridGPDiff::position_to_rank(Vec3d pos)
 {
     return active_implementation->position_to_rank(pos);
 }
 
-nidx HybridGPDiff::position_to_neighidx(const double pos[3])
+nidx HybridGPDiff::position_to_neighidx(Vec3d pos)
 {
     return active_implementation->position_to_neighidx(pos);
 }

@@ -63,7 +63,7 @@ static void test_position(const boost::mpi::communicator &comm,
                           repa::grids::ParallelLCGrid *grid,
                           const repa::Vec3d &pos)
 {
-    int rank = grid->position_to_rank(pos.data());
+    int rank = grid->position_to_rank(pos);
 
     // Check correctness of "rank"
     BOOST_TEST(((0 <= rank) && (rank < comm.size())));
@@ -77,14 +77,14 @@ static void test_position(const boost::mpi::communicator &comm,
 
         // Check validity of resolved cell
         int cidx = -1;
-        BOOST_CHECK_NO_THROW(cidx = grid->position_to_cell_index(pos.data()));
+        BOOST_CHECK_NO_THROW(cidx = grid->position_to_cell_index(pos));
 
         BOOST_TEST(((0 <= cidx) && (cidx < grid->n_local_cells())));
     }
     else {
         // Check that all other processes refuse to resolve "pos"
         // to a cell index.
-        BOOST_CHECK_EXCEPTION(grid->position_to_cell_index(pos.data()),
+        BOOST_CHECK_EXCEPTION(grid->position_to_cell_index(pos),
                               std::domain_error, ignore_message);
     }
 
@@ -96,7 +96,7 @@ static void test_position(const boost::mpi::communicator &comm,
     if (std::find(std::begin(neighborranks), std::end(neighborranks), rank)
         != std::end(neighborranks)) {
         int nidx = -1;
-        BOOST_CHECK_NO_THROW(nidx = grid->position_to_neighidx(pos.data()));
+        BOOST_CHECK_NO_THROW(nidx = grid->position_to_neighidx(pos));
         BOOST_TEST(((nidx >= 0) && (nidx <= grid->n_neighbors())));
     }
 

@@ -91,9 +91,9 @@ struct P4estGrid : public ParallelLCGrid {
     Vec3i grid_size() override;
     lgidx cell_neighbor_index(lidx cellidx, int neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
-    lidx position_to_cell_index(const double pos[3]) override;
-    rank position_to_rank(const double pos[3]) override;
-    nidx position_to_neighidx(const double pos[3]) override;
+    lidx position_to_cell_index(Vec3d pos) override;
+    rank position_to_rank(Vec3d pos) override;
+    nidx position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;

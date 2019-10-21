@@ -39,7 +39,7 @@ test_exactly_one_assigned_process(const boost::mpi::communicator &comm,
     int cellidx;
     bool has_cell = false;
     try {
-        cellidx = grid->position_to_cell_index(pos.data());
+        cellidx = grid->position_to_cell_index(pos);
         has_cell = true;
     }
     catch (...) {

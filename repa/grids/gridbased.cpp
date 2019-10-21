@@ -40,7 +40,7 @@ namespace grids {
 rank GridBasedGrid::gloidx_to_rank(int gloidx)
 {
     auto m = gbox.midpoint(gloidx);
-    return position_to_rank(m.data());
+    return position_to_rank(m);
 }
 
 std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank r)
@@ -204,7 +204,7 @@ void GridBasedGrid::reinit()
         // We, however, use my_dom.contains() here as a guard so
         // "position_to_rank" does not throw.
         if (my_dom.contains(midpoint)
-            && position_to_rank(midpoint.data()) == comm.rank()) {
+            && position_to_rank(midpoint) == comm.rank()) {
             cells.push_back(i);
             global_to_local[i] = nlocalcells;
             nlocalcells++;
@@ -342,7 +342,7 @@ std::vector<GhostExchangeDesc> GridBasedGrid::get_boundary_info()
     return exchange_vec;
 }
 
-lidx GridBasedGrid::position_to_cell_index(const double pos[3])
+lidx GridBasedGrid::position_to_cell_index(Vec3d pos)
 {
     lidx c;
     try {
@@ -373,7 +373,7 @@ rank GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
     return rank;
 }
 
-rank GridBasedGrid::position_to_rank(const double pos[3])
+rank GridBasedGrid::position_to_rank(Vec3d pos)
 {
     // Cell ownership is based on the cell midpoint.
     auto mp = gbox.midpoint(gbox.cell_at_pos(pos));
@@ -408,7 +408,7 @@ rank GridBasedGrid::position_to_rank(const double pos[3])
                             "the neighborhood of this process.");
 }
 
-nidx GridBasedGrid::position_to_neighidx(const double pos[3])
+nidx GridBasedGrid::position_to_neighidx(Vec3d pos)
 {
     rank rank = position_to_rank(pos);
     try {

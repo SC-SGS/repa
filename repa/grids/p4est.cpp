@@ -419,7 +419,7 @@ std::vector<GhostExchangeDesc> P4estGrid::get_boundary_info()
     return m_exdescs;
 }
 
-lidx P4estGrid::position_to_cell_index(const double pos[3])
+lidx P4estGrid::position_to_cell_index(Vec3d pos)
 {
     auto shellidxcomp = [](const impl::LocalShell &s, int idx) {
         int64_t sidx = impl::cell_morton_idx(s.coord);
@@ -427,7 +427,7 @@ lidx P4estGrid::position_to_cell_index(const double pos[3])
     };
 
     auto needle
-        = impl::pos_morton_idx({pos[0], pos[1], pos[2]}, m_inv_cell_size);
+        = impl::pos_morton_idx(pos, m_inv_cell_size);
 
     auto shell_local_end = std::begin(m_p8est_shell) + n_local_cells();
     auto it
@@ -445,19 +445,19 @@ lidx P4estGrid::position_to_cell_index(const double pos[3])
         throw std::domain_error("Pos not in local domain.");
 }
 
-rank P4estGrid::position_to_rank(const double pos[3])
+rank P4estGrid::position_to_rank(Vec3d pos)
 {
     // Cell of pos might not be known on this process (not in m_p8est_shell).
     // Therefore, use the global first cell indices.
     auto it = std::upper_bound(
         std::begin(m_node_first_cell_idx), std::end(m_node_first_cell_idx),
-        impl::pos_morton_idx({pos[0], pos[1], pos[2]}, m_inv_cell_size),
+        impl::pos_morton_idx(pos, m_inv_cell_size),
         [](int i, int64_t idx) { return i < idx; });
 
     return std::distance(std::begin(m_node_first_cell_idx), it) - 1;
 }
 
-nidx P4estGrid::position_to_neighidx(const double pos[3])
+nidx P4estGrid::position_to_neighidx(Vec3d pos)
 {
     // Determine the neighbor rank for locally known cell
     // Using position_to_rank here as it is the simpler code. Could also

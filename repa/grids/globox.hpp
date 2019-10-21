@@ -147,7 +147,7 @@ struct GlobalBox {
 
     /** Wraps 3d indices to their periodic image in the primary box.
      */
-    inline void apply_pbc(index_type_3d cell[3]) const noexcept
+    inline void apply_pbc(Vec3<index_type_3d> &cell) const noexcept
     {
         for (int d = 0; d < 3; d++) {
             cell[d] -= std::floor(cell[d] / static_cast<double>(m_cell_grid[d]))
@@ -199,7 +199,7 @@ struct GlobalBox {
     /** Returns the index of the cell at position "pos".
      * @param pos coordinates of the position in [0.0, box_l[i])
      */
-    inline index_type_1d cell_at_pos(const double pos[3]) const noexcept
+    inline index_type_1d cell_at_pos(Vec3d pos) const noexcept
     {
         cell_index_type cell;
         for (int d = 0; d < 3; d++) {
