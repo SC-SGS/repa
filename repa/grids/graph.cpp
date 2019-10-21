@@ -23,14 +23,15 @@
 #include "graph.hpp"
 #include <algorithm>
 #include <boost/mpi.hpp>
+#include <boost/mpi/collectives.hpp>
 #include <boost/mpi/datatype.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/vector.hpp>
 #include <mpi.h>
 
+#include "util/all_gatherv.hpp"
 #include "util/ensure.hpp"
 #include "util/push_back_unique.hpp"
-#include "util/all_gatherv.hpp"
 #include "util/vector_coerce.hpp"
 
 #define MPI_IDX_T boost::mpi::get_mpi_datatype(static_cast<idx_t>(0))
@@ -306,12 +307,10 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 #endif
 
 #ifdef GRAPH_DEBUG
-    int nlc = static_cast<int>(std::count(
-        std::begin(partition), std::end(partition), comm_cart.rank()));
-
-    std::vector<int> nlcs(comm_cart.size());
-
-    MPI_Allgather(&nlc, 1, MPI_INT, nlcs.data(), 1, MPI_INT, comm_cart);
+    auto nlc = std::count(std::begin(partition), std::end(partition),
+                          comm_cart.rank());
+    std::vector<decltype(nlc)> nlcs;
+    boost::mpi::all_gather(comm, nlc, nlcs);
 
     if (comm_cart.rank() == 0) {
         std::cout << "Partitioning result:";
