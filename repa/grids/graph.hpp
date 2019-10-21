@@ -22,12 +22,8 @@
 
 //#ifdef HAVE_METIS
 
-#include "globox.hpp"
 #include "glomethod.hpp"
 #include "pargrid.hpp"
-#include <array>
-#include <parmetis.h>
-#include <unordered_map>
 
 namespace repa {
 namespace grids {

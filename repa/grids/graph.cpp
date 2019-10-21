@@ -28,6 +28,7 @@
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/vector.hpp>
 #include <mpi.h>
+#include <parmetis.h>
 
 #include "util/all_gatherv.hpp"
 #include "util/ensure.hpp"
