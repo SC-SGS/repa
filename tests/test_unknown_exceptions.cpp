@@ -66,12 +66,12 @@ BOOST_AUTO_TEST_CASE(test_unknown_exceptions)
 
     boost::mpi::environment env;
     boost::mpi::communicator comm;
-    BOOST_CHECK_EXCEPTION(repa::make_pargrid(gt, comm, {{1., 1., 1.}}, 1.),
+    BOOST_CHECK_EXCEPTION(repa::make_pargrid(gt, comm, {1., 1., 1.}, 1.),
                           repa::UnknownGridTypeError,
                           message_unknown_grid_type_ff);
 
     gt = repa::GridType::CART;
-    auto g = repa::make_pargrid(gt, comm, {{1., 1., 1.}}, 1. / (comm.size()));
+    auto g = repa::make_pargrid(gt, comm, {1., 1., 1.}, 1. / (comm.size()));
     BOOST_CHECK_EXCEPTION(g->command("unknown"),
                           repa::grids::ParallelLCGrid::UnknwonCommandError,
                           message_unknown_command);

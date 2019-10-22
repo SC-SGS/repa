@@ -24,10 +24,136 @@
 #include <type_traits>
 #include <vector>
 
+#include <boost/serialization/array.hpp>
+
 namespace repa {
 
+template <typename T, size_t N>
+struct Vec {
+    typedef T value_type;
+    typedef T *pointer;
+    typedef const T *const_pointer;
+
+    typedef T &reference;
+    typedef const T &const_reference;
+
+    typedef std::array<T, N> underlying_type;
+    typedef typename underlying_type::size_type size_type;
+    typedef typename underlying_type::difference_type difference_type;
+
+    typedef typename underlying_type::iterator iterator;
+    typedef typename underlying_type::reverse_iterator reverse_iterator;
+    typedef typename underlying_type::const_iterator const_iterator;
+    typedef
+        typename underlying_type::const_reverse_iterator const_reverse_iterator;
+
+    Vec(const underlying_type &a) : a(a)
+    {
+    }
+
+    template <typename... Args>
+    Vec(Args... values) : a({{values...}})
+    {
+    }
+
+    constexpr iterator begin()
+    {
+        return a.begin();
+    }
+    constexpr const_iterator cbegin() const
+    {
+        return a.cbegin();
+    }
+    constexpr iterator end()
+    {
+        return a.end();
+    }
+    constexpr const_iterator end() const
+    {
+        return a.cend();
+    }
+
+    constexpr bool empty() const
+    {
+        return a.empty();
+    }
+    constexpr size_type size() const
+    {
+        return a.size();
+    }
+    constexpr size_type max_size() const
+    {
+        return a.max_size();
+    }
+    constexpr T *data()
+    {
+        return a.data();
+    }
+    constexpr const T *data() const
+    {
+        return a.data();
+    }
+
+    constexpr T &operator[](size_type i)
+    {
+        return a[i];
+    }
+    constexpr const T &operator[](size_type i) const
+    {
+        return a[i];
+    }
+
+    bool operator==(const Vec &other) const
+    {
+        return a == other.a;
+    }
+    bool operator!=(const Vec &other) const
+    {
+        return a != other.a;
+    }
+    bool operator<(const Vec &other) const
+    {
+        return a < other.a;
+    }
+    bool operator<=(const Vec &other) const
+    {
+        return a <= other.a;
+    }
+    bool operator>(const Vec &other) const
+    {
+        return a > other.a;
+    }
+    bool operator>=(const Vec &other) const
+    {
+        return a >= other.a;
+    }
+
+    template <typename Archive>
+    void serialize_to(Archive &ar) const
+    {
+        ar << a;
+    }
+    template <typename Archive>
+    void deserialize_from(Archive &ar)
+    {
+        ar >> a;
+    }
+
+    const underlying_type &as_array() const
+    {
+        return a;
+    }
+    underlying_type &as_array()
+    {
+        return a;
+    }
+
+private:
+    std::array<T, N> a;
+};
+
 template <typename T>
-using Vec3 = std::array<T, 3>;
+using Vec3 = Vec<T, 3>;
 
 typedef Vec3<int> Vec3i;
 typedef Vec3<double> Vec3d;
@@ -49,8 +175,7 @@ struct IntegralRange {
     typedef T value_type;
 
     template <typename S,
-              typename
-              = typename std::enable_if_t<std::is_integral<S>::value>>
+              typename = typename std::enable_if_t<std::is_integral<S>::value>>
     inline IntegralRange(S v) : value(static_cast<T>(v))
     {
         // Evaluate range check on wide base type.
@@ -70,3 +195,29 @@ private:
 typedef IntegralRange<std::int_fast32_t, 0, 26> fs_neighidx;
 
 } // namespace repa
+
+namespace boost {
+namespace serialization {
+template <typename Archive, typename T, size_t N>
+void load(Archive &ar,
+          repa::Vec<T, N> &v,
+          const unsigned int /* file_version */)
+{
+    v.deserialize_from(ar);
+}
+
+template <typename Archive, typename T, size_t N>
+void save(Archive &ar,
+          const repa::Vec<T, N> &v,
+          const unsigned int /* file_version */)
+{
+    v.serialize_to(ar);
+}
+
+template <class Archive, typename T, size_t N>
+void serialize(Archive &ar, repa::Vec<T, N> &v, const unsigned int file_version)
+{
+    split_free(ar, v, file_version);
+}
+} // namespace serialization
+} // namespace boost

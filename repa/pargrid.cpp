@@ -27,7 +27,7 @@ namespace grids {
 static MPI_Comm
 make_cartesian_communicator(const boost::mpi::communicator &comm)
 {
-    Vec3i dims = {{0, 0, 0}}, periods = {{1, 1, 1}};
+    Vec3i dims{0, 0, 0}, periods{1, 1, 1};
     MPI_Dims_create(comm.size(), 3, dims.data());
 
     MPI_Comm _comm_cart;

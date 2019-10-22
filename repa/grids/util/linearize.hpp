@@ -54,9 +54,9 @@ constexpr T linearize(const Vec3<T> &c, const Vec3<T> &grid)
 template <typename Idx3d, typename Idx1d>
 constexpr Vec3<Idx3d> unlinearize(Idx1d cidx, const Vec3<Idx3d> &grid)
 {
-    return {{static_cast<Idx3d>((cidx / grid[2]) / grid[1]),
+    return {static_cast<Idx3d>((cidx / grid[2]) / grid[1]),
              static_cast<Idx3d>((cidx / grid[2]) % grid[1]),
-             static_cast<Idx3d>(cidx % grid[2])}};
+             static_cast<Idx3d>(cidx % grid[2])};
 }
 
 template <typename T>

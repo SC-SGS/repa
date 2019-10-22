@@ -66,7 +66,7 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank r)
         for (off[1] = 0; off[1] <= 1; ++off[1]) {
             for (off[2] = 0; off[2] <= 1; ++off[2]) {
                 int rank;
-                Vec3i nc, mirror = {{0, 0, 0}};
+                Vec3i nc, mirror{0, 0, 0};
 
                 for (int d = 0; d < 3; ++d) {
                     nc[d] = c[d] - off[d];
@@ -431,7 +431,7 @@ Vec3i GridBasedGrid::grid_size()
 
 Vec3d GridBasedGrid::get_subdomain_center()
 {
-    Vec3d c = {{0., 0., 0.}};
+    Vec3d c{0., 0., 0.};
 
     // If no particles: Use subdomain midpoint.
     // (Calculated as mispoint of all cells).

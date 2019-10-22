@@ -68,7 +68,7 @@ struct TEnv {
     TEnv(repa::ExtraParams ep = repa::ExtraParams{}) : mings(1.0), ep(ep)
     {
         // Devise some appropriately sized grid suitable for all methods.
-        repa::Vec3i dims = {{0, 0, 0}};
+        repa::Vec3i dims{0, 0, 0};
         MPI_Dims_create(comm.size(), 3, dims.data());
         for (size_t i = 0; i < box.size(); ++i)
             box[i] = mings * 5 * (dims[i] + 1);

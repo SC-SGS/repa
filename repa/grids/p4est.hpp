@@ -105,7 +105,7 @@ private:
     // Number of grid cells in total and per tree.
     Vec3i m_grid_size, m_brick_size;
     // Cell size (box_l / m_grid_size)
-    std::array<double, 3> m_cell_size, m_inv_cell_size;
+    Vec3d m_cell_size, m_inv_cell_size;
 
     // p4est data structures
     std::unique_ptr<p8est_connectivity_t> m_p8est_conn;

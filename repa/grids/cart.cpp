@@ -174,7 +174,7 @@ void CartGrid::prepare_communication()
         // Receive in opposite direction. Otherwise send and receive order on
         // the processes won't match.
         {
-            Vec3i opposite = {{-offset[0], -offset[1], -offset[2]}};
+            Vec3i opposite{-offset[0], -offset[1], -offset[2]};
             auto neigh = proc_offset_to_rank(opposite);
             auto i = neighbor_idx(neigh);
             m_exdescs[i].dest = neigh;

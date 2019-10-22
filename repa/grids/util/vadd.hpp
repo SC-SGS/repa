@@ -29,7 +29,7 @@ namespace util {
 template <typename T>
 Vec3<T> vadd(const Vec3<T> &a, const Vec3<T> &b)
 {
-    return {{a[0] + b[0], a[1] + b[1], a[2] + b[2]}};
+    return {a[0] + b[0], a[1] + b[1], a[2] + b[2]};
 }
 
 template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>

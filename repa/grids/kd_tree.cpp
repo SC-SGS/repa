@@ -34,7 +34,7 @@ namespace grids {
 
 Vec3i KDTreeGrid::grid_dimensions()
 {
-    Vec3i grid_dimensions = {{1, 1, 1}};
+    Vec3i grid_dimensions = {1, 1, 1};
     for (int dim = 0; dim < 3; dim++) {
         if (max_range > ROUND_ERROR_PREC * box_l[dim]) {
             grid_dimensions[dim] = std::max<int>(box_l[dim] / max_range, 1);
@@ -417,9 +417,9 @@ KDTreeGrid::KDTreeGrid(const boost::mpi::communicator &comm,
     // Use constant load to make initial tree evenly distributed
     auto load_function = [](Vec3i) { return 1; };
 
-    m_kdtree = kdpart::make_parttree(nb_of_subdomains, Vec3i{{0, 0, 0}},
-                                     m_global_domain_size, load_function,
-                                     kdpart::quality_splitting);
+    m_kdtree = kdpart::make_parttree(nb_of_subdomains, {0, 0, 0},
+                                     m_global_domain_size.as_array(),
+                                     load_function, kdpart::quality_splitting);
 
     reinitialize();
 }
@@ -513,7 +513,7 @@ rank KDTreeGrid::position_to_rank(Vec3d pos)
         throw std::domain_error("Position not within global domain");
     }
 
-    return m_kdtree.responsible_process(cellvector);
+    return m_kdtree.responsible_process(cellvector.as_array());
 }
 
 nidx KDTreeGrid::position_to_neighidx(Vec3d pos)
@@ -525,7 +525,7 @@ nidx KDTreeGrid::position_to_neighidx(Vec3d pos)
         throw std::domain_error("Position is not in the global ghostdomain");
     }
 
-    int rank = m_kdtree.responsible_process(cellvector);
+    int rank = m_kdtree.responsible_process(cellvector.as_array());
     int nidx = m_neighbor_processes_inverse[rank];
     if (nidx == -1) {
         throw std::domain_error("Position not within neighbor a process");
