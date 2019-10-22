@@ -22,7 +22,6 @@
 
 //#ifdef HAVE_KDPART
 
-#include <array>
 #include <cstring>
 #include <mpi.h>
 #include <tuple>
