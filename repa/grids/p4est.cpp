@@ -469,7 +469,7 @@ nidx P4estGrid::position_to_neighidx(Vec3d pos)
     return std::distance(std::begin(m_neighranks), it);
 }
 
-std::array<double, 3> P4estGrid::cell_size()
+Vec3d P4estGrid::cell_size()
 {
     return m_cell_size;
 }

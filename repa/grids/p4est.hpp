@@ -58,7 +58,7 @@ struct LocalShell {
           rank(rank),
           shell(shell),
           boundary(boundary),
-          coord({{x, y, z}})
+          coord(x, y, z)
     {
         neighbor.fill(-1);
     }
@@ -87,7 +87,7 @@ struct P4estGrid : public ParallelLCGrid {
     gidx n_ghost_cells() override;
     nidx n_neighbors() override;
     rank neighbor_rank(nidx i) override;
-    std::array<double, 3> cell_size() override;
+    Vec3d cell_size() override;
     Vec3i grid_size() override;
     lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
