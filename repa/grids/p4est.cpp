@@ -401,7 +401,7 @@ lgidx P4estGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
     static const std::array<int, 13> fs_idxs
         = {{0, 2, 4, 6, 7, 10, 11, 14, 15, 18, 19, 20, 21}};
 
-    if (cellidx < 0 || cellidx > n_local_cells())
+    if (cellidx < 0 || cellidx >= n_local_cells())
         throw std::domain_error("Cell index outside of local subdomain");
 
     if (neigh == 0)
