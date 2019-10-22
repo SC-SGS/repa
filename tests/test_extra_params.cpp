@@ -41,7 +41,7 @@ static struct EPCallCount {
     repa::Vec3d operator()()
     {
         ncalls++;
-        return {0, 0, 0};
+        return {0., 0., 0.};
     }
 
     EPCallCount()
