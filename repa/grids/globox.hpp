@@ -98,15 +98,8 @@ private:
     const GloBox *g;
 };
 
-template <typename T1, typename T2>
-Vec3<typename std::common_type<T1, T2>::type>
-div_3(const Vec3<T1> &a, const Vec3<T2> &b)
-{
-    return {a[0] / b[0], a[1] / b[1], a[2] / b[2]};
-}
-
 /** Global cell ordering.
- * 
+ *
  */
 template <typename index1d, typename index3d = index1d>
 struct GlobalBox {
@@ -127,9 +120,11 @@ struct GlobalBox {
      */
     GlobalBox(Vec3d box_l, double max_range)
         : m_cell_grid(static_cast<index_type_3d>(box_l[0] / max_range),
-                        static_cast<index_type_3d>(box_l[1] / max_range),
-                        static_cast<index_type_3d>(box_l[2] / max_range)),
-          m_cell_size(div_3(box_l, m_cell_grid))
+                      static_cast<index_type_3d>(box_l[1] / max_range),
+                      static_cast<index_type_3d>(box_l[2] / max_range)),
+          m_cell_size(box_l[0] / m_cell_grid[0],
+                      box_l[1] / m_cell_grid[1],
+                      box_l[2] / m_cell_grid[2])
     {
         m_cell_grid_corr[0] = linearize(cell_index_type{m_cell_grid[0], 0, 0});
         m_cell_grid_corr[1] = linearize(cell_index_type{0, m_cell_grid[1], 0});
