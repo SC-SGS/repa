@@ -56,7 +56,7 @@ struct CartGrid : public ParallelLCGrid {
     int global_hash(lgidx cellidx) override;
 private:
     // Cell size (box_l / m_grid_size)
-    std::array<double, 3> m_cell_size, m_inv_cell_size;
+    Vec3d m_cell_size, m_inv_cell_size;
     // No of (ghost) cells on this node
     Vec3i m_grid_size, m_ghost_grid_size;
 

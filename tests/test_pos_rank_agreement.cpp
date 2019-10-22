@@ -123,8 +123,8 @@ static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
     std::random_device rd;
     std::mt19937 gen(rd());
     typedef std::uniform_real_distribution<> Dist;
-    std::array<Dist, 3> diss{Dist{0.0, box[0]}, Dist{0.0, box[1]},
-                             Dist{0.0, box[2]}};
+    repa::Vec3<Dist> diss{Dist{0.0, box[0]}, Dist{0.0, box[1]},
+                          Dist{0.0, box[2]}};
 
     for (size_t i = 0; i < 10'000; ++i) {
         if (comm.rank() == 0) {
