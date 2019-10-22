@@ -30,6 +30,7 @@
 #include "p4est.hpp"
 
 #include "_compat.hpp"
+#include "util/neighbor_offsets.hpp"
 
 #ifdef __BMI2__
 #include <x86intrin.h>
@@ -394,24 +395,20 @@ rank P4estGrid::neighbor_rank(nidx i)
 lgidx P4estGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
 {
     // Indices of the half shell neighbors in m_p8est_shell
-    static const std::array<int, 14> hs_idxs
-        = {{-1, 1, 16, 3, 17, 22, 8, 23, 12, 5, 13, 24, 9, 25}};
-    // [0, 25] \ hs_idxs, No. 26 would be the cell itself which is not stored in
-    // m_p8est_shell[i].neighbor
-    static const std::array<int, 13> fs_idxs
-        = {{0, 2, 4, 6, 7, 10, 11, 14, 15, 18, 19, 20, 21}};
+    static const std::array<int, 27> to_p4est_order
+    // Half-shell neighbors
+        = {{-1, 1, 16, 3, 17, 22, 8, 23, 12, 5, 13, 24, 9, 25,
+    //      ^^ unused. Cell itself is not stored in m_p8est_shell.
+    // Rest (Full-shell \ Half-shell)
+            0, 2, 4, 6, 7, 10, 11, 14, 15, 18, 19, 20, 21}};
 
     if (cellidx < 0 || cellidx >= n_local_cells())
         throw std::domain_error("Cell index outside of local subdomain");
 
-    if (neigh == 0)
+    if (util::neighbor_type(neigh) == util::NeighborCellType::SELF)
         return cellidx;
-    else if (neigh > 0 && neigh < 14)
-        return m_p8est_shell[cellidx].neighbor[hs_idxs[neigh]];
-    else if (neigh >= 14 && neigh < 27)
-        return m_p8est_shell[cellidx].neighbor[fs_idxs[neigh - hs_idxs.size()]];
     else
-        throw std::domain_error("Neighbor index outside of [0, 26]");
+        return m_p8est_shell[cellidx].neighbor[to_p4est_order[neigh]];
 }
 
 std::vector<GhostExchangeDesc> P4estGrid::get_boundary_info()
