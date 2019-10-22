@@ -149,7 +149,7 @@ struct GlobalBox {
      * @param index index of the center cell
      * @param neigh index [0, 27) of the neighbor
      */
-    inline index_type_1d neighbor(index_type_1d index, int neigh) const
+    inline index_type_1d neighbor(index_type_1d index, fs_neighidx neigh) const
     {
         auto idx = unlinearize(index);
         const auto &no = util::NeighborOffsets3D::raw[neigh];

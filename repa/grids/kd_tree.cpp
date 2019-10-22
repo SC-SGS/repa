@@ -460,12 +460,8 @@ Vec3i KDTreeGrid::grid_size()
 lgidx KDTreeGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
 {
     // Preconditions
-    if (cellidx < 0 || cellidx >= m_nb_of_local_cells) {
+    if (cellidx < 0 || cellidx >= m_nb_of_local_cells)
         throw std::domain_error("Invalid cell index");
-    }
-    else if (neigh < 0 || neigh >= 27) {
-        throw std::domain_error("Invalid neighbor index");
-    }
 
     // Get cellvector in local ghostdomain
     Vec3i cellvector = util::unlinearize(m_index_permutations_inverse[cellidx],
