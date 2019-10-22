@@ -20,6 +20,7 @@
 #pragma once
 
 #include <array>
+#include <cassert>
 #include <functional>
 #include <type_traits>
 #include <vector>
@@ -28,6 +29,8 @@
 
 namespace repa {
 
+/** Behaves like a std::array.
+ */
 template <typename T, size_t N>
 struct Vec {
     typedef T value_type;
@@ -47,109 +50,127 @@ struct Vec {
     typedef
         typename underlying_type::const_reverse_iterator const_reverse_iterator;
 
-    Vec(const underlying_type &a) : a(a)
+    /** Initializes the data to 0.
+     */
+    constexpr Vec() : m_data({{T(0), T(0), T(0)}})
+    {
+    }
+    constexpr Vec(Vec &&) = default;
+    constexpr Vec(const Vec &) = default;
+    constexpr Vec &operator=(const Vec &m_data) = default;
+
+    constexpr Vec(underlying_type &&arr)
+        : m_data(std::forward<underlying_type>(arr))
+    {
+    }
+
+    constexpr Vec(const underlying_type &arr) : m_data(arr)
     {
     }
 
     template <typename... Args>
-    Vec(Args... values) : a({{values...}})
+    constexpr Vec(Args... values) : m_data({{values...}})
     {
     }
 
     constexpr iterator begin()
     {
-        return a.begin();
+        return m_data.begin();
     }
     constexpr const_iterator cbegin() const
     {
-        return a.cbegin();
+        return m_data.cbegin();
     }
     constexpr iterator end()
     {
-        return a.end();
+        return m_data.end();
     }
     constexpr const_iterator end() const
     {
-        return a.cend();
+        return m_data.cend();
     }
 
     constexpr bool empty() const
     {
-        return a.empty();
+        return m_data.empty();
     }
     constexpr size_type size() const
     {
-        return a.size();
+        return m_data.size();
     }
     constexpr size_type max_size() const
     {
-        return a.max_size();
+        return m_data.max_size();
     }
     constexpr T *data()
     {
-        return a.data();
+        static_assert(N > 0, "Vec::data() requires actual elements");
+        return m_data.data();
     }
     constexpr const T *data() const
     {
-        return a.data();
+        static_assert(N > 0, "Vec::data() requires actual elements");
+        return m_data.data();
     }
 
     constexpr T &operator[](size_type i)
     {
-        return a[i];
+        assert(i >= 0 && i < N);
+        return m_data[i];
     }
     constexpr const T &operator[](size_type i) const
     {
-        return a[i];
+        assert(i >= 0 && i < N);
+        return m_data[i];
     }
 
-    bool operator==(const Vec &other) const
+    constexpr bool operator==(const Vec &other) const
     {
-        return a == other.a;
+        return m_data == other.m_data;
     }
-    bool operator!=(const Vec &other) const
+    constexpr bool operator!=(const Vec &other) const
     {
-        return a != other.a;
+        return m_data != other.m_data;
     }
-    bool operator<(const Vec &other) const
+    constexpr bool operator<(const Vec &other) const
     {
-        return a < other.a;
+        return m_data < other.m_data;
     }
-    bool operator<=(const Vec &other) const
+    constexpr bool operator<=(const Vec &other) const
     {
-        return a <= other.a;
+        return m_data <= other.m_data;
     }
-    bool operator>(const Vec &other) const
+    constexpr bool operator>(const Vec &other) const
     {
-        return a > other.a;
+        return m_data > other.m_data;
     }
-    bool operator>=(const Vec &other) const
+    constexpr bool operator>=(const Vec &other) const
     {
-        return a >= other.a;
+        return m_data >= other.m_data;
     }
 
     template <typename Archive>
     void serialize_to(Archive &ar) const
     {
-        ar << a;
+        ar << m_data;
     }
     template <typename Archive>
     void deserialize_from(Archive &ar)
     {
-        ar >> a;
+        ar >> m_data;
     }
 
-    const underlying_type &as_array() const
+    constexpr const underlying_type &as_array() const
     {
-        return a;
+        return m_data;
     }
-    underlying_type &as_array()
+    constexpr underlying_type &as_array()
     {
-        return a;
+        return m_data;
     }
 
 private:
-    std::array<T, N> a;
+    std::array<T, N> m_data;
 };
 
 template <typename T>
@@ -162,10 +183,9 @@ typedef std::function<std::vector<double>(void)> CellMetric;
 typedef std::function<double(int, int)> CellCellMetric;
 typedef std::function<void(void)> Thunk;
 
-/** Type that behaves like an integral POD and can be restricted to a range.
- * Range is tested at construction time.
- * Should not compile to any overhead on reasonable compilers and optimization
- * levels.
+/** Type that behaves like an integral POD and can be restricted to a
+ * range. Range is tested at construction time. Should not compile to any
+ * overhead on reasonable compilers and optimization levels.
  */
 template <typename T,
           T min,
