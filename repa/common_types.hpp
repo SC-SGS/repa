@@ -292,7 +292,7 @@ struct IntegralRange {
 
     template <typename S,
               typename = typename std::enable_if_t<std::is_integral<S>::value>>
-    static bool in_bounds(S v)
+    static inline bool in_bounds(S v)
     {
         // Evaluate range check on wide base type.
         typedef std::common_type_t<T, S> base_type;
