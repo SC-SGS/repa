@@ -21,7 +21,7 @@
 # define_test(NAME name SRC src.cpp [LIBRARIES lib1 lib2...])
 #
 function(define_test)
-    set(options "")
+    set(options SINGLEPROC)
     set(oneValueArgs NAME SRC)
     set(multiValueArgs LIBRARIES)
     cmake_parse_arguments(TEST
@@ -44,7 +44,11 @@ function(define_test)
     target_compile_options(${TEST_NAME}
                            PRIVATE ${REPA_DEFAULT_COMPILE_OPTIONS})
 
-    foreach(nproc RANGE 1 ${TEST_MAX_NPROC} 1)
+    set(TEST_UPPER_BOUND ${TEST_MAX_NPROC})
+    if(TEST_SINGLEPROC)
+        set(TEST_UPPER_BOUND 1)
+    endif(TEST_SINGLEPROC)
+    foreach(nproc RANGE 1 ${TEST_UPPER_BOUND} 1)
         add_test(NAME "${TEST_NAME}-${nproc}"
                  COMMAND ${MPIEXEC} "--oversubscribe"
                          ${MPIEXEC_NUMPROC_FLAG} ${nproc}
