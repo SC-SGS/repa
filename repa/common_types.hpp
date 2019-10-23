@@ -20,14 +20,59 @@
 #pragma once
 
 #include <array>
-#include <cassert>
+#include <exception>
 #include <functional>
+#include <sstream>
 #include <type_traits>
 #include <vector>
 
 #include <boost/serialization/array.hpp>
 
 namespace repa {
+
+// Custom assert that throws. We can, then, catch assertion exceptions
+// in the testing framework.
+namespace tassert {
+
+struct AssertionException : public std::exception {
+    AssertionException(const char *expr,
+                       const char *file,
+                       int line,
+                       const char *func)
+    {
+        std::stringstream sstr;
+        sstr << file << ":" << line << ": " << func << ": Assertion `" << expr
+             << "' failed.";
+        err = sstr.str();
+    }
+
+    virtual const char *what() const noexcept override
+    {
+        return err.c_str();
+    }
+
+private:
+    std::string err;
+};
+
+[[noreturn]] inline void
+__t_assert__fail(const char *expr,
+                 const char *file,
+                 int line,
+                 const char *func)
+{
+    throw AssertionException{expr, file, line, func};
+}
+} // namespace tassert
+
+#ifdef NDEBUG
+#define t_assert(expr) ((void)0)
+#else
+#define t_assert(expr)                                                         \
+    (static_cast<bool>(expr) ? (void)0                                         \
+                             : repa::tassert::__t_assert__fail(                \
+                                   #expr, __FILE__, __LINE__, __func__))
+#endif
 
 /** Behaves like a std::array.
  */
@@ -187,7 +232,7 @@ struct Vec {
     template <typename Archive>
     void serialize(Archive &ar, const unsigned int)
     {
-        ar & m_data;
+        ar &m_data;
     }
 
     constexpr const underlying_type &as_array() const
@@ -228,14 +273,31 @@ struct IntegralRange {
               typename = typename std::enable_if_t<std::is_integral<S>::value>>
     inline IntegralRange(S v) : value(static_cast<T>(v))
     {
-        // Evaluate range check on wide base type.
-        typedef std::common_type_t<T, S> base_type;
-        assert(static_cast<base_type>(v) >= static_cast<base_type>(min)
-               && static_cast<base_type>(v) <= static_cast<base_type>(max));
+        t_assert(in_bounds(v));
     }
+
+    template <typename S,
+              typename = typename std::enable_if_t<std::is_integral<S>::value>>
+    inline IntegralRange operator=(S v)
+    {
+        t_assert(in_bounds(v));
+        value = static_cast<T>(v);
+        return *this;
+    }
+
     inline operator value_type()
     {
         return value;
+    }
+
+    template <typename S,
+              typename = typename std::enable_if_t<std::is_integral<S>::value>>
+    static bool in_bounds(S v)
+    {
+        // Evaluate range check on wide base type.
+        typedef std::common_type_t<T, S> base_type;
+        return static_cast<base_type>(v) >= static_cast<base_type>(min)
+               && static_cast<base_type>(v) <= static_cast<base_type>(max);
     }
 
 private:
