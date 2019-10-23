@@ -85,7 +85,7 @@ struct Vec {
     {
         return m_data.end();
     }
-    constexpr const_iterator end() const
+    constexpr const_iterator cend() const
     {
         return m_data.cend();
     }
