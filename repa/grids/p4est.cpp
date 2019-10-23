@@ -229,7 +229,9 @@ void P4estGrid::create_grid()
         = std::unique_ptr<sc_array_t>(sc_array_new(sizeof(int)));
     // Collect info about local cells
     m_p8est_shell.clear(); // Need to clear because we push_back
+#ifdef GLOBAL_HASH_NEEDED
     m_global_idx.clear();
+#endif
     m_p8est_shell.reserve(num_cells);
     for (int i = 0; i < m_num_local_cells; ++i) {
         p8est_quadrant_t *q
@@ -249,8 +251,10 @@ void P4estGrid::create_grid()
                                    bndry ? impl::CellType::boundary
                                          : impl::CellType::inner,
                                    bndry, idx[0], idx[1], idx[2]);
+#ifdef GLOBAL_HASH_NEEDED
         m_global_idx.push_back(
             impl::cell_morton_idx(impl::coord_to_cellindex(xyz, m_grid_level)));
+#endif
 
         // Neighborhood
         for (int n = 0; n < 26; ++n) {
@@ -288,8 +292,10 @@ void P4estGrid::create_grid()
         m_p8est_shell.emplace_back(g, p8est_mesh->ghost_to_proc[g],
                                    impl::CellType::ghost, 0, idx[0], idx[1],
                                    idx[2]);
+#ifdef GLOBAL_HASH_NEEDED
         m_global_idx.push_back(
             impl::cell_morton_idx(impl::coord_to_cellindex(xyz, m_grid_level)));
+#endif
     }
 }
 
@@ -544,7 +550,11 @@ bool P4estGrid::repartition(CellMetric m,
 
 int P4estGrid::global_hash(lgidx cellidx)
 {
+#ifdef GLOBAL_HASH_NEEDED
     return m_global_idx.at(cellidx);
+#else
+    return 0;
+#endif
 }
 
 } // namespace grids

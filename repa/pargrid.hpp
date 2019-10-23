@@ -28,6 +28,14 @@
 
 #include "common_types.hpp"
 
+#ifndef NDEBUG
+#define GLOBAL_HASH_NEEDED
+#else
+#ifdef GLOBAL_HASH_NEEDED
+#undef GLOBAL_HASH_NEEDED
+#endif
+#endif
+
 namespace repa {
 
 /** Interface for implementations to query additional information
@@ -207,8 +215,11 @@ struct ParallelLCGrid {
      * processes will return the same global_hash
      * if the (most likely different) local cellidxs correspond to the same
      * global cell.
+     * If NDEBUG is set, additionally to the above stated semantics,
+     * this function is allowed to return constant 0.
      *
      * This function is useful for testing purposes only.
+     * Use *only* if NDEBUG is *not* set.
      *
      */
     virtual int global_hash(lgidx cellidx) = 0;

@@ -275,6 +275,7 @@ void GloMethod::init(bool firstcall)
 
 int GloMethod::global_hash(lgidx cellidx)
 {
+    // No need to define this away. Does currently not require extra data.
     return cells[cellidx];
 }
 

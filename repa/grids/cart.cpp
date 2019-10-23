@@ -319,6 +319,7 @@ bool CartGrid::repartition(CellMetric m,
 
 int CartGrid::global_hash(lgidx cellidx)
 {
+    // No need to define this away. Does currently not require extra data.
     Vec3i idx3d = unlinearize(cellidx);
     Vec3i dom = grid_size();
     Vec3i offset;

@@ -551,6 +551,7 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
 
 int KDTreeGrid::global_hash(lgidx cellidx)
 {
+    // No need to define this away. Does currently not require extra data.
     Vec3i idx3d = util::unlinearize(m_index_permutations_inverse[cellidx],
                                     m_local_ghostdomain_size);
     Vec3i offset;
