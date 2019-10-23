@@ -81,6 +81,10 @@ struct Vec {
     {
         return m_data.cbegin();
     }
+    constexpr const_iterator begin() const
+    {
+        return cbegin();
+    }
     constexpr iterator end()
     {
         return m_data.end();
@@ -88,6 +92,10 @@ struct Vec {
     constexpr const_iterator cend() const
     {
         return m_data.cend();
+    }
+    constexpr const_iterator end() const
+    {
+        return cend();
     }
 
     constexpr reverse_iterator rbegin()
@@ -98,6 +106,10 @@ struct Vec {
     {
         return m_data.crbegin();
     }
+    constexpr const_reverse_iterator rbegin() const
+    {
+        return crbegin();
+    }
     constexpr reverse_iterator rend()
     {
         return m_data.rend();
@@ -105,6 +117,10 @@ struct Vec {
     constexpr const_reverse_iterator crend() const
     {
         return m_data.crend();
+    }
+    constexpr const_reverse_iterator rend() const
+    {
+        return crend();
     }
 
     constexpr bool empty() const
