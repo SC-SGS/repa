@@ -34,33 +34,28 @@ static void set_toggle(const TEnv &t, repa::grids::ParallelLCGrid *grid)
     grid->command("toggle");
 }
 
-static void set_diff(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void set_set(const TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
+    static int ncalls = 0;
     (void) t;
-    grid->command("set diffusion");
-}
 
-static void set_graph(const TEnv &t, repa::grids::ParallelLCGrid *grid)
-{
-    (void) t;
-    grid->command("set diffusion");
+    if (ncalls % 2 == 0)
+        grid->command("set diffusion");
+    else
+        grid->command("set graph");
+    ncalls++;
 }
 
 BOOST_AUTO_TEST_CASE(test_hybrid_method_switch)
 {
     boost::mpi::environment env;
     default_test_env()
-        .with_repart()
+        .with_repart_twice()
         .only({repa::GridType::HYB_GP_DIFF})
         .run(set_toggle);
 
     default_test_env()
-        .with_repart()
+        .with_repart_twice()
         .only({repa::GridType::HYB_GP_DIFF})
-        .run(set_diff);
-
-    default_test_env()
-        .with_repart()
-        .only({repa::GridType::HYB_GP_DIFF})
-        .run(set_graph);
+        .run(set_set);
 }

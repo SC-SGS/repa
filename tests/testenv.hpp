@@ -52,7 +52,7 @@ struct TEnv {
     double mings;
     repa::ExtraParams ep;
     std::set<repa::GridType> grids;
-    bool repart;
+    bool repart = true, repart_twice = false;
 
     TEnv(const boost::mpi::communicator &comm,
          repa::Vec3d box,
@@ -77,12 +77,21 @@ struct TEnv {
     TEnv &with_repart()
     {
         repart = true;
+        repart_twice = false;
+        return *this;
+    }
+
+    TEnv &with_repart_twice()
+    {
+        repart = true;
+        repart_twice = true;
         return *this;
     }
 
     TEnv &without_repart()
     {
         repart = false;
+        repart_twice = false;
         return *this;
     }
 
@@ -135,6 +144,12 @@ struct TEnv {
             call_test_func(test_func, *this, up.get(), gt);
 
             if (!repart)
+                continue;
+            repartition_randomly(up.get());
+
+            call_test_func(test_func, *this, up.get(), gt);
+
+            if (!repart_twice)
                 continue;
             repartition_randomly(up.get());
 
