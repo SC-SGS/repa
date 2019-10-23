@@ -166,15 +166,12 @@ struct Vec {
         return m_data >= other.m_data;
     }
 
+    friend class boost::serialization::access;
+
     template <typename Archive>
-    void serialize_to(Archive &ar) const
+    void serialize(Archive &ar, const unsigned int)
     {
-        ar << m_data;
-    }
-    template <typename Archive>
-    void deserialize_from(Archive &ar)
-    {
-        ar >> m_data;
+        ar & m_data;
     }
 
     constexpr const underlying_type &as_array() const
@@ -232,29 +229,3 @@ private:
 typedef IntegralRange<std::int_fast32_t, 0, 26> fs_neighidx;
 
 } // namespace repa
-
-namespace boost {
-namespace serialization {
-template <typename Archive, typename T, size_t N>
-void load(Archive &ar,
-          repa::Vec<T, N> &v,
-          const unsigned int /* file_version */)
-{
-    v.deserialize_from(ar);
-}
-
-template <typename Archive, typename T, size_t N>
-void save(Archive &ar,
-          const repa::Vec<T, N> &v,
-          const unsigned int /* file_version */)
-{
-    v.serialize_to(ar);
-}
-
-template <class Archive, typename T, size_t N>
-void serialize(Archive &ar, repa::Vec<T, N> &v, const unsigned int file_version)
-{
-    split_free(ar, v, file_version);
-}
-} // namespace serialization
-} // namespace boost
