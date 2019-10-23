@@ -27,7 +27,6 @@
 #include <chrono>
 #include <random>
 
-#include <boost/mpi.hpp>
 #include <boost/test/included/unit_test.hpp>
 #include <repa/grids/util/tetra.hpp>
 
