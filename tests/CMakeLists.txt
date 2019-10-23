@@ -38,7 +38,7 @@ define_test(NAME test_ghost_exchange_volume SRC test_ghost_exchange_volume.cpp)
 define_test(NAME test_pos_rank_agreement SRC test_pos_rank_agreement.cpp)
 
 # ghost_exchange_volume_ext requires debug build (NDEBUG *not* set).
-if(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Release")
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
   define_test(NAME test_ghost_exchange_volume_ext SRC test_ghost_exchange_volume_ext.cpp)
 else()
   message(STATUS "WITH_TESTS: Skipping tests that need a debug build (build type: ${CMAKE_BUILD_TYPE}).")
