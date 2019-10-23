@@ -90,6 +90,23 @@ struct Vec {
         return m_data.cend();
     }
 
+    constexpr reverse_iterator rbegin()
+    {
+        return m_data.rbegin();
+    }
+    constexpr const_reverse_iterator crbegin() const
+    {
+        return m_data.crbegin();
+    }
+    constexpr reverse_iterator rend()
+    {
+        return m_data.rend();
+    }
+    constexpr const_reverse_iterator crend() const
+    {
+        return m_data.crend();
+    }
+
     constexpr bool empty() const
     {
         return m_data.empty();
