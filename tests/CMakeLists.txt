@@ -22,10 +22,10 @@ include(define_test)
 define_test(NAME test_vec SRC test_vec.cpp SINGLEPROC)
 define_test(NAME test_integral_range SRC test_integral_range.cpp SINGLEPROC)
 define_test(NAME test_tetra SRC test_tetra.cpp SINGLEPROC)
+define_test(NAME test_unknown_exceptions SRC test_unknown_exceptions.cpp SINGLEPROC)
 
 # Integration tests
 define_test(NAME test_grid_types SRC test_grid_types.cpp)
-define_test(NAME test_unknown_exceptions SRC test_unknown_exceptions.cpp)
 define_test(NAME test_repart SRC test_repart.cpp)
 define_test(NAME test_extra_params SRC test_extra_params.cpp)
 define_test(NAME test_hybrid_method_switch SRC test_hybrid_method_switch.cpp)
