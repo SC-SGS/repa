@@ -43,9 +43,9 @@ struct NeighborIterator
                                     typename GloBox::index_type_1d> {
 private:
     using base_type = boost::iterator_facade<NeighborIterator<GloBox>,
-                                             int,
+                                             typename GloBox::index_type_1d,
                                              boost::random_access_traversal_tag,
-                                             int>;
+                                             typename GloBox::index_type_1d>;
 
 public:
     using value_type = typename base_type::value_type;

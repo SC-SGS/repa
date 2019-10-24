@@ -62,16 +62,16 @@ private:
     Domain m_local_ghostdomain;
     Vec3i m_local_subdomain_size;
     Vec3i m_local_ghostdomain_size;
-    unsigned m_nb_of_local_cells;
-    unsigned m_nb_of_ghost_cells;
+    lidx m_nb_of_local_cells;
+    gidx m_nb_of_ghost_cells;
     std::vector<lgidx> m_index_permutations;
     std::vector<lgidx> m_index_permutations_inverse;
 
     /** Maps neighbor id (nidx) to rank. */
-    std::vector<int> m_neighbor_processes;
+    std::vector<rank> m_neighbor_processes;
 
     /** Maps rank to neighbor id (nidx) or -1 if rank is no neighbor. */
-    std::vector<int> m_neighbor_processes_inverse;
+    std::vector<nidx> m_neighbor_processes_inverse;
 
     std::vector<GhostExchangeDesc> m_boundary_info;
 
@@ -83,10 +83,10 @@ private:
     Vec3d cell_dimensions(const Vec3i &grid_dimensions);
 
     /** Returns the number of cells from the size of a domain. */
-    static int volume(Vec3i domain_size);
+    static Vec3i::value_type volume(Vec3i domain_size);
 
     /** Returns the number of cells from a given domain*/
-    static int volume(Domain domain_bounds);
+    static Vec3i::value_type volume(Domain domain_bounds);
 
     /** Returns the ghostdomain from a given domain. */
     static Domain ghostdomain_bounds(const Domain &domain);
@@ -209,7 +209,7 @@ public:
     virtual bool
     repartition(CellMetric m, CellCellMetric ccm, Thunk cb) override;
 
-    int global_hash(lgidx cellidx) override;
+    gloidx global_hash(lgidx cellidx) override;
 };
 
 } // namespace grids

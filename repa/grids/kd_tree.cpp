@@ -37,7 +37,8 @@ Vec3i KDTreeGrid::grid_dimensions()
     Vec3i grid_dimensions = {1, 1, 1};
     for (int dim = 0; dim < 3; dim++) {
         if (max_range > ROUND_ERROR_PREC * box_l[dim]) {
-            grid_dimensions[dim] = std::max<int>(box_l[dim] / max_range, 1);
+            grid_dimensions[dim]
+                = std::max<Vec3i::value_type>(box_l[dim] / max_range, 1);
         }
     }
     return grid_dimensions;
@@ -126,14 +127,14 @@ void KDTreeGrid::init_nb_of_cells()
 void KDTreeGrid::init_index_permutations()
 {
     // Number of local and ghost cells
-    int nb_of_total_cells = volume(m_local_ghostdomain);
+    lgidx nb_of_total_cells = volume(m_local_ghostdomain);
 
     m_index_permutations.resize(nb_of_total_cells);
     m_index_permutations_inverse.resize(nb_of_total_cells);
 
-    int localidx = 0;
-    int ghostidx = m_nb_of_local_cells;
-    for (int cellidx = 0; cellidx < nb_of_total_cells; cellidx++) {
+    lidx localidx = 0;
+    lgidx ghostidx = m_nb_of_local_cells;
+    for (lgidx cellidx = 0; cellidx < nb_of_total_cells; cellidx++) {
         Vec3i cell = util::unlinearize(cellidx, m_local_ghostdomain_size);
         if (is_ghost_cell(cell, m_local_ghostdomain_size)) {
             m_index_permutations_inverse[ghostidx] = cellidx;
@@ -192,7 +193,7 @@ KDTreeGrid::intersection_domains(const Domain &localdomain,
     // Datastructure for gathering the results
     std::vector<Domain> intersection_domains;
 
-    for (int nidx = 0; nidx < volume(neighborhood_to_check); nidx++) {
+    for (nidx nidx = 0; nidx < volume(neighborhood_to_check); nidx++) {
         // Determine neighbor offset
         Vec3i neighbor_offset
             = util::unlinearize(nidx, domain_size(neighborhood_to_check));
@@ -267,7 +268,7 @@ std::vector<Vec3i> KDTreeGrid::cells(const std::vector<Domain> &domains)
 {
     std::vector<Vec3i> result;
     for (const Domain &domain : domains) {
-        for (int cellidx = 0; cellidx < volume(domain); cellidx++) {
+        for (lgidx cellidx = 0; cellidx < volume(domain); cellidx++) {
             Vec3i cellvector = util::unlinearize(cellidx, domain_size(domain));
             for (int dim = 0; dim < 3; dim++) {
                 cellvector[dim] += domain.first[dim];
@@ -295,7 +296,7 @@ void KDTreeGrid::init_neighborhood_information()
         });
 }
 
-void KDTreeGrid::init_neighborhood_information(int neighbor_rank)
+void KDTreeGrid::init_neighborhood_information(rank neighbor_rank)
 {
     GhostExchangeDesc gexd;
     gexd.dest = neighbor_rank;
@@ -346,7 +347,7 @@ void KDTreeGrid::init_recv_cells(GhostExchangeDesc &gexd,
         }
 
         // Convert local cellvector to local/ghostcell-id
-        int ghostidx = m_index_permutations[util::linearize(
+        lgidx ghostidx = m_index_permutations[util::linearize(
             local_cellvector, m_local_ghostdomain_size)];
 
         // Convert cell-id to ghostcell-id
@@ -377,10 +378,11 @@ void KDTreeGrid::init_send_cells(GhostExchangeDesc &gexd,
         }
 
         // Convert local cellvector to local cell-id
-        int lidx = util::linearize(local_cellvector, m_local_subdomain_size);
+        lidx cellidx
+            = util::linearize(local_cellvector, m_local_subdomain_size);
 
         // Update datastructure
-        gexd.send.push_back(lidx);
+        gexd.send.push_back(cellidx);
     }
 }
 
@@ -499,9 +501,9 @@ lidx KDTreeGrid::position_to_cell_index(Vec3d pos)
     }
 
     // Linearize cell vector
-    int lidx = util::linearize(cellvector, m_local_subdomain_size);
+    lidx cellidx = util::linearize(cellvector, m_local_subdomain_size);
 
-    return lidx;
+    return cellidx;
 }
 
 rank KDTreeGrid::position_to_rank(Vec3d pos)
@@ -525,12 +527,12 @@ nidx KDTreeGrid::position_to_neighidx(Vec3d pos)
         throw std::domain_error("Position is not in the global ghostdomain");
     }
 
-    int rank = m_kdtree.responsible_process(cellvector.as_array());
-    int nidx = m_neighbor_processes_inverse[rank];
-    if (nidx == -1) {
+    rank prank = m_kdtree.responsible_process(cellvector.as_array());
+    nidx rank_idx = m_neighbor_processes_inverse[prank];
+    if (rank_idx == -1) {
         throw std::domain_error("Position not within neighbor a process");
     }
-    return nidx;
+    return rank_idx;
 }
 
 bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
@@ -549,7 +551,7 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
     return true;
 }
 
-int KDTreeGrid::global_hash(lgidx cellidx)
+gloidx KDTreeGrid::global_hash(lgidx cellidx)
 {
     // No need to define this away. Does currently not require extra data.
     Vec3i idx3d = util::unlinearize(m_index_permutations_inverse[cellidx],

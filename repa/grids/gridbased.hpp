@@ -59,7 +59,7 @@ struct GridBasedGrid : public ParallelLCGrid {
 
     void command(std::string s) override;
 
-    int global_hash(lgidx cellidx) override;
+    gloidx global_hash(lgidx cellidx) override;
 
 private:
     // Indicator if the decomposition currently is a regular grid,
@@ -75,7 +75,8 @@ private:
     double mu;
 
     // Number of local and ghost cells
-    int nlocalcells, nghostcells;
+    lidx nlocalcells;
+    gidx nghostcells;
 
     // Triangulation data structure for this subdomain
     util::tetra::Octagon my_dom;
@@ -91,7 +92,7 @@ private:
     std::vector<rank> neighbor_ranks;
 
     // Inverse mapping neighbor_rank to index [0, 26) in "neighbor_ranks".
-    std::unordered_map<rank, int> neighbor_idx;
+    std::unordered_map<rank, nidx> neighbor_idx;
 
     // Associated grid point -- upper right back vertex of subdomain.
     Vec3d gridpoint;
@@ -99,11 +100,11 @@ private:
     std::vector<Vec3d> gridpoints;
 
     // Indices of locally known cells. Local cells before ghost cells.
-    std::vector<int> cells;
+    std::vector<gloidx> cells;
 
-    globox::GlobalBox<int, int> gbox;
+    globox::GlobalBox<gloidx, gloidx> gbox;
     // Global to local index mapping, defined for local and ghost cells
-    std::unordered_map<int, int> global_to_local;
+    std::unordered_map<gloidx, lidx> global_to_local;
 
     std::vector<GhostExchangeDesc> exchange_vec;
 
@@ -114,7 +115,7 @@ private:
     MPI_Comm neighcomm;
 
     // Global cell index to rank mapping
-    rank gloidx_to_rank(int gloidx);
+    rank gloidx_to_rank(gloidx idx);
 
     // Initializes the partitioning to a regular Cartesian grid.
     void init_partitioning();

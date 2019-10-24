@@ -91,12 +91,13 @@ void CartGrid::fill_neighranks()
 
 void CartGrid::create_index_permutations()
 {
-    int ncells = n_local_cells() + n_ghost_cells();
+    lgidx ncells = n_local_cells() + n_ghost_cells();
     m_to_pargrid_order.resize(ncells);
     m_from_pargrid_order.resize(ncells);
 
-    int localidx = 0, ghostidx = n_local_cells();
-    for (int i = 0; i < ncells; ++i) {
+    lidx localidx = 0;
+    lgidx ghostidx = n_local_cells();
+    for (lgidx i = 0; i < ncells; ++i) {
         auto c = util::unlinearize(i, m_ghost_grid_size);
         if (is_ghost_cell(c)) {
             m_from_pargrid_order[ghostidx] = i;
@@ -132,7 +133,7 @@ void CartGrid::create_grid()
     }
 }
 
-void CartGrid::fill_comm_cell_lists(std::vector<int> &v,
+void CartGrid::fill_comm_cell_lists(std::vector<lgidx> &v,
                                     const Vec3i &lc,
                                     const Vec3i &hc)
 {
@@ -317,7 +318,7 @@ bool CartGrid::repartition(CellMetric m,
     return false;
 }
 
-int CartGrid::global_hash(lgidx cellidx)
+gloidx CartGrid::global_hash(lgidx cellidx)
 {
     // No need to define this away. Does currently not require extra data.
     Vec3i idx3d = unlinearize(cellidx);

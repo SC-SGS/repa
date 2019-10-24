@@ -51,7 +51,7 @@ struct HybridGPDiff : public ParallelLCGrid {
                      Thunk exchange_start_callback) override;
 
     void command(std::string s) override;
-    int global_hash(lgidx cellidx) override;
+    gloidx global_hash(lgidx cellidx) override;
 
 private:
     /** Underlying implementations

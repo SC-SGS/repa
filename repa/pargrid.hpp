@@ -60,6 +60,7 @@ typedef int lidx;  // Index of a local cell (0..n_local_cells-1)
 typedef int gidx;  // Index of a ghost cell (0..n_ghost_cells-1)
 typedef int lgidx; // Index of a local (0..n_local_cells-1) or ghost cell
                    // (n_local_cells..n_local_cells+n_ghost_cells-1)
+typedef int gloidx;// Global cell index
 
 /** Describes a ghost exchange process.
  * Corresponds to a GhostCommunication from ghosts.[ch]pp.

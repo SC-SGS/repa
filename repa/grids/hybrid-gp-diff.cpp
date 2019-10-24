@@ -171,7 +171,7 @@ void HybridGPDiff::command(std::string s)
     }
 }
 
-int HybridGPDiff::global_hash(lgidx cellidx)
+gloidx HybridGPDiff::global_hash(lgidx cellidx)
 {
     return active_implementation->global_hash(cellidx);
 }

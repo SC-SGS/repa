@@ -37,8 +37,8 @@ namespace impl {
 
 enum class CellType { inner = 0, boundary = 1, ghost = 2 };
 struct LocalShell {
-    int idx;  // a unique index within all cells (as used by p8est for locals)
-    int rank; // the rank of this cell (equals this_node for locals)
+    gloidx idx; // a unique index within all cells (as used by p8est for locals)
+    rank which_proc; // the rank of this cell (equals this_node for locals)
     CellType shell; // shell information (0: inner local cell, 1: boundary local
                     // cell, 2: ghost cell)
     int boundary;   // Bit mask storing boundary info. MSB ...
@@ -52,10 +52,15 @@ struct LocalShell {
                   // p8est); only 26 because cell itself is not included.
     Vec3i coord;  // cartesian coordinates of the cell
 
-    LocalShell(
-        int idx, int rank, CellType shell, int boundary, int x, int y, int z)
+    LocalShell(gloidx idx,
+               rank rank,
+               CellType shell,
+               int boundary,
+               int x,
+               int y,
+               int z)
         : idx(idx),
-          rank(rank),
+          which_proc(rank),
           shell(shell),
           boundary(boundary),
           coord(x, y, z)
@@ -97,7 +102,7 @@ struct P4estGrid : public ParallelLCGrid {
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;
-    int global_hash(lgidx cellidx) override;
+    gloidx global_hash(lgidx cellidx) override;
 
 private:
     int m_grid_level;
@@ -110,20 +115,21 @@ private:
     // p4est data structures
     std::unique_ptr<p8est_connectivity_t> m_p8est_conn;
     std::unique_ptr<p8est_t> m_p8est;
-    int m_num_local_cells, m_num_ghost_cells;
+    lidx m_num_local_cells;
+    gidx m_num_ghost_cells;
 
     // helper data structures
-    std::vector<int> m_node_first_cell_idx;
+    std::vector<gloidx> m_node_first_cell_idx;
     std::vector<impl::LocalShell> m_p8est_shell;
 #ifdef GLOBAL_HASH_NEEDED
-    std::vector<int>
+    std::vector<gloidx>
         m_global_idx; //< Global virtual morton index of cells (for
                       // global_hash()) could be removed in non-test builds.
 #endif
 
     // comm data structures
     std::vector<GhostExchangeDesc> m_exdescs;
-    std::vector<int> m_neighranks;
+    std::vector<rank> m_neighranks;
 
     void set_optimal_cellsize();
     void create_grid();

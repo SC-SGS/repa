@@ -37,9 +37,9 @@
 namespace repa {
 namespace grids {
 
-rank GridBasedGrid::gloidx_to_rank(int gloidx)
+rank GridBasedGrid::gloidx_to_rank(gloidx idx)
 {
-    auto m = gbox.midpoint(gloidx);
+    auto m = gbox.midpoint(idx);
     return position_to_rank(m);
 }
 
@@ -65,7 +65,7 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank r)
     for (off[0] = 0; off[0] <= 1; ++off[0]) {
         for (off[1] = 0; off[1] <= 1; ++off[1]) {
             for (off[2] = 0; off[2] <= 1; ++off[2]) {
-                int rank;
+                rank proc;
                 Vec3i nc, mirror{0, 0, 0};
 
                 for (int d = 0; d < 3; ++d) {
@@ -80,12 +80,12 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank r)
                     }
                 }
 
-                MPI_Cart_rank(comm_cart, nc.data(), &rank);
+                MPI_Cart_rank(comm_cart, nc.data(), &proc);
 
                 // Mirror the gridpoint back to where this subdomain is
                 // expecting it.
                 for (int d = 0; d < 3; ++d)
-                    result[i][d] = gridpoints[rank][d] + mirror[d] * box_l[d];
+                    result[i][d] = gridpoints[proc][d] + mirror[d] * box_l[d];
                 i++;
             }
         }
@@ -113,9 +113,9 @@ void GridBasedGrid::init_neighbors()
     Vec3i c, off, dims, _dummy;
     MPI_Cart_get(comm_cart, 3, dims.data(), _dummy.data(), c.data());
 
-    std::vector<int> source_neigh,
+    std::vector<rank> source_neigh,
         dest_neigh; // Send and receive neighborhood for repart
-    int nneigh = 0;
+    nidx nneigh = 0;
     for (off[0] = -1; off[0] <= 1; ++off[0]) {
         for (off[1] = -1; off[1] <= 1; ++off[1]) {
             for (off[2] = -1; off[2] <= 1; ++off[2]) {
@@ -131,7 +131,7 @@ void GridBasedGrid::init_neighbors()
                         nc[d] = 0;
                 }
 
-                int r;
+                rank r;
                 MPI_Cart_rank(comm_cart, nc.data(), &r);
 
                 // Insert "r" as a new neighbor if yet unseen.
@@ -154,7 +154,7 @@ void GridBasedGrid::init_neighbors()
 
     std::sort(std::begin(neighbor_ranks), std::end(neighbor_ranks));
     // Inverse mapping
-    for (size_t i = 0; i < nneigh; ++i)
+    for (nidx i = 0; i < nneigh; ++i)
         neighbor_idx[neighbor_ranks[i]] = i;
 
     if (neighcomm != MPI_COMM_NULL)
@@ -194,7 +194,7 @@ void GridBasedGrid::reinit()
 
     // Reinit cells, nlocalcells, global_to_local
     // Simple loop over all global cells; TODO: optimize
-    for (int i = 0; i < gbox.ncells(); ++i) {
+    for (gloidx i = 0; i < gbox.ncells(); ++i) {
         auto midpoint = gbox.midpoint(i);
 
         // We use "position_to_rank" here.
@@ -223,8 +223,8 @@ void GridBasedGrid::reinit()
     exchange_vec.resize(neighbor_ranks.size());
 
     // Determine ghost cells and communication volume
-    for (int i = 0; i < nlocalcells; i++) {
-        for (int neighidx : gbox.full_shell_neigh_without_center(cells[i])) {
+    for (lidx i = 0; i < nlocalcells; i++) {
+        for (gloidx neighidx : gbox.full_shell_neigh_without_center(cells[i])) {
             rank owner = gloidx_to_rank(neighidx);
 
             if (owner == comm_cart.rank())
@@ -240,7 +240,7 @@ void GridBasedGrid::reinit()
                 nghostcells++;
             }
 
-            int idx = neighbor_idx[owner];
+            nidx idx = neighbor_idx[owner];
             // Initialize exdesc and add "rank" as neighbor if unknown.
             if (exchange_vec[idx].dest == -1)
                 exchange_vec[idx].dest = owner;
@@ -257,7 +257,7 @@ void GridBasedGrid::reinit()
 
     // All neighbors must be communicated with, otherwise something went wrong.
     // Sort and global_to_local.
-    const auto glo_to_loc = [this](int i) {
+    const auto glo_to_loc = [this](gloidx i) {
 #ifdef GRID_DEBUG
         return global_to_local.at(i);
 #else
@@ -368,9 +368,9 @@ rank GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
             grid_coord[i] = 0;
     }
 
-    int rank;
-    MPI_Cart_rank(comm_cart, grid_coord.data(), &rank);
-    return rank;
+    rank r;
+    MPI_Cart_rank(comm_cart, grid_coord.data(), &r);
+    return r;
 }
 
 rank GridBasedGrid::position_to_rank(Vec3d pos)
@@ -390,7 +390,7 @@ rank GridBasedGrid::position_to_rank(Vec3d pos)
     // among all processes where .contains() evaluates to true.
     //
     // Note, that neighbor_ranks is ordered by rank.
-    int i;
+    nidx i;
     for (i = 0; i < n_neighbors() && neighbor_ranks[i] < comm.rank(); ++i) {
         if (neighbor_doms[i].contains(mp))
             return neighbor_ranks[i];
@@ -435,13 +435,13 @@ Vec3d GridBasedGrid::get_subdomain_center()
 
     // If no particles: Use subdomain midpoint.
     // (Calculated as mispoint of all cells).
-    for (int i = 0; i < n_local_cells(); ++i) {
+    for (lidx i = 0; i < n_local_cells(); ++i) {
         auto mp = gbox.midpoint(cells[i]);
         for (int d = 0; d < 3; ++d)
             c[d] += mp[d];
     }
 
-    const int n = n_local_cells();
+    const lidx n = n_local_cells();
     for (int d = 0; d < 3; ++d)
         c[d] /= n;
 
@@ -458,7 +458,7 @@ bool GridBasedGrid::repartition(CellMetric m,
     using Vec3d = Vec3d;
     using Vec3i = Vec3i;
 
-    int nneigh = util::mpi_undirected_neighbor_count(neighcomm);
+    nidx nneigh = util::mpi_undirected_neighbor_count(neighcomm);
 
     auto weights = m();
     if (weights.size() != n_local_cells()) {
@@ -485,7 +485,7 @@ bool GridBasedGrid::repartition(CellMetric m,
     MPI_Neighbor_allgather(r_p.data(), 3, MPI_DOUBLE, r.data(), 3, MPI_DOUBLE,
                            neighcomm);
 
-    for (int i = 0; i < nneigh; ++i) {
+    for (nidx i = 0; i < nneigh; ++i) {
         // Form "u"
         for (int d = 0; d < 3; ++d)
             r[3 * i + d] -= gridpoint[d];
@@ -504,7 +504,7 @@ bool GridBasedGrid::repartition(CellMetric m,
         // Shift only non-boundary coordinates
         if (coords[d] == dims[d] - 1)
             continue;
-        for (int i = 0; i < nneigh; ++i)
+        for (nidx i = 0; i < nneigh; ++i)
             new_c[d] += mu * r[3 * i + d];
     }
 
@@ -584,7 +584,7 @@ void GridBasedGrid::command(std::string s)
     }
 }
 
-int GridBasedGrid::global_hash(lgidx cellidx)
+gloidx GridBasedGrid::global_hash(lgidx cellidx)
 {
     return cells[cellidx];
 }
