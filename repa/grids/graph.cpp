@@ -294,7 +294,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
 #ifdef GRAPH_DEBUG
     std::fill(std::begin(partition), std::end(partition),
-              static_cast<rank>(-1));
+              static_cast<rank_type>(-1));
 #endif
 
     util::all_gatherv_displ(comm_cart, parti.cref(), vtxdist, partition);
