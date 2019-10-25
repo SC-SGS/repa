@@ -30,8 +30,8 @@
 
 
 static bool has_neighbor(repa::grids::ParallelLCGrid *grid,
-                         repa::grids::lidx d,
-                         repa::grids::lidx c)
+                         repa::grids::local_cell_index_type d,
+                         repa::grids::local_cell_index_type c)
 {
     for (int j = 0; j < 27; ++j) {
         if (grid->cell_neighbor_index(d, j) == c)

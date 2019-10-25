@@ -127,14 +127,16 @@ void KDTreeGrid::init_nb_of_cells()
 void KDTreeGrid::init_index_permutations()
 {
     // Number of local and ghost cells
-    lgidx nb_of_total_cells = volume(m_local_ghostdomain);
+    local_or_ghost_cell_index_type nb_of_total_cells
+        = volume(m_local_ghostdomain);
 
     m_index_permutations.resize(nb_of_total_cells);
     m_index_permutations_inverse.resize(nb_of_total_cells);
 
-    lidx localidx = 0;
-    lgidx ghostidx = m_nb_of_local_cells;
-    for (lgidx cellidx = 0; cellidx < nb_of_total_cells; cellidx++) {
+    local_cell_index_type localidx = 0;
+    local_or_ghost_cell_index_type ghostidx = m_nb_of_local_cells;
+    for (local_or_ghost_cell_index_type cellidx = 0;
+         cellidx < nb_of_total_cells; cellidx++) {
         Vec3i cell = util::unlinearize(cellidx, m_local_ghostdomain_size);
         if (is_ghost_cell(cell, m_local_ghostdomain_size)) {
             m_index_permutations_inverse[ghostidx] = cellidx;
@@ -193,7 +195,8 @@ KDTreeGrid::intersection_domains(const Domain &localdomain,
     // Datastructure for gathering the results
     std::vector<Domain> intersection_domains;
 
-    for (rank_index_type nidx = 0; nidx < volume(neighborhood_to_check); nidx++) {
+    for (rank_index_type nidx = 0; nidx < volume(neighborhood_to_check);
+         nidx++) {
         // Determine neighbor offset
         Vec3i neighbor_offset
             = util::unlinearize(nidx, domain_size(neighborhood_to_check));
@@ -268,7 +271,8 @@ std::vector<Vec3i> KDTreeGrid::cells(const std::vector<Domain> &domains)
 {
     std::vector<Vec3i> result;
     for (const Domain &domain : domains) {
-        for (lgidx cellidx = 0; cellidx < volume(domain); cellidx++) {
+        for (local_or_ghost_cell_index_type cellidx = 0;
+             cellidx < volume(domain); cellidx++) {
             Vec3i cellvector = util::unlinearize(cellidx, domain_size(domain));
             for (int dim = 0; dim < 3; dim++) {
                 cellvector[dim] += domain.first[dim];
@@ -347,8 +351,9 @@ void KDTreeGrid::init_recv_cells(GhostExchangeDesc &gexd,
         }
 
         // Convert local cellvector to local/ghostcell-id
-        lgidx ghostidx = m_index_permutations[util::linearize(
-            local_cellvector, m_local_ghostdomain_size)];
+        local_or_ghost_cell_index_type ghostidx
+            = m_index_permutations[util::linearize(local_cellvector,
+                                                   m_local_ghostdomain_size)];
 
         // Convert cell-id to ghostcell-id
         assert(ghostidx >= m_nb_of_local_cells
@@ -378,7 +383,7 @@ void KDTreeGrid::init_send_cells(GhostExchangeDesc &gexd,
         }
 
         // Convert local cellvector to local cell-id
-        lidx cellidx
+        local_cell_index_type cellidx
             = util::linearize(local_cellvector, m_local_subdomain_size);
 
         // Update datastructure
@@ -426,12 +431,12 @@ KDTreeGrid::KDTreeGrid(const boost::mpi::communicator &comm,
     reinitialize();
 }
 
-lidx KDTreeGrid::n_local_cells()
+local_cell_index_type KDTreeGrid::n_local_cells()
 {
     return m_nb_of_local_cells;
 }
 
-gidx KDTreeGrid::n_ghost_cells()
+ghost_cell_index_type KDTreeGrid::n_ghost_cells()
 {
     return m_nb_of_ghost_cells;
 }
@@ -459,7 +464,9 @@ Vec3i KDTreeGrid::grid_size()
     return m_global_domain_size;
 }
 
-lgidx KDTreeGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
+local_or_ghost_cell_index_type
+KDTreeGrid::cell_neighbor_index(local_cell_index_type cellidx,
+                                fs_neighidx neigh)
 {
     // Preconditions
     if (cellidx < 0 || cellidx >= m_nb_of_local_cells)
@@ -486,7 +493,7 @@ std::vector<GhostExchangeDesc> KDTreeGrid::get_boundary_info()
     return m_boundary_info;
 }
 
-lidx KDTreeGrid::position_to_cell_index(Vec3d pos)
+local_cell_index_type KDTreeGrid::position_to_cell_index(Vec3d pos)
 {
     Vec3i cellvector = absolute_position_to_cell_position(pos);
 
@@ -501,7 +508,8 @@ lidx KDTreeGrid::position_to_cell_index(Vec3d pos)
     }
 
     // Linearize cell vector
-    lidx cellidx = util::linearize(cellvector, m_local_subdomain_size);
+    local_cell_index_type cellidx
+        = util::linearize(cellvector, m_local_subdomain_size);
 
     return cellidx;
 }
@@ -551,7 +559,8 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
     return true;
 }
 
-gloidx KDTreeGrid::global_hash(lgidx cellidx)
+global_cell_index_type
+KDTreeGrid::global_hash(local_or_ghost_cell_index_type cellidx)
 {
     // No need to define this away. Does currently not require extra data.
     Vec3i idx3d = util::unlinearize(m_index_permutations_inverse[cellidx],

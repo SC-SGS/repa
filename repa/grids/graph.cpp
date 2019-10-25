@@ -122,10 +122,10 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     // Sending vertex weights
     std::vector<boost::mpi::request> sreq(comm_cart.size());
     std::vector<std::vector<Weights>> my_weights(comm_cart.size());
-    for (lidx i = 0; i < localCells; ++i) {
+    for (local_cell_index_type i = 0; i < localCells; ++i) {
         // "Rank" is responsible for cell "gidx" / "i" (local)
         // during graph parititioning
-        gloidx gidx = cells[i];
+        global_cell_index_type gidx = cells[i];
         rank_type rank = gidx / ncells_per_proc;
 
         Weights w;

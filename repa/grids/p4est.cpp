@@ -96,7 +96,7 @@ static int local_boundary_bitset(Vec3i idx, const Vec3i &grid_size)
 // Returns a global SFC-curve index for a given cell.
 // Note: This is a global index on the Z-curve and not a local cell index to
 // cells.
-static gloidx cell_morton_idx(Vec3i idx)
+static global_cell_index_type cell_morton_idx(Vec3i idx)
 {
 #ifdef __BMI2__
     static constexpr unsigned mask_x = 0x49249249;
@@ -105,7 +105,7 @@ static gloidx cell_morton_idx(Vec3i idx)
     return _pdep_u32(idx[0], mask_x) | _pdep_u32(idx[1], mask_y)
            | _pdep_u32(idx[2], mask_z);
 #else
-    gloidx res = 0;
+    global_cell_index_type res = 0;
     int res_bit = 1;
 
     for (int bit = 0; bit < 21; ++bit) {
@@ -124,7 +124,8 @@ static gloidx cell_morton_idx(Vec3i idx)
 // coordinates
 // Note: This is a global index on the Z-curve and not a local cell index to
 // cells.
-static gloidx pos_morton_idx(Vec3d pos, const Vec3d &inv_cell_size)
+static global_cell_index_type pos_morton_idx(Vec3d pos,
+                                             const Vec3d &inv_cell_size)
 {
     const Vec3i idx
         = {static_cast<Vec3i::value_type>(pos[0] * inv_cell_size[0]),
@@ -225,7 +226,8 @@ void P4estGrid::create_grid()
 
     m_num_local_cells = m_p8est->local_num_quadrants;
     m_num_ghost_cells = p8est_ghost->ghosts.elem_count;
-    lgidx num_cells = m_num_local_cells + m_num_ghost_cells;
+    local_or_ghost_cell_index_type num_cells
+        = m_num_local_cells + m_num_ghost_cells;
 
     std::unique_ptr<sc_array_t> ni
         = std::unique_ptr<sc_array_t>(sc_array_new(sizeof(int)));
@@ -235,7 +237,7 @@ void P4estGrid::create_grid()
     m_global_idx.clear();
 #endif
     m_p8est_shell.reserve(num_cells);
-    for (lidx i = 0; i < m_num_local_cells; ++i) {
+    for (local_cell_index_type i = 0; i < m_num_local_cells; ++i) {
         p8est_quadrant_t *q = p8est_mesh_get_quadrant(
             m_p8est.get(), p8est_mesh.get(), static_cast<p4est_locidx_t>(i));
         Vec3d xyz;
@@ -280,7 +282,7 @@ void P4estGrid::create_grid()
     }
 
     // Collect info about ghost cells
-    for (gidx g = 0; g < m_num_ghost_cells; ++g) {
+    for (ghost_cell_index_type g = 0; g < m_num_ghost_cells; ++g) {
         p8est_quadrant_t *q
             = p8est_quadrant_array_index(&p8est_ghost->ghosts, g);
         Vec3d xyz;
@@ -303,13 +305,14 @@ void P4estGrid::create_grid()
 
 void P4estGrid::prepare_communication()
 {
-    lgidx num_cells = n_local_cells() + n_ghost_cells();
+    local_or_ghost_cell_index_type num_cells
+        = n_local_cells() + n_ghost_cells();
     // List of cell indices for each process for send/recv
-    std::vector<std::vector<lidx>> send_idx(comm_cart.size());
-    std::vector<std::vector<gidx>> recv_idx(comm_cart.size());
+    std::vector<std::vector<local_cell_index_type>> send_idx(comm_cart.size());
+    std::vector<std::vector<ghost_cell_index_type>> recv_idx(comm_cart.size());
 
     // Find all cells to be sent or received
-    for (lgidx i = 0; i < num_cells; ++i) {
+    for (local_or_ghost_cell_index_type i = 0; i < num_cells; ++i) {
         // Ghost cell? -> add to recv lists
         if (m_p8est_shell[i].shell == impl::CellType::ghost) {
             rank_type nrank = m_p8est_shell[i].which_proc;
@@ -320,7 +323,8 @@ void P4estGrid::prepare_communication()
         if (m_p8est_shell[i].shell == impl::CellType::boundary) {
             // Add to all possible neighbors
             for (int n = 0; n < 26; ++n) {
-                lgidx nidx = m_p8est_shell[i].neighbor[n];
+                local_or_ghost_cell_index_type nidx
+                    = m_p8est_shell[i].neighbor[n];
                 // Invalid neighbor?
                 if (nidx < 0
                     || m_p8est_shell[nidx].shell != impl::CellType::ghost)
@@ -378,12 +382,12 @@ P4estGrid::P4estGrid(const boost::mpi::communicator &comm,
     reinitialize();
 }
 
-lidx P4estGrid::n_local_cells()
+local_cell_index_type P4estGrid::n_local_cells()
 {
     return m_num_local_cells;
 }
 
-gidx P4estGrid::n_ghost_cells()
+ghost_cell_index_type P4estGrid::n_ghost_cells()
 {
     return m_num_ghost_cells;
 }
@@ -400,7 +404,8 @@ rank_type P4estGrid::neighbor_rank(rank_index_type i)
     return m_neighranks[i];
 }
 
-lgidx P4estGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
+local_or_ghost_cell_index_type
+P4estGrid::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
 {
     // Indices of the half shell neighbors in m_p8est_shell
     static const std::array<int, 27> to_p4est_order
@@ -424,11 +429,12 @@ std::vector<GhostExchangeDesc> P4estGrid::get_boundary_info()
     return m_exdescs;
 }
 
-lidx P4estGrid::position_to_cell_index(Vec3d pos)
+local_cell_index_type P4estGrid::position_to_cell_index(Vec3d pos)
 {
-    auto shellidxcomp = [](const impl::LocalShell &s, gloidx idx) {
-        return impl::cell_morton_idx(s.coord) < idx;
-    };
+    auto shellidxcomp
+        = [](const impl::LocalShell &s, global_cell_index_type idx) {
+              return impl::cell_morton_idx(s.coord) < idx;
+          };
 
     auto needle = impl::pos_morton_idx(pos, m_inv_cell_size);
 
@@ -452,10 +458,12 @@ rank_type P4estGrid::position_to_rank(Vec3d pos)
 {
     // Cell of pos might not be known on this process (not in m_p8est_shell).
     // Therefore, use the global first cell indices.
-    auto it = std::upper_bound(std::begin(m_node_first_cell_idx),
-                               std::end(m_node_first_cell_idx),
-                               impl::pos_morton_idx(pos, m_inv_cell_size),
-                               [](gloidx i, gloidx idx) { return i < idx; });
+    auto it = std::upper_bound(
+        std::begin(m_node_first_cell_idx), std::end(m_node_first_cell_idx),
+        impl::pos_morton_idx(pos, m_inv_cell_size),
+        [](global_cell_index_type i, global_cell_index_type idx) {
+            return i < idx;
+        });
 
     return std::distance(std::begin(m_node_first_cell_idx), it) - 1;
 }
@@ -548,7 +556,8 @@ bool P4estGrid::repartition(CellMetric m,
     return true;
 }
 
-gloidx P4estGrid::global_hash(lgidx cellidx)
+global_cell_index_type
+P4estGrid::global_hash(local_or_ghost_cell_index_type cellidx)
 {
 #ifdef GLOBAL_HASH_NEEDED
     return m_global_idx.at(cellidx);

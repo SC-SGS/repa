@@ -42,15 +42,17 @@ struct GridBasedGrid : public ParallelLCGrid {
                   double min_cell_size,
                   ExtraParams ep);
     ~GridBasedGrid();
-    lidx n_local_cells() override;
-    gidx n_ghost_cells() override;
+    local_cell_index_type n_local_cells() override;
+    ghost_cell_index_type n_ghost_cells() override;
     rank_index_type n_neighbors() override;
     rank_type neighbor_rank(rank_index_type i) override;
     Vec3d cell_size() override;
     Vec3i grid_size() override;
-    lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
+    local_or_ghost_cell_index_type
+    cell_neighbor_index(local_cell_index_type cellidx,
+                        fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
-    lidx position_to_cell_index(Vec3d pos) override;
+    local_cell_index_type position_to_cell_index(Vec3d pos) override;
     rank_type position_to_rank(Vec3d pos) override;
     rank_index_type position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
@@ -59,7 +61,8 @@ struct GridBasedGrid : public ParallelLCGrid {
 
     void command(std::string s) override;
 
-    gloidx global_hash(lgidx cellidx) override;
+    global_cell_index_type
+    global_hash(local_or_ghost_cell_index_type cellidx) override;
 
 private:
     // Indicator if the decomposition currently is a regular grid,
@@ -75,8 +78,8 @@ private:
     double mu;
 
     // Number of local and ghost cells
-    lidx nlocalcells;
-    gidx nghostcells;
+    local_cell_index_type nlocalcells;
+    ghost_cell_index_type nghostcells;
 
     // Triangulation data structure for this subdomain
     util::tetra::Octagon my_dom;
@@ -100,11 +103,12 @@ private:
     std::vector<Vec3d> gridpoints;
 
     // Indices of locally known cells. Local cells before ghost cells.
-    std::vector<gloidx> cells;
+    std::vector<global_cell_index_type> cells;
 
-    globox::GlobalBox<gloidx, gloidx> gbox;
+    globox::GlobalBox<global_cell_index_type, global_cell_index_type> gbox;
     // Global to local index mapping, defined for local and ghost cells
-    std::unordered_map<gloidx, lidx> global_to_local;
+    std::unordered_map<global_cell_index_type, local_cell_index_type>
+        global_to_local;
 
     std::vector<GhostExchangeDesc> exchange_vec;
 
@@ -115,7 +119,7 @@ private:
     MPI_Comm neighcomm;
 
     // Global cell index to rank mapping
-    rank_type gloidx_to_rank(gloidx idx);
+    rank_type gloidx_to_rank(global_cell_index_type idx);
 
     // Initializes the partitioning to a regular Cartesian grid.
     void init_partitioning();

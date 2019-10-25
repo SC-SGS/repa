@@ -91,13 +91,13 @@ void CartGrid::fill_neighranks()
 
 void CartGrid::create_index_permutations()
 {
-    lgidx ncells = n_local_cells() + n_ghost_cells();
+    local_or_ghost_cell_index_type ncells = n_local_cells() + n_ghost_cells();
     m_to_pargrid_order.resize(ncells);
     m_from_pargrid_order.resize(ncells);
 
-    lidx localidx = 0;
-    lgidx ghostidx = n_local_cells();
-    for (lgidx i = 0; i < ncells; ++i) {
+    local_cell_index_type localidx = 0;
+    local_or_ghost_cell_index_type ghostidx = n_local_cells();
+    for (local_or_ghost_cell_index_type i = 0; i < ncells; ++i) {
         auto c = util::unlinearize(i, m_ghost_grid_size);
         if (is_ghost_cell(c)) {
             m_from_pargrid_order[ghostidx] = i;
@@ -133,9 +133,10 @@ void CartGrid::create_grid()
     }
 }
 
-void CartGrid::fill_comm_cell_lists(std::vector<lgidx> &v,
-                                    const Vec3i &lc,
-                                    const Vec3i &hc)
+void CartGrid::fill_comm_cell_lists(
+    std::vector<local_or_ghost_cell_index_type> &v,
+    const Vec3i &lc,
+    const Vec3i &hc)
 {
     Vec3i c;
     for (c[0] = lc[0]; c[0] <= hc[0]; c[0]++) {
@@ -197,12 +198,12 @@ CartGrid::CartGrid(const boost::mpi::communicator &comm,
     prepare_communication();
 }
 
-lidx CartGrid::n_local_cells()
+local_cell_index_type CartGrid::n_local_cells()
 {
     return m_grid_size[0] * m_grid_size[1] * m_grid_size[2];
 }
 
-gidx CartGrid::n_ghost_cells()
+ghost_cell_index_type CartGrid::n_ghost_cells()
 {
     int ggs
         = m_ghost_grid_size[0] * m_ghost_grid_size[1] * m_ghost_grid_size[2];
@@ -219,7 +220,8 @@ rank_type CartGrid::neighbor_rank(rank_index_type i)
     return m_neighranks[i];
 }
 
-lgidx CartGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
+local_or_ghost_cell_index_type
+CartGrid::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
 {
     auto c = unlinearize(cellidx);
     auto nc = util::vadd_mod(c, util::NeighborOffsets3D::raw[neigh],
@@ -227,13 +229,13 @@ lgidx CartGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
     return linearize(nc);
 }
 
-lgidx CartGrid::linearize(Vec3i c)
+local_or_ghost_cell_index_type CartGrid::linearize(Vec3i c)
 {
     auto idx = util::linearize(c, m_ghost_grid_size);
     return m_to_pargrid_order[idx];
 }
 
-Vec3i CartGrid::unlinearize(lgidx cidx)
+Vec3i CartGrid::unlinearize(local_or_ghost_cell_index_type cidx)
 {
     auto idx = m_from_pargrid_order[cidx];
     return util::unlinearize(idx, m_ghost_grid_size);
@@ -244,7 +246,7 @@ std::vector<GhostExchangeDesc> CartGrid::get_boundary_info()
     return m_exdescs;
 }
 
-lidx CartGrid::position_to_cell_index(Vec3d pos)
+local_cell_index_type CartGrid::position_to_cell_index(Vec3d pos)
 {
     Vec3i c;
 
@@ -318,7 +320,8 @@ bool CartGrid::repartition(CellMetric m,
     return false;
 }
 
-gloidx CartGrid::global_hash(lgidx cellidx)
+global_cell_index_type
+CartGrid::global_hash(local_or_ghost_cell_index_type cellidx)
 {
     // No need to define this away. Does currently not require extra data.
     Vec3i idx3d = unlinearize(cellidx);

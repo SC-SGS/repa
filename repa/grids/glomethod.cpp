@@ -32,12 +32,12 @@
 namespace repa {
 namespace grids {
 
-lidx GloMethod::n_local_cells()
+local_cell_index_type GloMethod::n_local_cells()
 {
     return localCells;
 }
 
-gidx GloMethod::n_ghost_cells()
+ghost_cell_index_type GloMethod::n_ghost_cells()
 {
     return ghostCells;
 }
@@ -62,7 +62,8 @@ Vec3i GloMethod::grid_size()
     return gbox.grid_size();
 }
 
-lgidx GloMethod::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
+local_or_ghost_cell_index_type
+GloMethod::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
 {
     return global_to_local[gbox.neighbor(cells[cellidx], neigh)];
 }
@@ -72,7 +73,7 @@ std::vector<GhostExchangeDesc> GloMethod::get_boundary_info()
     return exchangeVector;
 }
 
-lidx GloMethod::position_to_cell_index(Vec3d pos)
+local_cell_index_type GloMethod::position_to_cell_index(Vec3d pos)
 {
     if (position_to_rank(pos) != comm_cart.rank())
         throw std::domain_error("Particle not in local box");
@@ -110,8 +111,8 @@ rank_index_type GloMethod::position_to_neighidx(Vec3d pos)
  * Partitioning is performed in parallel via ParMETIS.
  */
 bool GloMethod::repartition(CellMetric m,
-                        CellCellMetric ccm,
-                        Thunk exchange_start_callback)
+                            CellCellMetric ccm,
+                            Thunk exchange_start_callback)
 {
     bool result = sub_repartition(m, ccm);
     if (result) {
@@ -124,20 +125,20 @@ bool GloMethod::repartition(CellMetric m,
 }
 
 GloMethod::GloMethod(const boost::mpi::communicator &comm,
-             Vec3d box_size,
-             double min_cell_size)
+                     Vec3d box_size,
+                     double min_cell_size)
     : ParallelLCGrid(comm, box_size, min_cell_size),
       gbox(box_size, min_cell_size)
 {
-    gloidx nglocells = gbox.ncells();
-    lidx ncells_per_proc = static_cast<lidx>(
+    global_cell_index_type nglocells = gbox.ncells();
+    local_cell_index_type ncells_per_proc = static_cast<local_cell_index_type>(
         std::ceil(static_cast<double>(nglocells) / comm_cart.size()));
 
     // Initial partitioning
     partition.resize(nglocells);
 
     // Line-wise init
-    for (gloidx i = 0; i < nglocells; ++i) {
+    for (global_cell_index_type i = 0; i < nglocells; ++i) {
         partition[i] = i / ncells_per_proc;
     }
 
@@ -156,7 +157,7 @@ GloMethod::GloMethod(const boost::mpi::communicator &comm,
     //    dims[2])),
     //}};
 
-    // for (gloidx i = 0; i < nglocells; ++i) {
+    // for (global_cell_index_type i = 0; i < nglocells; ++i) {
     //  auto cellidx = gbox.unlinearize(i);
     //  // Transform cellidx to 3d proc coord
     //  for (int i = 0; i < 3; ++i)
@@ -181,7 +182,7 @@ GloMethod::~GloMethod()
  */
 void GloMethod::init(bool firstcall)
 {
-    const gloidx nglocells = partition.size();
+    const global_cell_index_type nglocells = partition.size();
 
     pre_init(firstcall);
 
@@ -192,7 +193,7 @@ void GloMethod::init(bool firstcall)
     neighbors.clear();
 
     // Extract the local cells from "partition".
-    for (gloidx i = 0; i < nglocells; i++) {
+    for (global_cell_index_type i = 0; i < nglocells; i++) {
         if (partition[i] == comm_cart.rank()) {
             // Vector of own cells
             cells.push_back(i);
@@ -209,8 +210,8 @@ void GloMethod::init(bool firstcall)
     std::vector<GhostExchangeDesc> tmp_ex_descs(comm_cart.size());
 
     // Determine ghost cells and communication volume
-    for (lidx i = 0; i < localCells; i++) {
-        for (gloidx neighborIndex :
+    for (local_cell_index_type i = 0; i < localCells; i++) {
+        for (global_cell_index_type neighborIndex :
              gbox.full_shell_neigh_without_center(cells[i])) {
             rank_type owner = partition[neighborIndex];
             if (owner == comm_cart.rank())
@@ -252,11 +253,15 @@ void GloMethod::init(bool firstcall)
             std::sort(std::begin(ed.recv), std::end(ed.recv));
             std::transform(std::begin(ed.recv), std::end(ed.recv),
                            std::begin(ed.recv),
-                           [this](gloidx i) { return global_to_local[i]; });
+                           [this](global_cell_index_type i) {
+                               return global_to_local[i];
+                           });
             std::sort(std::begin(ed.send), std::end(ed.send));
             std::transform(std::begin(ed.send), std::end(ed.send),
                            std::begin(ed.send),
-                           [this](gloidx i) { return global_to_local[i]; });
+                           [this](global_cell_index_type i) {
+                               return global_to_local[i];
+                           });
 
             exchangeVector.push_back(std::move(ed));
         }
@@ -273,7 +278,8 @@ void GloMethod::init(bool firstcall)
     post_init(firstcall);
 }
 
-gloidx GloMethod::global_hash(lgidx cellidx)
+global_cell_index_type
+GloMethod::global_hash(local_or_ghost_cell_index_type cellidx)
 {
     // No need to define this away. Does currently not require extra data.
     return cells[cellidx];

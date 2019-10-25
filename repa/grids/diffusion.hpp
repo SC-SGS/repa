@@ -44,8 +44,8 @@ private:
 
     void pre_init(bool firstcall) override;
     void post_init(bool firstcall) override;
-    void init_new_foreign_cell(lidx localcell,
-                               gloidx foreigncell,
+    void init_new_foreign_cell(local_cell_index_type localcell,
+                               global_cell_index_type foreigncell,
                                rank_type owner) override;
     bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
 
@@ -55,10 +55,11 @@ private:
 
     // Stores all local cells which ar at the border of the local area of
     // this process (Stores the local index)
-    std::vector<lidx> borderCells;
+    std::vector<local_cell_index_type> borderCells;
     // Stores for each cell in "borderCells" the ranks of their neighbourhood
     // Key is the local cell ID and value a set of ranks
-    std::map<lidx, std::vector<rank_type>> borderCellsNeighbors;
+    std::map<local_cell_index_type, std::vector<rank_type>>
+        borderCellsNeighbors;
 
     // Neighborhood communicator
     MPI_Comm neighcomm;
@@ -71,19 +72,19 @@ private:
     void clear_unknown_cell_ownership();
 
     // Computes vector of vectors of cells which has to be send to neighbours
-    std::vector<std::vector<gloidx>>
+    std::vector<std::vector<global_cell_index_type>>
     compute_send_list(std::vector<double> &&sendLoads,
                       const std::vector<double> &weights);
 
     // Struct for communication of neightbohood information
     struct NeighSend {
-        gloidx basecell;
+        global_cell_index_type basecell;
         std::array<rank_type, 26> neighranks;
     };
 
     // Send message with neighbourhood of received cells in "sendCells"
-    std::vector<std::vector<NeighSend>>
-    sendNeighbourhood(const std::vector<std::vector<lidx>> &toSend);
+    std::vector<std::vector<NeighSend>> sendNeighbourhood(
+        const std::vector<std::vector<local_cell_index_type>> &toSend);
 
     // Update partition array
     void updateReceivedNeighbourhood(

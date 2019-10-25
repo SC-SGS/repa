@@ -62,10 +62,10 @@ private:
     Domain m_local_ghostdomain;
     Vec3i m_local_subdomain_size;
     Vec3i m_local_ghostdomain_size;
-    lidx m_nb_of_local_cells;
-    gidx m_nb_of_ghost_cells;
-    std::vector<lgidx> m_index_permutations;
-    std::vector<lgidx> m_index_permutations_inverse;
+    local_cell_index_type m_nb_of_local_cells;
+    ghost_cell_index_type m_nb_of_ghost_cells;
+    std::vector<local_or_ghost_cell_index_type> m_index_permutations;
+    std::vector<local_or_ghost_cell_index_type> m_index_permutations_inverse;
 
     /** Maps neighbor id (nidx) to rank. */
     std::vector<rank_type> m_neighbor_processes;
@@ -184,9 +184,9 @@ public:
                Vec3d box_size,
                double min_cell_size);
 
-    virtual lidx n_local_cells() override;
+    virtual local_cell_index_type n_local_cells() override;
 
-    virtual gidx n_ghost_cells() override;
+    virtual ghost_cell_index_type n_ghost_cells() override;
 
     virtual rank_index_type n_neighbors() override;
 
@@ -196,11 +196,13 @@ public:
 
     virtual Vec3i grid_size() override;
 
-    virtual lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
+    virtual local_or_ghost_cell_index_type
+    cell_neighbor_index(local_cell_index_type cellidx,
+                        fs_neighidx neigh) override;
 
     virtual std::vector<GhostExchangeDesc> get_boundary_info() override;
 
-    virtual lidx position_to_cell_index(Vec3d pos) override;
+    virtual local_cell_index_type position_to_cell_index(Vec3d pos) override;
 
     virtual rank_type position_to_rank(Vec3d pos) override;
 
@@ -209,7 +211,8 @@ public:
     virtual bool
     repartition(CellMetric m, CellCellMetric ccm, Thunk cb) override;
 
-    gloidx global_hash(lgidx cellidx) override;
+    global_cell_index_type
+    global_hash(local_or_ghost_cell_index_type cellidx) override;
 };
 
 } // namespace grids

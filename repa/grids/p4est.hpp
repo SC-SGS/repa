@@ -37,7 +37,8 @@ namespace impl {
 
 enum class CellType { inner = 0, boundary = 1, ghost = 2 };
 struct LocalShell {
-    gloidx idx; // a unique index within all cells (as used by p8est for locals)
+    global_cell_index_type
+        idx; // a unique index within all cells (as used by p8est for locals)
     rank_type which_proc; // the rank of this cell (equals this_node for locals)
     CellType shell; // shell information (0: inner local cell, 1: boundary local
                     // cell, 2: ghost cell)
@@ -52,7 +53,7 @@ struct LocalShell {
                   // p8est); only 26 because cell itself is not included.
     Vec3i coord;  // cartesian coordinates of the cell
 
-    LocalShell(gloidx idx,
+    LocalShell(global_cell_index_type idx,
                rank_type rank,
                CellType shell,
                int boundary,
@@ -88,21 +89,24 @@ struct P4estGrid : public ParallelLCGrid {
     P4estGrid(const boost::mpi::communicator &comm,
               Vec3d box_size,
               double min_cell_size);
-    lidx n_local_cells() override;
-    gidx n_ghost_cells() override;
+    local_cell_index_type n_local_cells() override;
+    ghost_cell_index_type n_ghost_cells() override;
     rank_index_type n_neighbors() override;
     rank_type neighbor_rank(rank_index_type i) override;
     Vec3d cell_size() override;
     Vec3i grid_size() override;
-    lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
+    local_or_ghost_cell_index_type
+    cell_neighbor_index(local_cell_index_type cellidx,
+                        fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
-    lidx position_to_cell_index(Vec3d pos) override;
+    local_cell_index_type position_to_cell_index(Vec3d pos) override;
     rank_type position_to_rank(Vec3d pos) override;
     rank_index_type position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;
-    gloidx global_hash(lgidx cellidx) override;
+    global_cell_index_type
+    global_hash(local_or_ghost_cell_index_type cellidx) override;
 
 private:
     int m_grid_level;
@@ -115,14 +119,14 @@ private:
     // p4est data structures
     std::unique_ptr<p8est_connectivity_t> m_p8est_conn;
     std::unique_ptr<p8est_t> m_p8est;
-    lidx m_num_local_cells;
-    gidx m_num_ghost_cells;
+    local_cell_index_type m_num_local_cells;
+    ghost_cell_index_type m_num_ghost_cells;
 
     // helper data structures
-    std::vector<gloidx> m_node_first_cell_idx;
+    std::vector<global_cell_index_type> m_node_first_cell_idx;
     std::vector<impl::LocalShell> m_p8est_shell;
 #ifdef GLOBAL_HASH_NEEDED
-    std::vector<gloidx>
+    std::vector<global_cell_index_type>
         m_global_idx; //< Global virtual morton index of cells (for
                       // global_hash()) could be removed in non-test builds.
 #endif

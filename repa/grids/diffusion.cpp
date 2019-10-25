@@ -121,7 +121,7 @@ namespace grids {
 
 void Diffusion::clear_unknown_cell_ownership()
 {
-    auto is_my_cell = [this](lgidx neighcell) {
+    auto is_my_cell = [this](local_or_ghost_cell_index_type neighcell) {
         return partition[neighcell] == comm_cart.rank();
     };
 
@@ -154,7 +154,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     ENSURE(send_volume.size() == neighbors.size());
 #endif
 
-    std::vector<std::vector<gloidx>> toSend(neighbors.size());
+    std::vector<std::vector<global_cell_index_type>> toSend(neighbors.size());
 
     if (std::any_of(std::begin(send_volume), std::end(send_volume),
                     [](double d) { return d > 0.0; })) {
@@ -194,7 +194,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     }
 
     // All send volumes from all processes
-    std::vector<std::vector<std::vector<gloidx>>> received_cells(neighbors.size());
+    std::vector<std::vector<std::vector<global_cell_index_type>>>
+        received_cells(neighbors.size());
     for (rank_index_type i = 0; i < neighbors.size(); ++i) {
         rreq_cells[i] = comm_cart.irecv(neighbors[i], 2, received_cells[i]);
     }
@@ -259,12 +260,12 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     boost::mpi::wait_all(std::begin(sreq_neigh), std::end(sreq_neigh));
 
 #ifdef DIFFUSION_DEBUG
-    for (gloidx i = 0; i < partition.size(); ++i) {
+    for (global_cell_index_type i = 0; i < partition.size(); ++i) {
         if (partition[i] != comm_cart.rank())
             continue;
 
         for (int j = 0; j < 27; ++j) {
-            gloidx n = gbox.neighbor(i, j);
+            global_cell_index_type n = gbox.neighbor(i, j);
             ENSURE(partition[n] > -1);
         }
     }
@@ -294,18 +295,18 @@ Diffusion::~Diffusion()
  * Computes a vector of vectors. The inner vectors contain a rank of the
  * process where the cells shall send and the cellids of this cells.
  */
-std::vector<std::vector<gloidx>>
+std::vector<std::vector<global_cell_index_type>>
 Diffusion::compute_send_list(std::vector<double> &&send_loads,
                              const std::vector<double> &weights)
 {
-    std::vector<std::tuple<int, double, lidx>> plist;
+    std::vector<std::tuple<int, double, local_cell_index_type>> plist;
     for (size_t i = 0; i < borderCells.size(); i++) {
         // Profit when sending this cell away
         double profit = weights[borderCells[i]];
 
         // Additional cell communication induced if this cell is sent away
         int nadditional_comm = 0;
-        for (gloidx neighCell :
+        for (global_cell_index_type neighCell :
              gbox.full_shell_neigh_without_center(cells[borderCells[i]])) {
             if (partition[neighCell] == comm_cart.rank()
                 && std::find(std::begin(borderCells), std::end(borderCells),
@@ -322,7 +323,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
             plist.emplace_back(27 - nadditional_comm, profit, borderCells[i]);
     }
 
-    std::vector<std::vector<gloidx>> to_send(send_loads.size());
+    std::vector<std::vector<global_cell_index_type>> to_send(send_loads.size());
 
     // Use a maxheap: Always draw the maximum element
     // (1. least new border cells, 2. most profit)
@@ -330,7 +331,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
     std::make_heap(std::begin(plist), std::end(plist));
     while (!plist.empty()) {
         std::pop_heap(std::begin(plist), std::end(plist));
-        lidx cidx = std::get<2>(plist.back());
+        local_cell_index_type cidx = std::get<2>(plist.back());
         plist.pop_back();
 
         for (auto neighrank : borderCellsNeighbors[cidx]) {
@@ -351,8 +352,8 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
     return to_send;
 }
 
-std::vector<std::vector<Diffusion::NeighSend>>
-Diffusion::sendNeighbourhood(const std::vector<std::vector<gloidx>> &toSend)
+std::vector<std::vector<Diffusion::NeighSend>> Diffusion::sendNeighbourhood(
+    const std::vector<std::vector<global_cell_index_type>> &toSend)
 {
     std::vector<std::vector<NeighSend>> sendVectors(toSend.size());
     for (size_t i = 0; i < toSend.size(); ++i) {
@@ -360,7 +361,8 @@ Diffusion::sendNeighbourhood(const std::vector<std::vector<gloidx>> &toSend)
         for (size_t j = 0; j < toSend[i].size(); ++j) {
             sendVectors[i][j].basecell = toSend[i][j];
             int k = 0;
-            for (gloidx n : gbox.full_shell_neigh_without_center(
+            for (global_cell_index_type n :
+                 gbox.full_shell_neigh_without_center(
                      sendVectors[i][j].basecell)) {
                 sendVectors[i][j].neighranks[k] = partition[n];
                 k++;
@@ -380,9 +382,10 @@ void Diffusion::updateReceivedNeighbourhood(
 {
     for (size_t i = 0; i < neighs.size(); ++i) {
         for (size_t j = 0; j < neighs[i].size(); ++j) {
-            gloidx basecell = neighs[i][j].basecell;
+            global_cell_index_type basecell = neighs[i][j].basecell;
             int k = 0;
-            for (gloidx n : gbox.full_shell_neigh_without_center(basecell)) {
+            for (global_cell_index_type n :
+                 gbox.full_shell_neigh_without_center(basecell)) {
                 partition[n] = neighs[i][j].neighranks[k++];
             }
         }
@@ -428,8 +431,8 @@ void Diffusion::post_init(bool firstcall)
 #endif
 }
 
-void Diffusion::init_new_foreign_cell(lidx localcell,
-                                      gloidx foreigncell,
+void Diffusion::init_new_foreign_cell(local_cell_index_type localcell,
+                                      global_cell_index_type foreigncell,
                                       rank_type owner)
 {
     // First cell identifying "localcell" as border cell?

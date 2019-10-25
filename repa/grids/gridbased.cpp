@@ -37,7 +37,7 @@
 namespace repa {
 namespace grids {
 
-rank_type GridBasedGrid::gloidx_to_rank(gloidx idx)
+rank_type GridBasedGrid::gloidx_to_rank(global_cell_index_type idx)
 {
     auto m = gbox.midpoint(idx);
     return position_to_rank(m);
@@ -194,7 +194,7 @@ void GridBasedGrid::reinit()
 
     // Reinit cells, nlocalcells, global_to_local
     // Simple loop over all global cells; TODO: optimize
-    for (gloidx i = 0; i < gbox.ncells(); ++i) {
+    for (global_cell_index_type i = 0; i < gbox.ncells(); ++i) {
         auto midpoint = gbox.midpoint(i);
 
         // We use "position_to_rank" here.
@@ -223,8 +223,9 @@ void GridBasedGrid::reinit()
     exchange_vec.resize(neighbor_ranks.size());
 
     // Determine ghost cells and communication volume
-    for (lidx i = 0; i < nlocalcells; i++) {
-        for (gloidx neighidx : gbox.full_shell_neigh_without_center(cells[i])) {
+    for (local_cell_index_type i = 0; i < nlocalcells; i++) {
+        for (global_cell_index_type neighidx :
+             gbox.full_shell_neigh_without_center(cells[i])) {
             rank_type owner = gloidx_to_rank(neighidx);
 
             if (owner == comm_cart.rank())
@@ -257,7 +258,7 @@ void GridBasedGrid::reinit()
 
     // All neighbors must be communicated with, otherwise something went wrong.
     // Sort and global_to_local.
-    const auto glo_to_loc = [this](gloidx i) {
+    const auto glo_to_loc = [this](global_cell_index_type i) {
 #ifdef GRID_DEBUG
         return global_to_local.at(i);
 #else
@@ -312,12 +313,12 @@ GridBasedGrid::~GridBasedGrid()
         MPI_Comm_free(&neighcomm);
 }
 
-lidx GridBasedGrid::n_local_cells()
+local_cell_index_type GridBasedGrid::n_local_cells()
 {
     return nlocalcells;
 }
 
-gidx GridBasedGrid::n_ghost_cells()
+ghost_cell_index_type GridBasedGrid::n_ghost_cells()
 {
     return nghostcells;
 }
@@ -332,7 +333,9 @@ rank_type GridBasedGrid::neighbor_rank(rank_index_type i)
     return neighbor_ranks[i];
 }
 
-lgidx GridBasedGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
+local_or_ghost_cell_index_type
+GridBasedGrid::cell_neighbor_index(local_cell_index_type cellidx,
+                                   fs_neighidx neigh)
 {
     return global_to_local.at(gbox.neighbor(cells[cellidx], neigh));
 }
@@ -342,9 +345,9 @@ std::vector<GhostExchangeDesc> GridBasedGrid::get_boundary_info()
     return exchange_vec;
 }
 
-lidx GridBasedGrid::position_to_cell_index(Vec3d pos)
+local_cell_index_type GridBasedGrid::position_to_cell_index(Vec3d pos)
 {
-    lidx c;
+    local_cell_index_type c;
     try {
         c = global_to_local.at(gbox.cell_at_pos(pos));
     }
@@ -435,13 +438,13 @@ Vec3d GridBasedGrid::get_subdomain_center()
 
     // If no particles: Use subdomain midpoint.
     // (Calculated as mispoint of all cells).
-    for (lidx i = 0; i < n_local_cells(); ++i) {
+    for (local_cell_index_type i = 0; i < n_local_cells(); ++i) {
         auto mp = gbox.midpoint(cells[i]);
         for (int d = 0; d < 3; ++d)
             c[d] += mp[d];
     }
 
-    const lidx n = n_local_cells();
+    const local_cell_index_type n = n_local_cells();
     for (int d = 0; d < 3; ++d)
         c[d] /= n;
 
@@ -584,7 +587,8 @@ void GridBasedGrid::command(std::string s)
     }
 }
 
-gloidx GridBasedGrid::global_hash(lgidx cellidx)
+global_cell_index_type
+GridBasedGrid::global_hash(local_or_ghost_cell_index_type cellidx)
 {
     return cells[cellidx];
 }

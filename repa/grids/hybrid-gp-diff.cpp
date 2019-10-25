@@ -46,12 +46,12 @@ void HybridGPDiff::after_construction()
     active_implementation->after_construction();
 }
 
-lidx HybridGPDiff::n_local_cells()
+local_cell_index_type HybridGPDiff::n_local_cells()
 {
     return active_implementation->n_local_cells();
 }
 
-gidx HybridGPDiff::n_ghost_cells()
+ghost_cell_index_type HybridGPDiff::n_ghost_cells()
 {
     return active_implementation->n_ghost_cells();
 }
@@ -76,7 +76,9 @@ Vec3i HybridGPDiff::grid_size()
     return active_implementation->grid_size();
 }
 
-lgidx HybridGPDiff::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
+local_or_ghost_cell_index_type
+HybridGPDiff::cell_neighbor_index(local_cell_index_type cellidx,
+                                  fs_neighidx neigh)
 {
     return active_implementation->cell_neighbor_index(cellidx, neigh);
 }
@@ -86,7 +88,7 @@ std::vector<GhostExchangeDesc> HybridGPDiff::get_boundary_info()
     return active_implementation->get_boundary_info();
 }
 
-lidx HybridGPDiff::position_to_cell_index(Vec3d pos)
+local_cell_index_type HybridGPDiff::position_to_cell_index(Vec3d pos)
 {
     return active_implementation->position_to_cell_index(pos);
 }
@@ -171,7 +173,8 @@ void HybridGPDiff::command(std::string s)
     }
 }
 
-gloidx HybridGPDiff::global_hash(lgidx cellidx)
+global_cell_index_type
+HybridGPDiff::global_hash(local_or_ghost_cell_index_type cellidx)
 {
     return active_implementation->global_hash(cellidx);
 }
