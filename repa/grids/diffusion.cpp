@@ -38,7 +38,7 @@ namespace boost {
 namespace serialization {
 template <typename Archive>
 void load(Archive &ar,
-          repa::grids::Diffusion::NeighSend &n,
+          repa::grids::Diffusion::CellNeighborhood &n,
           const unsigned int /* file_version */)
 {
     ar >> n.basecell;
@@ -47,7 +47,7 @@ void load(Archive &ar,
 
 template <typename Archive>
 void save(Archive &ar,
-          const repa::grids::Diffusion::NeighSend &n,
+          const repa::grids::Diffusion::CellNeighborhood &n,
           const unsigned int /* file_version */)
 {
     ar << n.basecell;
@@ -56,7 +56,7 @@ void save(Archive &ar,
 
 template <class Archive>
 void serialize(Archive &ar,
-               repa::grids::Diffusion::NeighSend &n,
+               repa::grids::Diffusion::CellNeighborhood &n,
                const unsigned int file_version)
 {
     split_free(ar, n, file_version);
@@ -154,7 +154,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     ENSURE(send_volume.size() == neighbors.size());
 #endif
 
-    std::vector<std::vector<global_cell_index_type>> toSend(neighbors.size());
+    PerNeighbor<GlobalCellIndices> toSend(neighbors.size());
 
     if (std::any_of(std::begin(send_volume), std::end(send_volume),
                     [](double d) { return d > 0.0; })) {
@@ -185,7 +185,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     for (rank_index_type i = 0; i < neighbors.size(); ++i) {
         // Push back the rank, that is save an extra communication of
         // "neighbors" and interleave it into "toSend"
-        toSend[i].push_back(neighbors[i]);
+        toSend[i].push_back(static_cast<global_cell_index_type>(neighbors[i]));
     }
 
     // Extra loop as all ranks need to be added before sending
@@ -194,7 +194,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     }
 
     // All send volumes from all processes
-    std::vector<std::vector<std::vector<global_cell_index_type>>>
+    PerNeighbor<PerNeighbor<GlobalCellIndices>>
+    //          ^^^^^^^^^^^ this "PerNeighbor" is actually "PerNeighborsNeighbor"
         received_cells(neighbors.size());
     for (rank_index_type i = 0; i < neighbors.size(); ++i) {
         rreq_cells[i] = comm_cart.irecv(neighbors[i], 2, received_cells[i]);
@@ -206,7 +207,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     for (size_t from = 0; from < received_cells.size(); ++from) {
         for (size_t to = 0; to < received_cells[from].size(); ++to) {
             // Extract target rank, again.
-            rank_type target_rank = received_cells[from][to].back();
+            rank_type target_rank = static_cast<rank_type>(received_cells[from][to].back());
             received_cells[from][to].pop_back();
 
             fill_index_range(partition, std::begin(received_cells[from][to]),
@@ -249,7 +250,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     }
 
     // All send volumes from all processes
-    std::vector<std::vector<NeighSend>> received_neighborhood(neighbors.size());
+    PerNeighbor<CellNeighborhoodPerCell> received_neighborhood(neighbors.size());
     for (rank_index_type i = 0; i < neighbors.size(); ++i) {
         rreq_neigh[i]
             = comm_cart.irecv(neighbors[i], 2, received_neighborhood[i]);
@@ -295,7 +296,7 @@ Diffusion::~Diffusion()
  * Computes a vector of vectors. The inner vectors contain a rank of the
  * process where the cells shall send and the cellids of this cells.
  */
-std::vector<std::vector<global_cell_index_type>>
+Diffusion::PerNeighbor<Diffusion::GlobalCellIndices>
 Diffusion::compute_send_list(std::vector<double> &&send_loads,
                              const std::vector<double> &weights)
 {
@@ -323,7 +324,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
             plist.emplace_back(27 - nadditional_comm, profit, borderCells[i]);
     }
 
-    std::vector<std::vector<global_cell_index_type>> to_send(send_loads.size());
+    PerNeighbor<GlobalCellIndices> to_send(send_loads.size());
 
     // Use a maxheap: Always draw the maximum element
     // (1. least new border cells, 2. most profit)
@@ -352,10 +353,11 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
     return to_send;
 }
 
-std::vector<std::vector<Diffusion::NeighSend>> Diffusion::sendNeighbourhood(
-    const std::vector<std::vector<global_cell_index_type>> &toSend)
+Diffusion::PerNeighbor<Diffusion::CellNeighborhoodPerCell>
+Diffusion::sendNeighbourhood(
+    const PerNeighbor<GlobalCellIndices> &toSend)
 {
-    std::vector<std::vector<NeighSend>> sendVectors(toSend.size());
+    PerNeighbor<CellNeighborhoodPerCell> sendVectors(toSend.size());
     for (size_t i = 0; i < toSend.size(); ++i) {
         sendVectors[i].resize(toSend[i].size());
         for (size_t j = 0; j < toSend[i].size(); ++j) {
@@ -378,7 +380,7 @@ std::vector<std::vector<Diffusion::NeighSend>> Diffusion::sendNeighbourhood(
  * partition array is updated. (Only neighbourhood is changed)
  */
 void Diffusion::updateReceivedNeighbourhood(
-    const std::vector<std::vector<NeighSend>> &neighs)
+    const PerNeighbor<CellNeighborhoodPerCell> &neighs)
 {
     for (size_t i = 0; i < neighs.size(); ++i) {
         for (size_t j = 0; j < neighs[i].size(); ++j) {

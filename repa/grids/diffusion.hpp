@@ -71,24 +71,36 @@ private:
     // Clears obsolete entries from "partition"
     void clear_unknown_cell_ownership();
 
+    /** Type "Per_Neighbor": an element designated for of received from
+     * a neighboring process (one per rank_index_type).
+     */
+    template <typename T>
+    using PerNeighbor = std::vector<T>;
+
+    /** Communication volume (list of cells)
+     */
+    using GlobalCellIndices = std::vector<global_cell_index_type>;
+
+
     // Computes vector of vectors of cells which has to be send to neighbours
-    std::vector<std::vector<global_cell_index_type>>
+    PerNeighbor<GlobalCellIndices>
     compute_send_list(std::vector<double> &&sendLoads,
                       const std::vector<double> &weights);
 
     // Struct for communication of neightbohood information
-    struct NeighSend {
+    struct CellNeighborhood {
         global_cell_index_type basecell;
         std::array<rank_type, 26> neighranks;
     };
 
+    using CellNeighborhoodPerCell = std::vector<CellNeighborhood>;
     // Send message with neighbourhood of received cells in "sendCells"
-    std::vector<std::vector<NeighSend>> sendNeighbourhood(
-        const std::vector<std::vector<local_cell_index_type>> &toSend);
+    PerNeighbor<CellNeighborhoodPerCell> sendNeighbourhood(
+        const PerNeighbor<GlobalCellIndices> &toSend);
 
     // Update partition array
     void updateReceivedNeighbourhood(
-        const std::vector<std::vector<NeighSend>> &neighbourhood);
+        const PerNeighbor<CellNeighborhoodPerCell> &neighbourhood);
 };
 } // namespace grids
 } // namespace repa
