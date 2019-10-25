@@ -71,7 +71,7 @@ private:
     // Clears obsolete entries from "partition"
     void clear_unknown_cell_ownership();
 
-    /** Type "Per_Neighbor": an element designated for of received from
+    /** Type "Per_Neighbor": an element designated for communication with
      * a neighboring process (one per rank_index_type).
      */
     template <typename T>
