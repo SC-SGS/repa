@@ -23,6 +23,7 @@
 #include <boost/mpi.hpp>
 
 #include "util/ensure.hpp"
+#include "util/initial_partitioning.hpp"
 #include "util/push_back_unique.hpp"
 
 #ifndef NDEBUG
@@ -130,42 +131,13 @@ GloMethod::GloMethod(const boost::mpi::communicator &comm,
     : ParallelLCGrid(comm, box_size, min_cell_size),
       gbox(box_size, min_cell_size)
 {
-    global_cell_index_type nglocells = gbox.ncells();
-    local_cell_index_type ncells_per_proc = static_cast<local_cell_index_type>(
-        std::ceil(static_cast<double>(nglocells) / comm_cart.size()));
-
     // Initial partitioning
-    partition.resize(nglocells);
-
-    // Line-wise init
-    for (global_cell_index_type i = 0; i < nglocells; ++i) {
-        partition[i] = i / ncells_per_proc;
-    }
-
-    // TODO: choose init?
-
-    //// Init to equally sized boxes on Cartesian grid
-    // int dims[3] = {0, 0, 0};
-    // MPI_Dims_create(comm_cart.size(), 3, dims);
-
-    // auto cellgrid = gbox.grid_size();
-    // Vec3i cells_per_proc = {{
-    //    static_cast<int>(std::ceil(static_cast<double>(cellgrid[0]) /
-    //    dims[0])), static_cast<int>(std::ceil(static_cast<double>(cellgrid[1])
-    //    / dims[1])),
-    //    static_cast<int>(std::ceil(static_cast<double>(cellgrid[2]) /
-    //    dims[2])),
-    //}};
-
-    // for (global_cell_index_type i = 0; i < nglocells; ++i) {
-    //  auto cellidx = gbox.unlinearize(i);
-    //  // Transform cellidx to 3d proc coord
-    //  for (int i = 0; i < 3; ++i)
-    //    cellidx[i] /= cells_per_proc[i];
-    //  int rank;
-    //  MPI_Cart_rank(comm_cart, cellidx.data(), &rank);
-    //  partition[i] = rank;
-    //}
+    partition.resize(gbox.ncells());
+    util::InitPartitioning{gbox, comm}(
+        util::InitialPartitionType::LINEAR,
+        [this](global_cell_index_type idx, rank_type r) {
+            this->partition[idx] = r;
+        });
 }
 
 void GloMethod::after_construction()
