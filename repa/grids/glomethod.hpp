@@ -37,13 +37,13 @@ struct GloMethod : public ParallelLCGrid {
     lidx n_local_cells() override;
     gidx n_ghost_cells() override;
     nidx n_neighbors() override;
-    rank neighbor_rank(nidx i) override;
+    rank_type neighbor_rank(nidx i) override;
     Vec3d cell_size() override;
     Vec3i grid_size() override;
     lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
     lidx position_to_cell_index(Vec3d pos) override;
-    rank position_to_rank(Vec3d pos) override;
+    rank_type position_to_rank(Vec3d pos) override;
     nidx position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
@@ -60,7 +60,7 @@ protected:
     // Number of ghost cells
     gidx ghostCells;
     // All neighbor ranks (ranks of subdomains neighboring this subdomain)
-    std::vector<rank> neighbors;
+    std::vector<rank_type> neighbors;
     // Communication descriptors
     std::vector<GhostExchangeDesc> exchangeVector;
 
@@ -73,7 +73,7 @@ protected:
     std::vector<gloidx> cells;
     // Stores the global partitioning. One rank per cell. Index via global
     // index.
-    std::vector<rank> partition;
+    std::vector<rank_type> partition;
 
     // Stores the mapping of a global linearized index to a
     // local linearized index or an ghost linearized index.
@@ -100,7 +100,7 @@ protected:
     // @apram foreigncell global index of the new ghost cell
     // @param owner owner rank of the ghost cell
     virtual void
-    init_new_foreign_cell(lidx localcell, gloidx foreigncell, rank owner)
+    init_new_foreign_cell(lidx localcell, gloidx foreigncell, rank_type owner)
     {
     }
 

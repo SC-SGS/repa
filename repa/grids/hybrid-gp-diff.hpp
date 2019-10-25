@@ -38,13 +38,13 @@ struct HybridGPDiff : public ParallelLCGrid {
     lidx n_local_cells() override;
     gidx n_ghost_cells() override;
     nidx n_neighbors() override;
-    rank neighbor_rank(nidx i) override;
+    rank_type neighbor_rank(nidx i) override;
     Vec3d cell_size() override;
     Vec3i grid_size() override;
     lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
     lidx position_to_cell_index(Vec3d pos) override;
-    rank position_to_rank(Vec3d pos) override;
+    rank_type position_to_rank(Vec3d pos) override;
     nidx position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,

@@ -46,7 +46,7 @@ private:
     void post_init(bool firstcall) override;
     void init_new_foreign_cell(lidx localcell,
                                gloidx foreigncell,
-                               rank owner) override;
+                               rank_type owner) override;
     bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
 
     //
@@ -58,7 +58,7 @@ private:
     std::vector<lidx> borderCells;
     // Stores for each cell in "borderCells" the ranks of their neighbourhood
     // Key is the local cell ID and value a set of ranks
-    std::map<lidx, std::vector<rank>> borderCellsNeighbors;
+    std::map<lidx, std::vector<rank_type>> borderCellsNeighbors;
 
     // Neighborhood communicator
     MPI_Comm neighcomm;
@@ -78,7 +78,7 @@ private:
     // Struct for communication of neightbohood information
     struct NeighSend {
         gloidx basecell;
-        std::array<rank, 26> neighranks;
+        std::array<rank_type, 26> neighranks;
     };
 
     // Send message with neighbourhood of received cells in "sendCells"

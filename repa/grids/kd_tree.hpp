@@ -68,7 +68,7 @@ private:
     std::vector<lgidx> m_index_permutations_inverse;
 
     /** Maps neighbor id (nidx) to rank. */
-    std::vector<rank> m_neighbor_processes;
+    std::vector<rank_type> m_neighbor_processes;
 
     /** Maps rank to neighbor id (nidx) or -1 if rank is no neighbor. */
     std::vector<nidx> m_neighbor_processes_inverse;
@@ -190,7 +190,7 @@ public:
 
     virtual nidx n_neighbors() override;
 
-    virtual rank neighbor_rank(nidx i) override;
+    virtual rank_type neighbor_rank(nidx i) override;
 
     virtual Vec3d cell_size() override;
 
@@ -202,7 +202,7 @@ public:
 
     virtual lidx position_to_cell_index(Vec3d pos) override;
 
-    virtual rank position_to_rank(Vec3d pos) override;
+    virtual rank_type position_to_rank(Vec3d pos) override;
 
     virtual nidx position_to_neighidx(Vec3d pos) override;
 

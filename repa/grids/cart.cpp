@@ -64,7 +64,7 @@ bool CartGrid::is_ghost_cell(const Vec3i &c)
            || c[2] == m_ghost_grid_size[2] - 1;
 }
 
-rank CartGrid::proc_offset_to_rank(const Vec3i &offset)
+rank_type CartGrid::proc_offset_to_rank(const Vec3i &offset)
 {
     auto neighpos = util::vadd_mod(m_procgrid_pos, offset, m_procgrid);
     int rank;
@@ -214,7 +214,7 @@ nidx CartGrid::n_neighbors()
     return m_neighranks.size();
 }
 
-rank CartGrid::neighbor_rank(nidx i)
+rank_type CartGrid::neighbor_rank(nidx i)
 {
     return m_neighranks[i];
 }
@@ -259,7 +259,7 @@ lidx CartGrid::position_to_cell_index(Vec3d pos)
     return linearize(c);
 }
 
-rank CartGrid::position_to_rank(Vec3d pos)
+rank_type CartGrid::position_to_rank(Vec3d pos)
 {
     Vec3i proc;
     for (int i = 0; i < 3; ++i)
@@ -271,7 +271,7 @@ rank CartGrid::position_to_rank(Vec3d pos)
     return rank;
 }
 
-nidx CartGrid::neighbor_idx(rank r)
+nidx CartGrid::neighbor_idx(rank_type r)
 {
     // Search this rank in the local neighbor list and return its index
     // Use std::find here as 1) m_neighranks might not be sorted and 2) it has

@@ -205,7 +205,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     for (size_t from = 0; from < received_cells.size(); ++from) {
         for (size_t to = 0; to < received_cells[from].size(); ++to) {
             // Extract target rank, again.
-            rank target_rank = received_cells[from][to].back();
+            rank_type target_rank = received_cells[from][to].back();
             received_cells[from][to].pop_back();
 
             fill_index_range(partition, std::begin(received_cells[from][to]),
@@ -430,7 +430,7 @@ void Diffusion::post_init(bool firstcall)
 
 void Diffusion::init_new_foreign_cell(lidx localcell,
                                       gloidx foreigncell,
-                                      rank owner)
+                                      rank_type owner)
 {
     // First cell identifying "localcell" as border cell?
     if (borderCells.empty() || borderCells.back() != localcell)

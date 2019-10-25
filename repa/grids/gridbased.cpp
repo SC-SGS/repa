@@ -37,13 +37,13 @@
 namespace repa {
 namespace grids {
 
-rank GridBasedGrid::gloidx_to_rank(gloidx idx)
+rank_type GridBasedGrid::gloidx_to_rank(gloidx idx)
 {
     auto m = gbox.midpoint(idx);
     return position_to_rank(m);
 }
 
-std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank r)
+std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
 {
     Vec3i c, off;
     MPI_Cart_coords(comm_cart, r, 3, c.data());
@@ -65,7 +65,7 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank r)
     for (off[0] = 0; off[0] <= 1; ++off[0]) {
         for (off[1] = 0; off[1] <= 1; ++off[1]) {
             for (off[2] = 0; off[2] <= 1; ++off[2]) {
-                rank proc;
+                rank_type proc;
                 Vec3i nc, mirror{0, 0, 0};
 
                 for (int d = 0; d < 3; ++d) {
@@ -113,7 +113,7 @@ void GridBasedGrid::init_neighbors()
     Vec3i c, off, dims, _dummy;
     MPI_Cart_get(comm_cart, 3, dims.data(), _dummy.data(), c.data());
 
-    std::vector<rank> source_neigh,
+    std::vector<rank_type> source_neigh,
         dest_neigh; // Send and receive neighborhood for repart
     nidx nneigh = 0;
     for (off[0] = -1; off[0] <= 1; ++off[0]) {
@@ -131,7 +131,7 @@ void GridBasedGrid::init_neighbors()
                         nc[d] = 0;
                 }
 
-                rank r;
+                rank_type r;
                 MPI_Cart_rank(comm_cart, nc.data(), &r);
 
                 // Insert "r" as a new neighbor if yet unseen.
@@ -225,7 +225,7 @@ void GridBasedGrid::reinit()
     // Determine ghost cells and communication volume
     for (lidx i = 0; i < nlocalcells; i++) {
         for (gloidx neighidx : gbox.full_shell_neigh_without_center(cells[i])) {
-            rank owner = gloidx_to_rank(neighidx);
+            rank_type owner = gloidx_to_rank(neighidx);
 
             if (owner == comm_cart.rank())
                 continue;
@@ -327,7 +327,7 @@ nidx GridBasedGrid::n_neighbors()
     return neighbor_ranks.size();
 }
 
-rank GridBasedGrid::neighbor_rank(nidx i)
+rank_type GridBasedGrid::neighbor_rank(nidx i)
 {
     return neighbor_ranks[i];
 }
@@ -357,7 +357,7 @@ lidx GridBasedGrid::position_to_cell_index(Vec3d pos)
     return c;
 }
 
-rank GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
+rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
 {
     Vec3i grid_coord;
     for (size_t i = 0; i < 3; ++i) {
@@ -368,12 +368,12 @@ rank GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
             grid_coord[i] = 0;
     }
 
-    rank r;
+    rank_type r;
     MPI_Cart_rank(comm_cart, grid_coord.data(), &r);
     return r;
 }
 
-rank GridBasedGrid::position_to_rank(Vec3d pos)
+rank_type GridBasedGrid::position_to_rank(Vec3d pos)
 {
     // Cell ownership is based on the cell midpoint.
     auto mp = gbox.midpoint(gbox.cell_at_pos(pos));
@@ -410,7 +410,7 @@ rank GridBasedGrid::position_to_rank(Vec3d pos)
 
 nidx GridBasedGrid::position_to_neighidx(Vec3d pos)
 {
-    rank rank = position_to_rank(pos);
+    rank_type rank = position_to_rank(pos);
     try {
         return neighbor_idx.at(rank);
     }

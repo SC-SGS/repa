@@ -38,7 +38,7 @@ namespace impl {
 enum class CellType { inner = 0, boundary = 1, ghost = 2 };
 struct LocalShell {
     gloidx idx; // a unique index within all cells (as used by p8est for locals)
-    rank which_proc; // the rank of this cell (equals this_node for locals)
+    rank_type which_proc; // the rank of this cell (equals this_node for locals)
     CellType shell; // shell information (0: inner local cell, 1: boundary local
                     // cell, 2: ghost cell)
     int boundary;   // Bit mask storing boundary info. MSB ...
@@ -53,7 +53,7 @@ struct LocalShell {
     Vec3i coord;  // cartesian coordinates of the cell
 
     LocalShell(gloidx idx,
-               rank rank,
+               rank_type rank,
                CellType shell,
                int boundary,
                int x,
@@ -78,7 +78,7 @@ struct RepartState {
     RepartState(const boost::mpi::communicator &comm_cart);
 
     inline void reset();
-    inline void inc_nquads(rank proc);
+    inline void inc_nquads(rank_type proc);
     inline void allreduce();
 };
 
@@ -91,13 +91,13 @@ struct P4estGrid : public ParallelLCGrid {
     lidx n_local_cells() override;
     gidx n_ghost_cells() override;
     nidx n_neighbors() override;
-    rank neighbor_rank(nidx i) override;
+    rank_type neighbor_rank(nidx i) override;
     Vec3d cell_size() override;
     Vec3i grid_size() override;
     lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
     lidx position_to_cell_index(Vec3d pos) override;
-    rank position_to_rank(Vec3d pos) override;
+    rank_type position_to_rank(Vec3d pos) override;
     nidx position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
@@ -129,7 +129,7 @@ private:
 
     // comm data structures
     std::vector<GhostExchangeDesc> m_exdescs;
-    std::vector<rank> m_neighranks;
+    std::vector<rank_type> m_neighranks;
 
     void set_optimal_cellsize();
     void create_grid();

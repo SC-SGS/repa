@@ -54,13 +54,13 @@ namespace grids {
 
 /** Some typedefs to document what an integer is supposed to mean
  */
-typedef int rank;  // Rank of a node
-typedef int nidx;  // Index of a neighboring process (rank) (0..n_neighbors-1)
-typedef int lidx;  // Index of a local cell (0..n_local_cells-1)
-typedef int gidx;  // Index of a ghost cell (0..n_ghost_cells-1)
-typedef int lgidx; // Index of a local (0..n_local_cells-1) or ghost cell
-                   // (n_local_cells..n_local_cells+n_ghost_cells-1)
-typedef int gloidx;// Global cell index
+typedef int rank_type; // Rank of a node
+typedef int nidx;   // Index of a neighboring process (rank) (0..n_neighbors-1)
+typedef int lidx;   // Index of a local cell (0..n_local_cells-1)
+typedef int gidx;   // Index of a ghost cell (0..n_ghost_cells-1)
+typedef int lgidx;  // Index of a local (0..n_local_cells-1) or ghost cell
+                    // (n_local_cells..n_local_cells+n_ghost_cells-1)
+typedef int gloidx; // Global cell index
 
 /** Describes a ghost exchange process.
  * Corresponds to a GhostCommunication from ghosts.[ch]pp.
@@ -73,14 +73,14 @@ typedef int gloidx;// Global cell index
  * must exist multiple times in the send-datastructure.
  */
 struct GhostExchangeDesc {
-    rank dest;               // Destination rank
+    rank_type dest;          // Destination rank
     std::vector<lgidx> recv; // Ghost cell indices which are to be received
     std::vector<lidx> send;  // Local cell indices which are to be sent
 
     GhostExchangeDesc() : dest(-1)
     {
     }
-    GhostExchangeDesc(rank dest,
+    GhostExchangeDesc(rank_type dest,
                       std::vector<gidx> &&recv,
                       std::vector<lidx> &&send)
         : dest(dest), recv(std::move(recv)), send(std::move(send))
@@ -94,10 +94,12 @@ struct ParallelLCGrid {
     ParallelLCGrid(const boost::mpi::communicator &comm,
                    Vec3d box_size,
                    double min_cell_size);
-    
+
     // Must be called directly after construction
     // Make virtual calls here instead of the constructor.
-    virtual void after_construction(){}
+    virtual void after_construction()
+    {
+    }
 
     virtual ~ParallelLCGrid(){};
 
@@ -118,7 +120,7 @@ struct ParallelLCGrid {
      * @param i index of neighbor process. 0 <= i < n_neighbors()
      * @throws std::domain_error if 0 > i or i >= n_neighbors().
      */
-    virtual rank neighbor_rank(nidx i) = 0;
+    virtual rank_type neighbor_rank(nidx i) = 0;
 
     /** Returns the cell sizes of Linked Cell grid.
      */
@@ -161,7 +163,7 @@ struct ParallelLCGrid {
     /** Returns the rank of the process which is responsible for the cell at
      * position "pos". Works for the whole domain!
      */
-    virtual rank position_to_rank(Vec3d pos) = 0;
+    virtual rank_type position_to_rank(Vec3d pos) = 0;
 
     /** Returns the index of a neighboring process which is responsible for the
      * cell at position "pos". "Pos" must therefore be *in the ghost layer*.

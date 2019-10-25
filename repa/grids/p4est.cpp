@@ -55,7 +55,7 @@ void RepartState::reset()
               static_cast<p4est_locidx_t>(0));
 }
 
-void RepartState::inc_nquads(rank proc)
+void RepartState::inc_nquads(rank_type proc)
 {
     nquads_per_proc[proc]++;
 }
@@ -312,7 +312,7 @@ void P4estGrid::prepare_communication()
     for (lgidx i = 0; i < num_cells; ++i) {
         // Ghost cell? -> add to recv lists
         if (m_p8est_shell[i].shell == impl::CellType::ghost) {
-            rank nrank = m_p8est_shell[i].which_proc;
+            rank_type nrank = m_p8est_shell[i].which_proc;
             if (nrank >= 0)
                 recv_idx[nrank].push_back(i);
         }
@@ -326,7 +326,7 @@ void P4estGrid::prepare_communication()
                     || m_p8est_shell[nidx].shell != impl::CellType::ghost)
                     continue;
 
-                rank nrank = m_p8est_shell[nidx].which_proc;
+                rank_type nrank = m_p8est_shell[nidx].which_proc;
                 if (nrank < 0)
                     continue;
 
@@ -342,7 +342,7 @@ void P4estGrid::prepare_communication()
     // communication
     nidx num_comm_proc = 0;
     std::vector<nidx> comm_proc(comm_cart.size(), -1);
-    for (rank i = 0; i < comm_cart.size(); ++i) {
+    for (rank_type i = 0; i < comm_cart.size(); ++i) {
         if (send_idx[i].size() != 0 && recv_idx[i].size() != 0)
             comm_proc[i] = num_comm_proc++;
         else if (!(send_idx[i].size() == 0 && recv_idx[i].size() == 0))
@@ -353,7 +353,7 @@ void P4estGrid::prepare_communication()
     // Assemble ghost exchange descriptors
     m_exdescs.resize(num_comm_proc);
     m_neighranks.resize(num_comm_proc);
-    for (rank n = 0; n < comm_cart.size(); ++n) {
+    for (rank_type n = 0; n < comm_cart.size(); ++n) {
         if (comm_proc[n] == -1)
             continue;
         nidx index = comm_proc[n];
@@ -393,7 +393,7 @@ nidx P4estGrid::n_neighbors()
     return m_neighranks.size();
 }
 
-rank P4estGrid::neighbor_rank(nidx i)
+rank_type P4estGrid::neighbor_rank(nidx i)
 {
     if (i < 0 || i > m_neighranks.size())
         throw std::domain_error("Neighbor rank out of bounds.");
@@ -448,7 +448,7 @@ lidx P4estGrid::position_to_cell_index(Vec3d pos)
         throw std::domain_error("Pos not in local domain.");
 }
 
-rank P4estGrid::position_to_rank(Vec3d pos)
+rank_type P4estGrid::position_to_rank(Vec3d pos)
 {
     // Cell of pos might not be known on this process (not in m_p8est_shell).
     // Therefore, use the global first cell indices.
@@ -513,8 +513,8 @@ bool P4estGrid::repartition(CellMetric m,
     // Evaluated for its side effect of setting part_nquads.
     std::accumulate(std::begin(weights), std::end(weights), prefix,
                     [this, target](double cellpref, double weight) {
-                        rank proc = std::min<rank>(cellpref / target,
-                                                   comm_cart.size() - 1);
+                        rank_type proc = std::min<rank_type>(
+                            cellpref / target, comm_cart.size() - 1);
                         m_repartstate.inc_nquads(proc);
                         return cellpref + weight;
                     });

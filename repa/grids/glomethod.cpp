@@ -47,7 +47,7 @@ nidx GloMethod::n_neighbors()
     return neighbors.size();
 }
 
-rank GloMethod::neighbor_rank(nidx i)
+rank_type GloMethod::neighbor_rank(nidx i)
 {
     return neighbors[i];
 }
@@ -80,7 +80,7 @@ lidx GloMethod::position_to_cell_index(Vec3d pos)
     return global_to_local[gbox.cell_at_pos(pos)];
 }
 
-rank GloMethod::position_to_rank(Vec3d pos)
+rank_type GloMethod::position_to_rank(Vec3d pos)
 {
     auto r = partition[gbox.cell_at_pos(pos)];
 
@@ -92,7 +92,7 @@ rank GloMethod::position_to_rank(Vec3d pos)
 
 nidx GloMethod::position_to_neighidx(Vec3d pos)
 {
-    rank rank = position_to_rank(pos);
+    rank_type rank = position_to_rank(pos);
     auto ni = std::find(std::begin(neighbors), std::end(neighbors), rank);
 
     if (ni != std::end(neighbors))
@@ -212,7 +212,7 @@ void GloMethod::init(bool firstcall)
     for (lidx i = 0; i < localCells; i++) {
         for (gloidx neighborIndex :
              gbox.full_shell_neigh_without_center(cells[i])) {
-            rank owner = partition[neighborIndex];
+            rank_type owner = partition[neighborIndex];
             if (owner == comm_cart.rank())
                 continue;
 
@@ -243,7 +243,7 @@ void GloMethod::init(bool firstcall)
     // Move all existent exchange descriptors from "tmp_ex_descs" to
     // "exchangeVector".
     exchangeVector.clear();
-    for (rank i = 0; i < comm_cart.size(); ++i) {
+    for (rank_type i = 0; i < comm_cart.size(); ++i) {
         if (tmp_ex_descs[i].dest != -1) {
             auto ed = std::move(tmp_ex_descs[i]);
 

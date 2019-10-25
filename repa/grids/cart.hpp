@@ -41,13 +41,13 @@ struct CartGrid : public ParallelLCGrid {
     lidx n_local_cells() override;
     gidx n_ghost_cells() override;
     nidx n_neighbors() override;
-    rank neighbor_rank(nidx i) override;
+    rank_type neighbor_rank(nidx i) override;
     Vec3d cell_size() override;
     Vec3i grid_size() override;
     lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
     lidx position_to_cell_index(Vec3d pos) override;
-    rank position_to_rank(Vec3d pos) override;
+    rank_type position_to_rank(Vec3d pos) override;
     nidx position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
@@ -68,7 +68,7 @@ private:
 
     // comm data structures
     std::vector<GhostExchangeDesc> m_exdescs;
-    std::vector<rank> m_neighranks; // Unique ranks in m_rank_in_dir
+    std::vector<rank_type> m_neighranks; // Unique ranks in m_rank_in_dir
 
     // Permutation of linearized indices to ensure cell ordering.
     // m_to_pargrid_order orders local cells before ghost cells, i.e.
@@ -81,9 +81,9 @@ private:
     Vec3i unlinearize(lgidx cidx);
 
     // rank cell_to_rank(const Vec3i& c);
-    nidx neighbor_idx(rank r);
+    nidx neighbor_idx(rank_type r);
     // rank cell_to_neighidx(const Vec3i& c);
-    rank proc_offset_to_rank(const Vec3i &offset);
+    rank_type proc_offset_to_rank(const Vec3i &offset);
 
     void
     fill_comm_cell_lists(std::vector<int> &v, const Vec3i &lc, const Vec3i &hc);

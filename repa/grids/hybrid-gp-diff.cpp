@@ -61,7 +61,7 @@ nidx HybridGPDiff::n_neighbors()
     return active_implementation->n_neighbors();
 }
 
-rank HybridGPDiff::neighbor_rank(nidx i)
+rank_type HybridGPDiff::neighbor_rank(nidx i)
 {
     return active_implementation->neighbor_rank(i);
 }
@@ -91,7 +91,7 @@ lidx HybridGPDiff::position_to_cell_index(Vec3d pos)
     return active_implementation->position_to_cell_index(pos);
 }
 
-rank HybridGPDiff::position_to_rank(Vec3d pos)
+rank_type HybridGPDiff::position_to_rank(Vec3d pos)
 {
     return active_implementation->position_to_rank(pos);
 }

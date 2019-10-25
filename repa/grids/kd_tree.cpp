@@ -296,7 +296,7 @@ void KDTreeGrid::init_neighborhood_information()
         });
 }
 
-void KDTreeGrid::init_neighborhood_information(rank neighbor_rank)
+void KDTreeGrid::init_neighborhood_information(rank_type neighbor_rank)
 {
     GhostExchangeDesc gexd;
     gexd.dest = neighbor_rank;
@@ -441,7 +441,7 @@ nidx KDTreeGrid::n_neighbors()
     return m_neighbor_processes.size();
 }
 
-rank KDTreeGrid::neighbor_rank(nidx i)
+rank_type KDTreeGrid::neighbor_rank(nidx i)
 {
     if (i < 0 || i >= m_neighbor_processes.size()) {
         throw std::domain_error("Invalid neighbor index.");
@@ -506,7 +506,7 @@ lidx KDTreeGrid::position_to_cell_index(Vec3d pos)
     return cellidx;
 }
 
-rank KDTreeGrid::position_to_rank(Vec3d pos)
+rank_type KDTreeGrid::position_to_rank(Vec3d pos)
 {
     Vec3i cellvector = absolute_position_to_cell_position(pos);
 
@@ -527,7 +527,7 @@ nidx KDTreeGrid::position_to_neighidx(Vec3d pos)
         throw std::domain_error("Position is not in the global ghostdomain");
     }
 
-    rank prank = m_kdtree.responsible_process(cellvector.as_array());
+    rank_type prank = m_kdtree.responsible_process(cellvector.as_array());
     nidx rank_idx = m_neighbor_processes_inverse[prank];
     if (rank_idx == -1) {
         throw std::domain_error("Position not within neighbor a process");

@@ -45,13 +45,13 @@ struct GridBasedGrid : public ParallelLCGrid {
     lidx n_local_cells() override;
     gidx n_ghost_cells() override;
     nidx n_neighbors() override;
-    rank neighbor_rank(nidx i) override;
+    rank_type neighbor_rank(nidx i) override;
     Vec3d cell_size() override;
     Vec3i grid_size() override;
     lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
     lidx position_to_cell_index(Vec3d pos) override;
-    rank position_to_rank(Vec3d pos) override;
+    rank_type position_to_rank(Vec3d pos) override;
     nidx position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
@@ -89,10 +89,10 @@ private:
     // However, since we do not know how many neighbors a subdomain
     // will have (i.e. if nproc < 26 vs. nproc is prime vs. nproc = 10^3)
     // we use a dynamic std::vector here.
-    std::vector<rank> neighbor_ranks;
+    std::vector<rank_type> neighbor_ranks;
 
     // Inverse mapping neighbor_rank to index [0, 26) in "neighbor_ranks".
-    std::unordered_map<rank, nidx> neighbor_idx;
+    std::unordered_map<rank_type, nidx> neighbor_idx;
 
     // Associated grid point -- upper right back vertex of subdomain.
     Vec3d gridpoint;
@@ -109,13 +109,13 @@ private:
     std::vector<GhostExchangeDesc> exchange_vec;
 
     // Returns the 8 vertices bounding the subdomain of rank "r"
-    std::array<Vec3d, 8> bounding_box(rank r);
+    std::array<Vec3d, 8> bounding_box(rank_type r);
 
     // Neighborhood communicator for load exchange during repart
     MPI_Comm neighcomm;
 
     // Global cell index to rank mapping
-    rank gloidx_to_rank(gloidx idx);
+    rank_type gloidx_to_rank(gloidx idx);
 
     // Initializes the partitioning to a regular Cartesian grid.
     void init_partitioning();
@@ -132,7 +132,7 @@ private:
     // Returns the center of this subdomain
     Vec3d get_subdomain_center();
 
-    rank cart_topology_position_to_rank(Vec3d pos);
+    rank_type cart_topology_position_to_rank(Vec3d pos);
 
     // Function returning the subdomain midpoint.
     // Either a user-passed function via ExtraParams in the constructor
