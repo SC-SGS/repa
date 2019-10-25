@@ -193,7 +193,7 @@ KDTreeGrid::intersection_domains(const Domain &localdomain,
     // Datastructure for gathering the results
     std::vector<Domain> intersection_domains;
 
-    for (nidx nidx = 0; nidx < volume(neighborhood_to_check); nidx++) {
+    for (rank_index_type nidx = 0; nidx < volume(neighborhood_to_check); nidx++) {
         // Determine neighbor offset
         Vec3i neighbor_offset
             = util::unlinearize(nidx, domain_size(neighborhood_to_check));
@@ -436,12 +436,12 @@ gidx KDTreeGrid::n_ghost_cells()
     return m_nb_of_ghost_cells;
 }
 
-nidx KDTreeGrid::n_neighbors()
+rank_index_type KDTreeGrid::n_neighbors()
 {
     return m_neighbor_processes.size();
 }
 
-rank_type KDTreeGrid::neighbor_rank(nidx i)
+rank_type KDTreeGrid::neighbor_rank(rank_index_type i)
 {
     if (i < 0 || i >= m_neighbor_processes.size()) {
         throw std::domain_error("Invalid neighbor index.");
@@ -518,7 +518,7 @@ rank_type KDTreeGrid::position_to_rank(Vec3d pos)
     return m_kdtree.responsible_process(cellvector.as_array());
 }
 
-nidx KDTreeGrid::position_to_neighidx(Vec3d pos)
+rank_index_type KDTreeGrid::position_to_neighidx(Vec3d pos)
 {
     Vec3i cellvector = absolute_position_to_cell_position(pos);
 
@@ -528,7 +528,7 @@ nidx KDTreeGrid::position_to_neighidx(Vec3d pos)
     }
 
     rank_type prank = m_kdtree.responsible_process(cellvector.as_array());
-    nidx rank_idx = m_neighbor_processes_inverse[prank];
+    rank_index_type rank_idx = m_neighbor_processes_inverse[prank];
     if (rank_idx == -1) {
         throw std::domain_error("Position not within neighbor a process");
     }

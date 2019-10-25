@@ -56,12 +56,12 @@ gidx HybridGPDiff::n_ghost_cells()
     return active_implementation->n_ghost_cells();
 }
 
-nidx HybridGPDiff::n_neighbors()
+rank_index_type HybridGPDiff::n_neighbors()
 {
     return active_implementation->n_neighbors();
 }
 
-rank_type HybridGPDiff::neighbor_rank(nidx i)
+rank_type HybridGPDiff::neighbor_rank(rank_index_type i)
 {
     return active_implementation->neighbor_rank(i);
 }
@@ -96,7 +96,7 @@ rank_type HybridGPDiff::position_to_rank(Vec3d pos)
     return active_implementation->position_to_rank(pos);
 }
 
-nidx HybridGPDiff::position_to_neighidx(Vec3d pos)
+rank_index_type HybridGPDiff::position_to_neighidx(Vec3d pos)
 {
     return active_implementation->position_to_neighidx(pos);
 }

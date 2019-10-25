@@ -340,8 +340,8 @@ void P4estGrid::prepare_communication()
 
     // Count the number of communications and assign indices for the
     // communication
-    nidx num_comm_proc = 0;
-    std::vector<nidx> comm_proc(comm_cart.size(), -1);
+    rank_index_type num_comm_proc = 0;
+    std::vector<rank_index_type> comm_proc(comm_cart.size(), -1);
     for (rank_type i = 0; i < comm_cart.size(); ++i) {
         if (send_idx[i].size() != 0 && recv_idx[i].size() != 0)
             comm_proc[i] = num_comm_proc++;
@@ -356,7 +356,7 @@ void P4estGrid::prepare_communication()
     for (rank_type n = 0; n < comm_cart.size(); ++n) {
         if (comm_proc[n] == -1)
             continue;
-        nidx index = comm_proc[n];
+        rank_index_type index = comm_proc[n];
         m_neighranks[index] = n;
         m_exdescs[index].dest = n;
         m_exdescs[index].recv = std::move(recv_idx[n]);
@@ -388,12 +388,12 @@ gidx P4estGrid::n_ghost_cells()
     return m_num_ghost_cells;
 }
 
-nidx P4estGrid::n_neighbors()
+rank_index_type P4estGrid::n_neighbors()
 {
     return m_neighranks.size();
 }
 
-rank_type P4estGrid::neighbor_rank(nidx i)
+rank_type P4estGrid::neighbor_rank(rank_index_type i)
 {
     if (i < 0 || i > m_neighranks.size())
         throw std::domain_error("Neighbor rank out of bounds.");
@@ -460,7 +460,7 @@ rank_type P4estGrid::position_to_rank(Vec3d pos)
     return std::distance(std::begin(m_node_first_cell_idx), it) - 1;
 }
 
-nidx P4estGrid::position_to_neighidx(Vec3d pos)
+rank_index_type P4estGrid::position_to_neighidx(Vec3d pos)
 {
     // Determine the neighbor rank for locally known cell
     // Using position_to_rank here as it is the simpler code. Could also

@@ -182,20 +182,20 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     std::vector<boost::mpi::request> sreq_cells(neighbors.size());
     std::vector<boost::mpi::request> rreq_cells(neighbors.size());
 
-    for (nidx i = 0; i < neighbors.size(); ++i) {
+    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
         // Push back the rank, that is save an extra communication of
         // "neighbors" and interleave it into "toSend"
         toSend[i].push_back(neighbors[i]);
     }
 
     // Extra loop as all ranks need to be added before sending
-    for (nidx i = 0; i < neighbors.size(); ++i) {
+    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
         sreq_cells[i] = comm_cart.isend(neighbors[i], 2, toSend);
     }
 
     // All send volumes from all processes
     std::vector<std::vector<std::vector<gloidx>>> received_cells(neighbors.size());
-    for (nidx i = 0; i < neighbors.size(); ++i) {
+    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
         rreq_cells[i] = comm_cart.irecv(neighbors[i], 2, received_cells[i]);
     }
 
@@ -231,7 +231,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 #endif
 
     // Remove ranks from "toSend", again.
-    for (nidx i = 0; i < neighbors.size(); ++i)
+    for (rank_index_type i = 0; i < neighbors.size(); ++i)
         toSend[i].pop_back();
 
     //
@@ -243,13 +243,13 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 
     auto sendVectors = sendNeighbourhood(toSend);
 
-    for (nidx i = 0; i < neighbors.size(); ++i) {
+    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
         sreq_neigh[i] = comm_cart.isend(neighbors[i], 2, sendVectors[i]);
     }
 
     // All send volumes from all processes
     std::vector<std::vector<NeighSend>> received_neighborhood(neighbors.size());
-    for (nidx i = 0; i < neighbors.size(); ++i) {
+    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
         rreq_neigh[i]
             = comm_cart.irecv(neighbors[i], 2, received_neighborhood[i]);
     }

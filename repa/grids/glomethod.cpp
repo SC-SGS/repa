@@ -42,12 +42,12 @@ gidx GloMethod::n_ghost_cells()
     return ghostCells;
 }
 
-nidx GloMethod::n_neighbors()
+rank_index_type GloMethod::n_neighbors()
 {
     return neighbors.size();
 }
 
-rank_type GloMethod::neighbor_rank(nidx i)
+rank_type GloMethod::neighbor_rank(rank_index_type i)
 {
     return neighbors[i];
 }
@@ -90,7 +90,7 @@ rank_type GloMethod::position_to_rank(Vec3d pos)
         return r;
 }
 
-nidx GloMethod::position_to_neighidx(Vec3d pos)
+rank_index_type GloMethod::position_to_neighidx(Vec3d pos)
 {
     rank_type rank = position_to_rank(pos);
     auto ni = std::find(std::begin(neighbors), std::end(neighbors), rank);

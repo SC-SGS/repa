@@ -71,7 +71,7 @@ private:
     std::vector<rank_type> m_neighbor_processes;
 
     /** Maps rank to neighbor id (nidx) or -1 if rank is no neighbor. */
-    std::vector<nidx> m_neighbor_processes_inverse;
+    std::vector<rank_index_type> m_neighbor_processes_inverse;
 
     std::vector<GhostExchangeDesc> m_boundary_info;
 
@@ -188,9 +188,9 @@ public:
 
     virtual gidx n_ghost_cells() override;
 
-    virtual nidx n_neighbors() override;
+    virtual rank_index_type n_neighbors() override;
 
-    virtual rank_type neighbor_rank(nidx i) override;
+    virtual rank_type neighbor_rank(rank_index_type i) override;
 
     virtual Vec3d cell_size() override;
 
@@ -204,7 +204,7 @@ public:
 
     virtual rank_type position_to_rank(Vec3d pos) override;
 
-    virtual nidx position_to_neighidx(Vec3d pos) override;
+    virtual rank_index_type position_to_neighidx(Vec3d pos) override;
 
     virtual bool
     repartition(CellMetric m, CellCellMetric ccm, Thunk cb) override;

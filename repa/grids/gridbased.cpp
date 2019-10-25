@@ -115,7 +115,7 @@ void GridBasedGrid::init_neighbors()
 
     std::vector<rank_type> source_neigh,
         dest_neigh; // Send and receive neighborhood for repart
-    nidx nneigh = 0;
+    rank_index_type nneigh = 0;
     for (off[0] = -1; off[0] <= 1; ++off[0]) {
         for (off[1] = -1; off[1] <= 1; ++off[1]) {
             for (off[2] = -1; off[2] <= 1; ++off[2]) {
@@ -154,7 +154,7 @@ void GridBasedGrid::init_neighbors()
 
     std::sort(std::begin(neighbor_ranks), std::end(neighbor_ranks));
     // Inverse mapping
-    for (nidx i = 0; i < nneigh; ++i)
+    for (rank_index_type i = 0; i < nneigh; ++i)
         neighbor_idx[neighbor_ranks[i]] = i;
 
     if (neighcomm != MPI_COMM_NULL)
@@ -240,7 +240,7 @@ void GridBasedGrid::reinit()
                 nghostcells++;
             }
 
-            nidx idx = neighbor_idx[owner];
+            rank_index_type idx = neighbor_idx[owner];
             // Initialize exdesc and add "rank" as neighbor if unknown.
             if (exchange_vec[idx].dest == -1)
                 exchange_vec[idx].dest = owner;
@@ -322,12 +322,12 @@ gidx GridBasedGrid::n_ghost_cells()
     return nghostcells;
 }
 
-nidx GridBasedGrid::n_neighbors()
+rank_index_type GridBasedGrid::n_neighbors()
 {
     return neighbor_ranks.size();
 }
 
-rank_type GridBasedGrid::neighbor_rank(nidx i)
+rank_type GridBasedGrid::neighbor_rank(rank_index_type i)
 {
     return neighbor_ranks[i];
 }
@@ -390,7 +390,7 @@ rank_type GridBasedGrid::position_to_rank(Vec3d pos)
     // among all processes where .contains() evaluates to true.
     //
     // Note, that neighbor_ranks is ordered by rank.
-    nidx i;
+    rank_index_type i;
     for (i = 0; i < n_neighbors() && neighbor_ranks[i] < comm.rank(); ++i) {
         if (neighbor_doms[i].contains(mp))
             return neighbor_ranks[i];
@@ -408,7 +408,7 @@ rank_type GridBasedGrid::position_to_rank(Vec3d pos)
                             "the neighborhood of this process.");
 }
 
-nidx GridBasedGrid::position_to_neighidx(Vec3d pos)
+rank_index_type GridBasedGrid::position_to_neighidx(Vec3d pos)
 {
     rank_type rank = position_to_rank(pos);
     try {
@@ -458,7 +458,7 @@ bool GridBasedGrid::repartition(CellMetric m,
     using Vec3d = Vec3d;
     using Vec3i = Vec3i;
 
-    nidx nneigh = util::mpi_undirected_neighbor_count(neighcomm);
+    rank_index_type nneigh = util::mpi_undirected_neighbor_count(neighcomm);
 
     auto weights = m();
     if (weights.size() != n_local_cells()) {
@@ -485,7 +485,7 @@ bool GridBasedGrid::repartition(CellMetric m,
     MPI_Neighbor_allgather(r_p.data(), 3, MPI_DOUBLE, r.data(), 3, MPI_DOUBLE,
                            neighcomm);
 
-    for (nidx i = 0; i < nneigh; ++i) {
+    for (rank_index_type i = 0; i < nneigh; ++i) {
         // Form "u"
         for (int d = 0; d < 3; ++d)
             r[3 * i + d] -= gridpoint[d];
@@ -504,7 +504,7 @@ bool GridBasedGrid::repartition(CellMetric m,
         // Shift only non-boundary coordinates
         if (coords[d] == dims[d] - 1)
             continue;
-        for (nidx i = 0; i < nneigh; ++i)
+        for (rank_index_type i = 0; i < nneigh; ++i)
             new_c[d] += mu * r[3 * i + d];
     }
 

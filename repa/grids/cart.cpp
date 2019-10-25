@@ -209,12 +209,12 @@ gidx CartGrid::n_ghost_cells()
     return ggs - n_local_cells();
 }
 
-nidx CartGrid::n_neighbors()
+rank_index_type CartGrid::n_neighbors()
 {
     return m_neighranks.size();
 }
 
-rank_type CartGrid::neighbor_rank(nidx i)
+rank_type CartGrid::neighbor_rank(rank_index_type i)
 {
     return m_neighranks[i];
 }
@@ -271,7 +271,7 @@ rank_type CartGrid::position_to_rank(Vec3d pos)
     return rank;
 }
 
-nidx CartGrid::neighbor_idx(rank_type r)
+rank_index_type CartGrid::neighbor_idx(rank_type r)
 {
     // Search this rank in the local neighbor list and return its index
     // Use std::find here as 1) m_neighranks might not be sorted and 2) it has
@@ -283,7 +283,7 @@ nidx CartGrid::neighbor_idx(rank_type r)
     return std::distance(std::begin(m_neighranks), it);
 }
 
-nidx CartGrid::position_to_neighidx(Vec3d pos)
+rank_index_type CartGrid::position_to_neighidx(Vec3d pos)
 {
     // Determine the neighbor rank for locally known cell
     // Using position_to_rank here as it is the simpler code. Could also

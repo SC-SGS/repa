@@ -44,15 +44,15 @@ struct GridBasedGrid : public ParallelLCGrid {
     ~GridBasedGrid();
     lidx n_local_cells() override;
     gidx n_ghost_cells() override;
-    nidx n_neighbors() override;
-    rank_type neighbor_rank(nidx i) override;
+    rank_index_type n_neighbors() override;
+    rank_type neighbor_rank(rank_index_type i) override;
     Vec3d cell_size() override;
     Vec3i grid_size() override;
     lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
     lidx position_to_cell_index(Vec3d pos) override;
     rank_type position_to_rank(Vec3d pos) override;
-    nidx position_to_neighidx(Vec3d pos) override;
+    rank_index_type position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;
@@ -92,7 +92,7 @@ private:
     std::vector<rank_type> neighbor_ranks;
 
     // Inverse mapping neighbor_rank to index [0, 26) in "neighbor_ranks".
-    std::unordered_map<rank_type, nidx> neighbor_idx;
+    std::unordered_map<rank_type, rank_index_type> neighbor_idx;
 
     // Associated grid point -- upper right back vertex of subdomain.
     Vec3d gridpoint;
