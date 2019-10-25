@@ -26,7 +26,7 @@ namespace repa {
 namespace util {
 
 template <typename Ret, typename T1, typename T2>
-constexpr Ret linearize(const T1 *c, const T2 *grid)
+constexpr Ret linearize(const T1 *c, const T2 *grid) noexcept
 {
     // Cast in case "Ret" is a type capable of holding larger values than "T1"
     // or "T2".
@@ -34,19 +34,19 @@ constexpr Ret linearize(const T1 *c, const T2 *grid)
 }
 
 template <typename Ret, typename T1, typename T2>
-constexpr Ret linearize(const Vec3<T1> &c, const Vec3<T2> &grid)
+constexpr Ret linearize(const Vec3<T1> &c, const Vec3<T2> &grid) noexcept
 {
     return linearize<Ret>(c.data(), grid.data());
 }
 
 template <typename T>
-constexpr T linearize(const T *c, const T *grid)
+constexpr T linearize(const T *c, const T *grid) noexcept
 {
     return ((c[0]) * grid[1] + c[1]) * grid[2] + c[2];
 }
 
 template <typename T>
-constexpr T linearize(const Vec3<T> &c, const Vec3<T> &grid)
+constexpr T linearize(const Vec3<T> &c, const Vec3<T> &grid) noexcept
 {
     return linearize<T>(c.data(), grid.data());
 }
