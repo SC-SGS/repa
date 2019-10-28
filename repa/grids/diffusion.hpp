@@ -44,9 +44,9 @@ private:
 
     void pre_init(bool firstcall) override;
     void post_init(bool firstcall) override;
-    void init_new_foreign_cell(lidx localcell,
-                               lgidx foreigncell,
-                               rank owner) override;
+    void init_new_foreign_cell(local_cell_index_type localcell,
+                               global_cell_index_type foreigncell,
+                               rank_type owner) override;
     bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
 
     //
@@ -55,10 +55,11 @@ private:
 
     // Stores all local cells which ar at the border of the local area of
     // this process (Stores the local index)
-    std::vector<int> borderCells;
+    std::vector<local_cell_index_type> borderCells;
     // Stores for each cell in "borderCells" the ranks of their neighbourhood
     // Key is the local cell ID and value a set of ranks
-    std::map<lidx, std::vector<rank>> borderCellsNeighbors;
+    std::map<local_cell_index_type, std::vector<rank_type>>
+        borderCellsNeighbors;
 
     // Neighborhood communicator
     MPI_Comm neighcomm;
@@ -70,24 +71,36 @@ private:
     // Clears obsolete entries from "partition"
     void clear_unknown_cell_ownership();
 
+    /** Type "Per_Neighbor": an element designated for communication with
+     * a neighboring process (one per rank_index_type).
+     */
+    template <typename T>
+    using PerNeighbor = std::vector<T>;
+
+    /** Communication volume (list of cells)
+     */
+    using GlobalCellIndices = std::vector<global_cell_index_type>;
+
+
     // Computes vector of vectors of cells which has to be send to neighbours
-    std::vector<std::vector<int>>
+    PerNeighbor<GlobalCellIndices>
     compute_send_list(std::vector<double> &&sendLoads,
                       const std::vector<double> &weights);
 
     // Struct for communication of neightbohood information
-    struct NeighSend {
-        int basecell;
-        std::array<int, 26> neighranks;
+    struct CellNeighborhood {
+        global_cell_index_type basecell;
+        std::array<rank_type, 26> neighranks;
     };
 
+    using CellNeighborhoodPerCell = std::vector<CellNeighborhood>;
     // Send message with neighbourhood of received cells in "sendCells"
-    std::vector<std::vector<NeighSend>>
-    sendNeighbourhood(const std::vector<std::vector<int>> &toSend);
+    PerNeighbor<CellNeighborhoodPerCell> sendNeighbourhood(
+        const PerNeighbor<GlobalCellIndices> &toSend);
 
     // Update partition array
     void updateReceivedNeighbourhood(
-        const std::vector<std::vector<NeighSend>> &neighbourhood);
+        const PerNeighbor<CellNeighborhoodPerCell> &neighbourhood);
 };
 } // namespace grids
 } // namespace repa

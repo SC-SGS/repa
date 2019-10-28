@@ -80,7 +80,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
     // Vertex ranges per process
     std::vector<idx_t> vtxdist(comm_cart.size() + 1);
-    for (int i = 0; i < comm_cart.size(); ++i)
+    for (rank_type i = 0; i < comm_cart.size(); ++i)
         vtxdist[i] = i * ncells_per_proc;
     vtxdist[comm_cart.size()] = nglocells;
 
@@ -93,13 +93,13 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 #endif
 
     // Receive vertex and edge weights
-    std::vector<int> recvranks;
+    std::vector<rank_type> recvranks;
     // Determine ranks from which to receive
     // (Via old "partition" field and the range of graph nodes this
     // process is responsible for.)
     for (idx_t i = vtxdist[comm_cart.rank()]; i < vtxdist[comm_cart.rank() + 1];
          ++i)
-        util::push_back_unique(recvranks, static_cast<int>(partition[i]));
+        util::push_back_unique(recvranks, partition[i]);
 
 #ifdef GRAPH_DEBUG
     for (int r : recvranks) {
@@ -116,17 +116,17 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     std::vector<boost::mpi::request> rreq(comm_cart.size());
     std::vector<std::vector<Weights>> their_weights(comm_cart.size());
     idx_t wsum = 0; // Check for possible overflow
-    for (int n : recvranks)
+    for (rank_type n : recvranks)
         rreq[n] = comm_cart.irecv(n, 0, their_weights[n]);
 
     // Sending vertex weights
     std::vector<boost::mpi::request> sreq(comm_cart.size());
     std::vector<std::vector<Weights>> my_weights(comm_cart.size());
-    for (int i = 0; i < localCells; ++i) {
+    for (local_cell_index_type i = 0; i < localCells; ++i) {
         // "Rank" is responsible for cell "gidx" / "i" (local)
         // during graph parititioning
-        int gidx = cells[i];
-        rank rank = gidx / ncells_per_proc;
+        global_cell_index_type gidx = cells[i];
+        rank_type rank = gidx / ncells_per_proc;
 
         Weights w;
         w[0] = static_cast<idx_t>(vertex_weights[i]);
@@ -165,7 +165,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
         }
     }
 
-    for (int i = 0; i < comm_cart.size(); ++i) {
+    for (rank_type i = 0; i < comm_cart.size(); ++i) {
         if (my_weights[i].size() > 0)
             sreq[i] = comm_cart.isend(i, 0, my_weights[i]);
     }
@@ -282,7 +282,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     }
 
     // Copy idx_t to rank. Avoid copying if idx_t and rank are the same types.
-    auto parti = util::coerce_vector_to<rank>(part);
+    auto parti = util::coerce_vector_to<rank_type>(part);
 
 #ifdef GRAPH_DEBUG
     ENSURE(parti.size() == nvtx);
@@ -294,7 +294,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
 #ifdef GRAPH_DEBUG
     std::fill(std::begin(partition), std::end(partition),
-              static_cast<rank>(-1));
+              static_cast<rank_type>(-1));
 #endif
 
     util::all_gatherv_displ(comm_cart, parti.cref(), vtxdist, partition);

@@ -32,22 +32,22 @@
 namespace repa {
 namespace grids {
 
-lidx GloMethod::n_local_cells()
+local_cell_index_type GloMethod::n_local_cells()
 {
     return localCells;
 }
 
-gidx GloMethod::n_ghost_cells()
+ghost_cell_index_type GloMethod::n_ghost_cells()
 {
     return ghostCells;
 }
 
-nidx GloMethod::n_neighbors()
+rank_index_type GloMethod::n_neighbors()
 {
     return neighbors.size();
 }
 
-rank GloMethod::neighbor_rank(nidx i)
+rank_type GloMethod::neighbor_rank(rank_index_type i)
 {
     return neighbors[i];
 }
@@ -62,7 +62,8 @@ Vec3i GloMethod::grid_size()
     return gbox.grid_size();
 }
 
-lgidx GloMethod::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
+local_or_ghost_cell_index_type
+GloMethod::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
 {
     return global_to_local[gbox.neighbor(cells[cellidx], neigh)];
 }
@@ -72,7 +73,7 @@ std::vector<GhostExchangeDesc> GloMethod::get_boundary_info()
     return exchangeVector;
 }
 
-lidx GloMethod::position_to_cell_index(Vec3d pos)
+local_cell_index_type GloMethod::position_to_cell_index(Vec3d pos)
 {
     if (position_to_rank(pos) != comm_cart.rank())
         throw std::domain_error("Particle not in local box");
@@ -80,7 +81,7 @@ lidx GloMethod::position_to_cell_index(Vec3d pos)
     return global_to_local[gbox.cell_at_pos(pos)];
 }
 
-rank GloMethod::position_to_rank(Vec3d pos)
+rank_type GloMethod::position_to_rank(Vec3d pos)
 {
     auto r = partition[gbox.cell_at_pos(pos)];
 
@@ -90,9 +91,9 @@ rank GloMethod::position_to_rank(Vec3d pos)
         return r;
 }
 
-nidx GloMethod::position_to_neighidx(Vec3d pos)
+rank_index_type GloMethod::position_to_neighidx(Vec3d pos)
 {
-    rank rank = position_to_rank(pos);
+    rank_type rank = position_to_rank(pos);
     auto ni = std::find(std::begin(neighbors), std::end(neighbors), rank);
 
     if (ni != std::end(neighbors))
@@ -110,8 +111,8 @@ nidx GloMethod::position_to_neighidx(Vec3d pos)
  * Partitioning is performed in parallel via ParMETIS.
  */
 bool GloMethod::repartition(CellMetric m,
-                        CellCellMetric ccm,
-                        Thunk exchange_start_callback)
+                            CellCellMetric ccm,
+                            Thunk exchange_start_callback)
 {
     bool result = sub_repartition(m, ccm);
     if (result) {
@@ -124,20 +125,20 @@ bool GloMethod::repartition(CellMetric m,
 }
 
 GloMethod::GloMethod(const boost::mpi::communicator &comm,
-             Vec3d box_size,
-             double min_cell_size)
+                     Vec3d box_size,
+                     double min_cell_size)
     : ParallelLCGrid(comm, box_size, min_cell_size),
       gbox(box_size, min_cell_size)
 {
-    int nglocells = gbox.ncells();
-    int ncells_per_proc = static_cast<int>(
+    global_cell_index_type nglocells = gbox.ncells();
+    local_cell_index_type ncells_per_proc = static_cast<local_cell_index_type>(
         std::ceil(static_cast<double>(nglocells) / comm_cart.size()));
 
     // Initial partitioning
     partition.resize(nglocells);
 
     // Line-wise init
-    for (int i = 0; i < nglocells; ++i) {
+    for (global_cell_index_type i = 0; i < nglocells; ++i) {
         partition[i] = i / ncells_per_proc;
     }
 
@@ -156,7 +157,7 @@ GloMethod::GloMethod(const boost::mpi::communicator &comm,
     //    dims[2])),
     //}};
 
-    // for (int i = 0; i < nglocells; ++i) {
+    // for (global_cell_index_type i = 0; i < nglocells; ++i) {
     //  auto cellidx = gbox.unlinearize(i);
     //  // Transform cellidx to 3d proc coord
     //  for (int i = 0; i < 3; ++i)
@@ -181,7 +182,7 @@ GloMethod::~GloMethod()
  */
 void GloMethod::init(bool firstcall)
 {
-    const int nglocells = partition.size();
+    const global_cell_index_type nglocells = partition.size();
 
     pre_init(firstcall);
 
@@ -192,7 +193,7 @@ void GloMethod::init(bool firstcall)
     neighbors.clear();
 
     // Extract the local cells from "partition".
-    for (int i = 0; i < nglocells; i++) {
+    for (global_cell_index_type i = 0; i < nglocells; i++) {
         if (partition[i] == comm_cart.rank()) {
             // Vector of own cells
             cells.push_back(i);
@@ -209,10 +210,10 @@ void GloMethod::init(bool firstcall)
     std::vector<GhostExchangeDesc> tmp_ex_descs(comm_cart.size());
 
     // Determine ghost cells and communication volume
-    for (int i = 0; i < localCells; i++) {
-        for (int neighborIndex :
+    for (local_cell_index_type i = 0; i < localCells; i++) {
+        for (global_cell_index_type neighborIndex :
              gbox.full_shell_neigh_without_center(cells[i])) {
-            rank owner = partition[neighborIndex];
+            rank_type owner = partition[neighborIndex];
             if (owner == comm_cart.rank())
                 continue;
 
@@ -243,7 +244,7 @@ void GloMethod::init(bool firstcall)
     // Move all existent exchange descriptors from "tmp_ex_descs" to
     // "exchangeVector".
     exchangeVector.clear();
-    for (int i = 0; i < comm_cart.size(); ++i) {
+    for (rank_type i = 0; i < comm_cart.size(); ++i) {
         if (tmp_ex_descs[i].dest != -1) {
             auto ed = std::move(tmp_ex_descs[i]);
 
@@ -252,18 +253,22 @@ void GloMethod::init(bool firstcall)
             std::sort(std::begin(ed.recv), std::end(ed.recv));
             std::transform(std::begin(ed.recv), std::end(ed.recv),
                            std::begin(ed.recv),
-                           [this](int i) { return global_to_local[i]; });
+                           [this](global_cell_index_type i) {
+                               return global_to_local[i];
+                           });
             std::sort(std::begin(ed.send), std::end(ed.send));
             std::transform(std::begin(ed.send), std::end(ed.send),
                            std::begin(ed.send),
-                           [this](int i) { return global_to_local[i]; });
+                           [this](global_cell_index_type i) {
+                               return global_to_local[i];
+                           });
 
             exchangeVector.push_back(std::move(ed));
         }
     }
 
 #ifdef GLOMETHOD_DEBUG
-    for (int i = 0; i < comm_cart.size(); ++i) {
+    for (rank i = 0; i < comm_cart.size(); ++i) {
         if (tmp_ex_descs[i].dest != -1)
             ENSURE(tmp_ex_descs[i].recv.size() == 0
                    && tmp_ex_descs[i].send.size() == 0);
@@ -273,7 +278,8 @@ void GloMethod::init(bool firstcall)
     post_init(firstcall);
 }
 
-int GloMethod::global_hash(lgidx cellidx)
+global_cell_index_type
+GloMethod::global_hash(local_or_ghost_cell_index_type cellidx)
 {
     // No need to define this away. Does currently not require extra data.
     return cells[cellidx];

@@ -35,23 +35,26 @@ struct HybridGPDiff : public ParallelLCGrid {
                  Vec3d box_size,
                  double min_cell_size);
     void after_construction() override;
-    lidx n_local_cells() override;
-    gidx n_ghost_cells() override;
-    nidx n_neighbors() override;
-    rank neighbor_rank(nidx i) override;
+    local_cell_index_type n_local_cells() override;
+    ghost_cell_index_type n_ghost_cells() override;
+    rank_index_type n_neighbors() override;
+    rank_type neighbor_rank(rank_index_type i) override;
     Vec3d cell_size() override;
     Vec3i grid_size() override;
-    lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) override;
+    local_or_ghost_cell_index_type
+    cell_neighbor_index(local_cell_index_type cellidx,
+                        fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
-    lidx position_to_cell_index(Vec3d pos) override;
-    rank position_to_rank(Vec3d pos) override;
-    nidx position_to_neighidx(Vec3d pos) override;
+    local_cell_index_type position_to_cell_index(Vec3d pos) override;
+    rank_type position_to_rank(Vec3d pos) override;
+    rank_index_type position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;
 
     void command(std::string s) override;
-    int global_hash(lgidx cellidx) override;
+    global_cell_index_type
+    global_hash(local_or_ghost_cell_index_type cellidx) override;
 
 private:
     /** Underlying implementations

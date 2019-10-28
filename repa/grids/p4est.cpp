@@ -55,7 +55,7 @@ void RepartState::reset()
               static_cast<p4est_locidx_t>(0));
 }
 
-void RepartState::inc_nquads(rank proc)
+void RepartState::inc_nquads(rank_type proc)
 {
     nquads_per_proc[proc]++;
 }
@@ -96,7 +96,7 @@ static int local_boundary_bitset(Vec3i idx, const Vec3i &grid_size)
 // Returns a global SFC-curve index for a given cell.
 // Note: This is a global index on the Z-curve and not a local cell index to
 // cells.
-static gidx cell_morton_idx(Vec3i idx)
+static global_cell_index_type cell_morton_idx(Vec3i idx)
 {
 #ifdef __BMI2__
     static constexpr unsigned mask_x = 0x49249249;
@@ -105,7 +105,7 @@ static gidx cell_morton_idx(Vec3i idx)
     return _pdep_u32(idx[0], mask_x) | _pdep_u32(idx[1], mask_y)
            | _pdep_u32(idx[2], mask_z);
 #else
-    gidx res = 0;
+    global_cell_index_type res = 0;
     int res_bit = 1;
 
     for (int bit = 0; bit < 21; ++bit) {
@@ -124,11 +124,13 @@ static gidx cell_morton_idx(Vec3i idx)
 // coordinates
 // Note: This is a global index on the Z-curve and not a local cell index to
 // cells.
-static gidx pos_morton_idx(Vec3d pos, const Vec3d &inv_cell_size)
+static global_cell_index_type pos_morton_idx(Vec3d pos,
+                                             const Vec3d &inv_cell_size)
 {
-    const Vec3i idx = {static_cast<int>(pos[0] * inv_cell_size[0]),
-                       static_cast<int>(pos[1] * inv_cell_size[1]),
-                       static_cast<int>(pos[2] * inv_cell_size[2])};
+    const Vec3i idx
+        = {static_cast<Vec3i::value_type>(pos[0] * inv_cell_size[0]),
+           static_cast<Vec3i::value_type>(pos[1] * inv_cell_size[1]),
+           static_cast<Vec3i::value_type>(pos[2] * inv_cell_size[2])};
     return impl::cell_morton_idx(idx);
 }
 
@@ -161,7 +163,8 @@ void P4estGrid::set_optimal_cellsize()
     // Compute number of cells and the cell size
     for (size_t i = 0; i < 3; ++i) {
         if (max_range > ROUND_ERROR_PREC * box_l[i])
-            m_grid_size[i] = std::max<int>(box_l[i] / max_range, 1);
+            m_grid_size[i]
+                = std::max<Vec3i::value_type>(box_l[i] / max_range, 1);
         else
             m_grid_size[i] = 1;
 
@@ -223,7 +226,8 @@ void P4estGrid::create_grid()
 
     m_num_local_cells = m_p8est->local_num_quadrants;
     m_num_ghost_cells = p8est_ghost->ghosts.elem_count;
-    int num_cells = m_num_local_cells + m_num_ghost_cells;
+    local_or_ghost_cell_index_type num_cells
+        = m_num_local_cells + m_num_ghost_cells;
 
     std::unique_ptr<sc_array_t> ni
         = std::unique_ptr<sc_array_t>(sc_array_new(sizeof(int)));
@@ -233,9 +237,9 @@ void P4estGrid::create_grid()
     m_global_idx.clear();
 #endif
     m_p8est_shell.reserve(num_cells);
-    for (int i = 0; i < m_num_local_cells; ++i) {
-        p8est_quadrant_t *q
-            = p8est_mesh_get_quadrant(m_p8est.get(), p8est_mesh.get(), i);
+    for (local_cell_index_type i = 0; i < m_num_local_cells; ++i) {
+        p8est_quadrant_t *q = p8est_mesh_get_quadrant(
+            m_p8est.get(), p8est_mesh.get(), static_cast<p4est_locidx_t>(i));
         Vec3d xyz;
         p8est_qcoord_to_vertex(m_p8est_conn.get(), p8est_mesh->quad_to_tree[i],
                                q->x, q->y, q->z, xyz.data());
@@ -278,7 +282,7 @@ void P4estGrid::create_grid()
     }
 
     // Collect info about ghost cells
-    for (int g = 0; g < m_num_ghost_cells; ++g) {
+    for (ghost_cell_index_type g = 0; g < m_num_ghost_cells; ++g) {
         p8est_quadrant_t *q
             = p8est_quadrant_array_index(&p8est_ghost->ghosts, g);
         Vec3d xyz;
@@ -301,16 +305,17 @@ void P4estGrid::create_grid()
 
 void P4estGrid::prepare_communication()
 {
-    int num_cells = n_local_cells() + n_ghost_cells();
+    local_or_ghost_cell_index_type num_cells
+        = n_local_cells() + n_ghost_cells();
     // List of cell indices for each process for send/recv
-    std::vector<std::vector<lidx>> send_idx(comm_cart.size());
-    std::vector<std::vector<gidx>> recv_idx(comm_cart.size());
+    std::vector<std::vector<local_cell_index_type>> send_idx(comm_cart.size());
+    std::vector<std::vector<ghost_cell_index_type>> recv_idx(comm_cart.size());
 
     // Find all cells to be sent or received
-    for (int i = 0; i < num_cells; ++i) {
+    for (local_or_ghost_cell_index_type i = 0; i < num_cells; ++i) {
         // Ghost cell? -> add to recv lists
         if (m_p8est_shell[i].shell == impl::CellType::ghost) {
-            int nrank = m_p8est_shell[i].rank;
+            rank_type nrank = m_p8est_shell[i].which_proc;
             if (nrank >= 0)
                 recv_idx[nrank].push_back(i);
         }
@@ -318,13 +323,14 @@ void P4estGrid::prepare_communication()
         if (m_p8est_shell[i].shell == impl::CellType::boundary) {
             // Add to all possible neighbors
             for (int n = 0; n < 26; ++n) {
-                int nidx = m_p8est_shell[i].neighbor[n];
+                local_or_ghost_cell_index_type nidx
+                    = m_p8est_shell[i].neighbor[n];
                 // Invalid neighbor?
                 if (nidx < 0
                     || m_p8est_shell[nidx].shell != impl::CellType::ghost)
                     continue;
 
-                int nrank = m_p8est_shell[nidx].rank;
+                rank_type nrank = m_p8est_shell[nidx].which_proc;
                 if (nrank < 0)
                     continue;
 
@@ -338,9 +344,9 @@ void P4estGrid::prepare_communication()
 
     // Count the number of communications and assign indices for the
     // communication
-    int num_comm_proc = 0;
-    std::vector<int> comm_proc(comm_cart.size(), -1);
-    for (int i = 0; i < comm_cart.size(); ++i) {
+    rank_index_type num_comm_proc = 0;
+    std::vector<rank_index_type> comm_proc(comm_cart.size(), -1);
+    for (rank_type i = 0; i < comm_cart.size(); ++i) {
         if (send_idx[i].size() != 0 && recv_idx[i].size() != 0)
             comm_proc[i] = num_comm_proc++;
         else if (!(send_idx[i].size() == 0 && recv_idx[i].size() == 0))
@@ -351,10 +357,10 @@ void P4estGrid::prepare_communication()
     // Assemble ghost exchange descriptors
     m_exdescs.resize(num_comm_proc);
     m_neighranks.resize(num_comm_proc);
-    for (int n = 0; n < comm_cart.size(); ++n) {
+    for (rank_type n = 0; n < comm_cart.size(); ++n) {
         if (comm_proc[n] == -1)
             continue;
-        int index = comm_proc[n];
+        rank_index_type index = comm_proc[n];
         m_neighranks[index] = n;
         m_exdescs[index].dest = n;
         m_exdescs[index].recv = std::move(recv_idx[n]);
@@ -376,36 +382,37 @@ P4estGrid::P4estGrid(const boost::mpi::communicator &comm,
     reinitialize();
 }
 
-lidx P4estGrid::n_local_cells()
+local_cell_index_type P4estGrid::n_local_cells()
 {
     return m_num_local_cells;
 }
 
-gidx P4estGrid::n_ghost_cells()
+ghost_cell_index_type P4estGrid::n_ghost_cells()
 {
     return m_num_ghost_cells;
 }
 
-nidx P4estGrid::n_neighbors()
+rank_index_type P4estGrid::n_neighbors()
 {
     return m_neighranks.size();
 }
 
-rank P4estGrid::neighbor_rank(nidx i)
+rank_type P4estGrid::neighbor_rank(rank_index_type i)
 {
     if (i < 0 || i > m_neighranks.size())
         throw std::domain_error("Neighbor rank out of bounds.");
     return m_neighranks[i];
 }
 
-lgidx P4estGrid::cell_neighbor_index(lidx cellidx, fs_neighidx neigh)
+local_or_ghost_cell_index_type
+P4estGrid::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
 {
     // Indices of the half shell neighbors in m_p8est_shell
     static const std::array<int, 27> to_p4est_order
-    // Half-shell neighbors
+        // Half-shell neighbors
         = {{-1, 1, 16, 3, 17, 22, 8, 23, 12, 5, 13, 24, 9, 25,
-    //      ^^ unused. Cell itself is not stored in m_p8est_shell.
-    // Rest (Full-shell \ Half-shell)
+            //      ^^ unused. Cell itself is not stored in m_p8est_shell.
+            // Rest (Full-shell \ Half-shell)
             0, 2, 4, 6, 7, 10, 11, 14, 15, 18, 19, 20, 21}};
 
     if (cellidx < 0 || cellidx >= n_local_cells())
@@ -422,15 +429,14 @@ std::vector<GhostExchangeDesc> P4estGrid::get_boundary_info()
     return m_exdescs;
 }
 
-lidx P4estGrid::position_to_cell_index(Vec3d pos)
+local_cell_index_type P4estGrid::position_to_cell_index(Vec3d pos)
 {
-    auto shellidxcomp = [](const impl::LocalShell &s, int idx) {
-        int64_t sidx = impl::cell_morton_idx(s.coord);
-        return sidx < idx;
-    };
+    auto shellidxcomp
+        = [](const impl::LocalShell &s, global_cell_index_type idx) {
+              return impl::cell_morton_idx(s.coord) < idx;
+          };
 
-    auto needle
-        = impl::pos_morton_idx(pos, m_inv_cell_size);
+    auto needle = impl::pos_morton_idx(pos, m_inv_cell_size);
 
     auto shell_local_end = std::begin(m_p8est_shell) + n_local_cells();
     auto it
@@ -448,19 +454,21 @@ lidx P4estGrid::position_to_cell_index(Vec3d pos)
         throw std::domain_error("Pos not in local domain.");
 }
 
-rank P4estGrid::position_to_rank(Vec3d pos)
+rank_type P4estGrid::position_to_rank(Vec3d pos)
 {
     // Cell of pos might not be known on this process (not in m_p8est_shell).
     // Therefore, use the global first cell indices.
     auto it = std::upper_bound(
         std::begin(m_node_first_cell_idx), std::end(m_node_first_cell_idx),
         impl::pos_morton_idx(pos, m_inv_cell_size),
-        [](int i, int64_t idx) { return i < idx; });
+        [](global_cell_index_type i, global_cell_index_type idx) {
+            return i < idx;
+        });
 
     return std::distance(std::begin(m_node_first_cell_idx), it) - 1;
 }
 
-nidx P4estGrid::position_to_neighidx(Vec3d pos)
+rank_index_type P4estGrid::position_to_neighidx(Vec3d pos)
 {
     // Determine the neighbor rank for locally known cell
     // Using position_to_rank here as it is the simpler code. Could also
@@ -513,8 +521,8 @@ bool P4estGrid::repartition(CellMetric m,
     // Evaluated for its side effect of setting part_nquads.
     std::accumulate(std::begin(weights), std::end(weights), prefix,
                     [this, target](double cellpref, double weight) {
-                        int proc = std::min<int>(cellpref / target,
-                                                 comm_cart.size() - 1);
+                        rank_type proc = std::min<rank_type>(
+                            cellpref / target, comm_cart.size() - 1);
                         m_repartstate.inc_nquads(proc);
                         return cellpref + weight;
                     });
@@ -548,7 +556,8 @@ bool P4estGrid::repartition(CellMetric m,
     return true;
 }
 
-int P4estGrid::global_hash(lgidx cellidx)
+global_cell_index_type
+P4estGrid::global_hash(local_or_ghost_cell_index_type cellidx)
 {
 #ifdef GLOBAL_HASH_NEEDED
     return m_global_idx.at(cellidx);

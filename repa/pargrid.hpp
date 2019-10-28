@@ -54,12 +54,34 @@ namespace grids {
 
 /** Some typedefs to document what an integer is supposed to mean
  */
-typedef int rank;  // Rank of a node
-typedef int nidx;  // Index of a neighboring process (rank) (0..n_neighbors-1)
-typedef int lidx;  // Index of a local cell (0..n_local_cells-1)
-typedef int gidx;  // Index of a ghost cell (0..n_ghost_cells-1)
-typedef int lgidx; // Index of a local (0..n_local_cells-1) or ghost cell
-                   // (n_local_cells..n_local_cells+n_ghost_cells-1)
+
+/** Rank of a node
+ */
+typedef int rank_type;
+/** Index of a neighboring process (rank) (0..n_neighbors-1)
+ * or the total number of neighbor ranks (n_neighbors).
+ */
+typedef int rank_index_type;
+/** Index of a local cell (0..n_local_cells-1) or the
+ * total number of local cells (n_local_cells).
+ */
+typedef int local_cell_index_type;
+/** Index of a ghost cell (0..n_ghost_cells-1) or the
+ * total number of ghost cells (n_ghost_cells).
+ */
+typedef int ghost_cell_index_type;
+/** Index of a local (0..n_local_cells-1) or
+ * ghost cell
+ * (n_local_cells..n_local_cells+n_ghost_cells-1)
+ * or the total number of cells on this
+ * process (n_local_cells + n_ghost_cells).
+ */
+typedef int local_or_ghost_cell_index_type;
+/** Global cell index (unique across all
+ * processes) or the number total number of
+ * cells across all processes.
+ */
+typedef int global_cell_index_type;
 
 /** Describes a ghost exchange process.
  * Corresponds to a GhostCommunication from ghosts.[ch]pp.
@@ -72,16 +94,18 @@ typedef int lgidx; // Index of a local (0..n_local_cells-1) or ghost cell
  * must exist multiple times in the send-datastructure.
  */
 struct GhostExchangeDesc {
-    rank dest;               // Destination rank
-    std::vector<lgidx> recv; // Ghost cell indices which are to be received
-    std::vector<lidx> send;  // Local cell indices which are to be sent
+    rank_type dest; // Destination rank
+    std::vector<local_or_ghost_cell_index_type>
+        recv; // Ghost cell indices which are to be received
+    std::vector<local_cell_index_type>
+        send; // Local cell indices which are to be sent
 
     GhostExchangeDesc() : dest(-1)
     {
     }
-    GhostExchangeDesc(rank dest,
-                      std::vector<gidx> &&recv,
-                      std::vector<lidx> &&send)
+    GhostExchangeDesc(rank_type dest,
+                      std::vector<local_or_ghost_cell_index_type> &&recv,
+                      std::vector<local_cell_index_type> &&send)
         : dest(dest), recv(std::move(recv)), send(std::move(send))
     {
     }
@@ -93,31 +117,33 @@ struct ParallelLCGrid {
     ParallelLCGrid(const boost::mpi::communicator &comm,
                    Vec3d box_size,
                    double min_cell_size);
-    
+
     // Must be called directly after construction
     // Make virtual calls here instead of the constructor.
-    virtual void after_construction(){}
+    virtual void after_construction()
+    {
+    }
 
     virtual ~ParallelLCGrid(){};
 
     /** Returns the number of local cells.
      */
-    virtual lidx n_local_cells() = 0;
+    virtual local_cell_index_type n_local_cells() = 0;
 
     /** Returns the number of ghost cells
      */
-    virtual gidx n_ghost_cells() = 0;
+    virtual ghost_cell_index_type n_ghost_cells() = 0;
 
     /** Returns the number of neighboring processes over faces, edges and
      * corners
      */
-    virtual nidx n_neighbors() = 0;
+    virtual rank_index_type n_neighbors() = 0;
 
     /** Returns the rank of a neighbor process.
      * @param i index of neighbor process. 0 <= i < n_neighbors()
      * @throws std::domain_error if 0 > i or i >= n_neighbors().
      */
-    virtual rank neighbor_rank(nidx i) = 0;
+    virtual rank_type neighbor_rank(rank_index_type i) = 0;
 
     /** Returns the cell sizes of Linked Cell grid.
      */
@@ -145,7 +171,9 @@ struct ParallelLCGrid {
      * @throws std::domain_error if 0 > cellidx or cellidx >=
      * get_n_local_cells().
      */
-    virtual lgidx cell_neighbor_index(lidx cellidx, fs_neighidx neigh) = 0;
+    virtual local_or_ghost_cell_index_type
+    cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
+        = 0;
 
     /** Returns the ghost exchange info.
      * @see GhostExchangeDesc
@@ -155,19 +183,19 @@ struct ParallelLCGrid {
     /** Returns the index of a local cell at position "pos".
      * @throws std::domain_error if position is not in the local subdomain.
      */
-    virtual lidx position_to_cell_index(Vec3d pos) = 0;
+    virtual local_cell_index_type position_to_cell_index(Vec3d pos) = 0;
 
     /** Returns the rank of the process which is responsible for the cell at
      * position "pos". Works for the whole domain!
      */
-    virtual rank position_to_rank(Vec3d pos) = 0;
+    virtual rank_type position_to_rank(Vec3d pos) = 0;
 
     /** Returns the index of a neighboring process which is responsible for the
      * cell at position "pos". "Pos" must therefore be *in the ghost layer*.
      *
      * @throws std::domain_error if position is not in the ghost layer.
      */
-    virtual nidx position_to_neighidx(Vec3d pos) = 0;
+    virtual rank_index_type position_to_neighidx(Vec3d pos) = 0;
 
     /** *Maybe* repartitions the grid. Returns true if grid has been changed
      * (repartitioned). This means all data of this class is invalidated.
@@ -222,7 +250,7 @@ struct ParallelLCGrid {
      * Use *only* if NDEBUG is *not* set.
      *
      */
-    virtual int global_hash(lgidx cellidx) = 0;
+    virtual int global_hash(local_or_ghost_cell_index_type cellidx) = 0;
 
 protected:
     boost::mpi::communicator comm, comm_cart;
