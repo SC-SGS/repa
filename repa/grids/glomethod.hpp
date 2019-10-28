@@ -106,7 +106,10 @@ protected:
     {
     }
 
-    virtual rank_type rank_of_cell(global_cell_index_type) = 0;
+    // Function that globally resolves a cell index to a rank.
+    // @param idx cell index to resolve
+    // @returns rank which is responsible for global cell index idx
+    virtual rank_type rank_of_cell(global_cell_index_type idx) = 0;
 
     // Reinitializes the subdomain and communication data structures
     // after repartitioning.
