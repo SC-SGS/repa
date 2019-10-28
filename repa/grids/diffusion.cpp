@@ -126,7 +126,7 @@ void Diffusion::clear_unknown_cell_ownership()
         return partition[neighcell] == comm_cart.rank();
     };
 
-    fill_if_index(std::begin(partition), std::end(partition), -1,
+    fill_if_index(std::begin(partition), std::end(partition), UNKNOWN_RANK,
                   [this, is_my_cell](size_t glocellidx) {
                       auto neighborhood = gbox.full_shell_neigh(glocellidx);
                       return std::none_of(std::begin(neighborhood),
@@ -225,12 +225,12 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     std::vector<int> p2 = partition;
     for (auto &el : p2)
         if (el != comm_cart.rank())
-            el = -1;
+            el = UNKNOWN_RANK;
 
     MPI_Allreduce(MPI_IN_PLACE, p2.data(), p2.size(), MPI_INT, MPI_MAX,
                   comm_cart);
     for (auto el : p2)
-        ENSURE(el > -1);
+        ENSURE(el != UNKNOWN_RANK);
 #endif
 
     // Remove ranks from "toSend", again.
@@ -268,7 +268,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 
         for (int j = 0; j < 27; ++j) {
             global_cell_index_type n = gbox.neighbor(i, j);
-            ENSURE(partition[n] > -1);
+            ENSURE(partition[n] != UNKNOWN_RANK);
         }
     }
 #endif

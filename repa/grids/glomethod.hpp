@@ -107,6 +107,10 @@ protected:
     }
 
     // Function that globally resolves a cell index to a rank.
+    // Might return UNKNOWN_RANK if cell "idx" is irrelevant for
+    // this process (no local cell and no ghost cell).
+    //
+    //
     // @param idx cell index to resolve
     // @returns rank which is responsible for global cell index idx
     virtual rank_type rank_of_cell(global_cell_index_type idx) = 0;

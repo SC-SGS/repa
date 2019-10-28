@@ -274,7 +274,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
     // Result parameters
     idx_t edgecut;
-    std::vector<idx_t> part(nvtx, -1);
+    std::vector<idx_t> part(nvtx, static_cast<idx_t>(UNKNOWN_RANK));
 
     if (ParMETIS_V3_PartKway(vtxdist.data(), xadj.data(), adjncy.data(),
                              vwgt.data(), adjwgt.data(), &wgtflag, &numflag,
@@ -295,14 +295,14 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 #ifdef GRAPH_DEBUG
     ENSURE(parti.size() == nvtx);
     for (auto r : parti) {
-        ENSURE(r != -1);
+        ENSURE(r != static_cast<idx_t>(UNKNOWN_RANK));
         ENSURE(0 <= r && r < comm_cart.size());
     }
 #endif
 
 #ifdef GRAPH_DEBUG
     std::fill(std::begin(partition), std::end(partition),
-              static_cast<rank_type>(-1));
+              UNKNOWN_RANK);
 #endif
 
     util::all_gatherv_displ(comm_cart, parti.cref(), vtxdist, partition);
@@ -310,7 +310,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 #ifdef GRAPH_DEBUG
     ENSURE(partition.size() == nglocells);
     for (int r : partition) {
-        ENSURE(r != -1);
+        ENSURE(r != UNKNOWN_RANK);
         ENSURE(0 <= r && r < comm_cart.size());
     }
 #endif

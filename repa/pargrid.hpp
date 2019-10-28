@@ -65,6 +65,9 @@ typedef int rank_index_type;
 /** Index of a local cell (0..n_local_cells-1) or the
  * total number of local cells (n_local_cells).
  */
+
+#define UNKNOWN_RANK (static_cast<rank_index_type>(-1))
+
 typedef int local_cell_index_type;
 /** Index of a ghost cell (0..n_ghost_cells-1) or the
  * total number of ghost cells (n_ghost_cells).
