@@ -36,7 +36,18 @@ struct Graph : public GloMethod {
 
 private:
     friend struct HybridGPDiff; // Needs access to "partition" vector
+
+    virtual rank_type rank_of_cell(global_cell_index_type idx) override
+    {
+        t_assert(idx >= 0 && idx < gbox.ncells());
+        return partition[idx];
+    }
+
     virtual bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
+
+    // Stores the global partitioning. One rank per cell. Index via global
+    // index.
+    std::vector<rank_type> partition;
 };
 } // namespace grids
 } // namespace repa

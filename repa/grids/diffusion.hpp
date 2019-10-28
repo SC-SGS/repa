@@ -47,6 +47,13 @@ private:
     void init_new_foreign_cell(local_cell_index_type localcell,
                                global_cell_index_type foreigncell,
                                rank_type owner) override;
+
+    virtual rank_type rank_of_cell(global_cell_index_type idx) override
+    {
+        t_assert(idx >= 0 && idx < gbox.ncells());
+        return partition[idx];
+    }
+
     bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
 
     //
@@ -63,6 +70,10 @@ private:
 
     // Neighborhood communicator
     MPI_Comm neighcomm;
+
+    // Stores the global partitioning. One rank per cell. Index via global
+    // index.
+    std::vector<rank_type> partition;
 
     //
     // Additional methods
