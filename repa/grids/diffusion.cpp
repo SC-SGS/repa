@@ -29,6 +29,7 @@
 #include "util/fill.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/push_back_unique.hpp"
+#include "util/initial_partitioning.hpp"
 
 #ifndef NDEBUG
 #define DIFFUSION_DEBUG
@@ -282,6 +283,13 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
                      double min_cell_size)
     : GloMethod(comm, box_size, min_cell_size), neighcomm(MPI_COMM_NULL)
 {
+    // Initial partitioning
+    partition.resize(gbox.ncells());
+    util::InitPartitioning{gbox, comm}(
+        util::InitialPartitionType::LINEAR,
+        [this](global_cell_index_type idx, rank_type r) {
+            this->partition[idx] = r;
+        });
 }
 
 Diffusion::~Diffusion()

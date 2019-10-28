@@ -23,7 +23,6 @@
 #include <boost/mpi.hpp>
 
 #include "util/ensure.hpp"
-#include "util/initial_partitioning.hpp"
 #include "util/push_back_unique.hpp"
 
 #ifndef NDEBUG
@@ -131,13 +130,6 @@ GloMethod::GloMethod(const boost::mpi::communicator &comm,
     : ParallelLCGrid(comm, box_size, min_cell_size),
       gbox(box_size, min_cell_size)
 {
-    // Initial partitioning
-    partition.resize(gbox.ncells());
-    util::InitPartitioning{gbox, comm}(
-        util::InitialPartitionType::LINEAR,
-        [this](global_cell_index_type idx, rank_type r) {
-            this->partition[idx] = r;
-        });
 }
 
 void GloMethod::after_construction()
@@ -155,6 +147,7 @@ GloMethod::~GloMethod()
 void GloMethod::init(bool firstcall)
 {
     const global_cell_index_type nglocells = gbox.ncells();
+    t_assert(partition.size() == gbox.ncells());
 
     pre_init(firstcall);
 
