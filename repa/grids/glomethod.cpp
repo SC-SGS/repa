@@ -154,7 +154,7 @@ GloMethod::~GloMethod()
  */
 void GloMethod::init(bool firstcall)
 {
-    const global_cell_index_type nglocells = partition.size();
+    const global_cell_index_type nglocells = gbox.ncells();
 
     pre_init(firstcall);
 
