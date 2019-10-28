@@ -51,10 +51,10 @@ static const std::unordered_map<std::string, GridType> grid_type_registry
 #define METIS_AVAIL false
 #endif
 
-#ifdef HAVE_TETRA
-#define TETRA_AVAIL true
+#ifdef HAVE_CGAL
+#define CGAL_AVAIL true
 #else
-#define TETRA_AVAIL false
+#define CGAL_AVAIL false
 #endif
 
 // Note: Enum hash compatibility functor for gcc-5.x support.
@@ -73,7 +73,7 @@ static const std::unordered_map<GridType, bool, enum_hash_compat>
     = {{GridType::P4EST, P4EST_AVAIL},       {GridType::CART, true},
        {GridType::GRAPH, METIS_AVAIL},       {GridType::DIFF, true},
        {GridType::HYB_GP_DIFF, METIS_AVAIL}, {GridType::KD_TREE, KDPART_AVAIL},
-       {GridType::GRIDBASED, true}};
+       {GridType::GRIDBASED, CGAL_AVAIL}};
 
 } // namespace
 
