@@ -19,8 +19,6 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-//#ifdef HAVE_P4EST
-
 #include <numeric>
 
 #include <p8est_algorithms.h>
@@ -568,5 +566,3 @@ P4estGrid::global_hash(local_or_ghost_cell_index_type cellidx)
 
 } // namespace grids
 } // namespace repa
-
-//#endif // HAVE_P4EST

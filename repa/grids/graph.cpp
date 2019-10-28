@@ -18,8 +18,6 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-//#ifdef HAVE_METIS
-
 #include "graph.hpp"
 #include <algorithm>
 #include <boost/mpi.hpp>
@@ -328,5 +326,3 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
 } // namespace grids
 } // namespace repa
-
-//#endif

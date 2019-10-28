@@ -20,11 +20,19 @@
 #include "pargrid_factory.hpp"
 #include "grids/cart.hpp"
 #include "grids/diffusion.hpp"
+#ifdef HAVE_METIS
 #include "grids/graph.hpp"
-#include "grids/gridbased.hpp"
 #include "grids/hybrid-gp-diff.hpp"
+#endif
+#ifdef HAVE_CGAL
+#include "grids/gridbased.hpp"
+#endif
+#ifdef HAVE_KDPART
 #include "grids/kd_tree.hpp"
+#endif
+#ifdef HAVE_P4EST
 #include "grids/p4est.hpp"
+#endif
 
 namespace repa {
 namespace grids {
@@ -39,12 +47,11 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
     ParallelLCGrid *r = nullptr;
     switch (gt) {
     case GridType::P4EST:
-        //#ifdef HAVE_P4EST
+#ifdef HAVE_P4EST
         r = new P4estGrid(comm, box_size, min_cell_size);
-        //#else
-        //    throw std::invalid_argument("P4est not compiled in but requesting
-        //    p4est grid.");
-        //#endif
+#else
+        throw std::invalid_argument("Librepa not compiled with p4est support.");
+#endif
         break;
 
     case GridType::CART:
@@ -52,12 +59,12 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         break;
 
     case GridType::GRAPH:
-        //#ifdef HAVE_METIS
+#ifdef HAVE_METIS
         r = new Graph(comm, box_size, min_cell_size);
-        //#else
-        //    throw std::invalid_argument("This ESPResSo has not been compiled
-        //    with Metis support.");
-        //#endif
+#else
+        throw std::invalid_argument(
+            "Librepa not compiled with Parmetis support.");
+#endif
         break;
 
     case GridType::DIFF:
@@ -65,30 +72,29 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         break;
 
     case GridType::KD_TREE:
-        //#ifdef HAVE_KDPART
+#ifdef HAVE_KDPART
         r = new KDTreeGrid(comm, box_size, min_cell_size);
-        //#else
-        //    throw std::invalid_argument("This ESPResSo has not been compiled
-        //    with the kdpart-library.");
-        //#endif
+#else
+        throw std::invalid_argument(
+            "Librepa not compiled with kdpart support.");
+#endif
         break;
 
     case GridType::HYB_GP_DIFF:
-        //#ifdef HAVE_METIS
+#ifdef HAVE_METIS
         r = new HybridGPDiff(comm, box_size, min_cell_size);
-        //#else
-        //    throw std::invalid_argument("This ESPResSo has not been compiled
-        //    with Metis support.");
-        //#endif
+#else
+        throw std::invalid_argument(
+            "Librepa not compiled with Parmetis support.");
+#endif
         break;
 
     case GridType::GRIDBASED:
-        //#ifdef HAVE_TETRA
+#ifdef HAVE_CGAL
         r = new GridBasedGrid(comm, box_size, min_cell_size, ep);
-        //#else
-        //    throw std::invalid_argument("This ESPRsSo has not been compiled
-        //    with Tetra support.");
-        //#endif
+#else
+        throw std::invalid_argument("Librepa not compiled with CGAL support");
+#endif
         break;
 
     default:
@@ -99,7 +105,8 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
     if (r) {
         r->after_construction();
         return r;
-    } else {
+    }
+    else {
         throw std::runtime_error("Did not construct a grid?");
     }
 }

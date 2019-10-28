@@ -20,8 +20,6 @@
 
 #pragma once
 
-//#ifdef HAVE_METIS
-
 #include "glomethod.hpp"
 #include "pargrid.hpp"
 
@@ -40,5 +38,3 @@ private:
 };
 } // namespace grids
 } // namespace repa
-
-//#endif // HAVE_METIS

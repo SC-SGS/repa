@@ -17,8 +17,6 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-//#ifdef HAVE_METIS
-
 #include "hybrid-gp-diff.hpp"
 #include <boost/mpi/datatype.hpp>
 #include <mpi.h>
@@ -181,5 +179,3 @@ HybridGPDiff::global_hash(local_or_ghost_cell_index_type cellidx)
 
 } // namespace grids
 } // namespace repa
-
-//#endif // HAVE_METIS

@@ -19,8 +19,6 @@
 
 #pragma once
 
-//#ifdef HAVE_METIS
-
 #include "diffusion.hpp"
 #include "globox.hpp"
 #include "graph.hpp"
@@ -83,5 +81,3 @@ private:
 };
 } // namespace grids
 } // namespace repa
-
-//#endif // HAVE_METIS
