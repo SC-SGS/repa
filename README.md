@@ -43,7 +43,7 @@ $ sh -c 'git clone --recursive https://github.com/lahnerml/p4est --branch p4est-
             && ./configure --prefix="$(pwd)/../.." --enable-mpi \
             && make \
             && make install'
-$ DEP_DIR="$(pwd)"
+$ DEP_DIR="$(pwd)/.."
 ```
 
 ## Build
