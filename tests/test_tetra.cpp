@@ -67,7 +67,7 @@ int ninside(const tetra::Octagon &o, int N)
     return n;
 }
 
-BOOST_AUTO_TEST_CASE(test_unknown_exceptions)
+BOOST_AUTO_TEST_CASE(test_tetra)
 {
 
     tetra::Octagon r;
