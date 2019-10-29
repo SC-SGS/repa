@@ -60,6 +60,10 @@ if(WITH_TESTS)
 endif(WITH_TESTS)
 find_package(Boost "1.59.0" REQUIRED ${REQ_BOOST_PACKAGES})
 
+if (Boost_VERSION VERSION_GREATER_EQUAL "1.69" AND Boost_VERSION VERSION_LESS_EQUAL "1.71")
+  message(FATAL_ERROR "Boost 1.69 - 1.71 have a bug and are not supported.")
+endif()
+
 # Used for librepa itself as well as all tests
 # Enable warnings on gcc and clang. Add flags for other compilers below.
 set(REPA_DEFAULT_COMPILE_OPTIONS
