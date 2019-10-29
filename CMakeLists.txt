@@ -94,7 +94,7 @@ if(WITH_TESTS AND WITH_COVERAGE)
       add_custom_target(coverage
                         COMMAND ${CMAKE_SOURCE_DIR}/util/coverage.sh
                         WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-      message(STATUS "Coverage enabled. Use `ninja coverage' after build to execute coverage tests.")
+      message(STATUS "Coverage enabled. Use `coverage' target after build to execute coverage tests.")
     endif()
   endif()
 endif(WITH_TESTS AND WITH_COVERAGE)
