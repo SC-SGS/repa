@@ -58,7 +58,7 @@ list(APPEND REQ_BOOST_PACKAGES mpi serialization)
 if(WITH_TESTS)
   list(APPEND REQ_BOOST_PACKAGES unit_test_framework)
 endif(WITH_TESTS)
-find_package(Boost "1.59.0" REQUIRED ${REQ_BOOST_PACKAGES})
+find_package(Boost "1.67.0" REQUIRED ${REQ_BOOST_PACKAGES})
 
 if (Boost_VERSION VERSION_GREATER_EQUAL "1.69" AND Boost_VERSION VERSION_LESS_EQUAL "1.71")
   message(FATAL_ERROR "Boost 1.69 - 1.71 have a bug and are not supported.")
