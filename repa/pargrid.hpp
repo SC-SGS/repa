@@ -58,21 +58,26 @@ namespace grids {
 /** Rank of a node
  */
 typedef int rank_type;
+
+/** Encodes an unknown rank. Denotes an error if necessary rank == UNKNOWN_RANK.
+ */
+#define UNKNOWN_RANK (static_cast<rank_type>(-1))
+
 /** Index of a neighboring process (rank) (0..n_neighbors-1)
  * or the total number of neighbor ranks (n_neighbors).
  */
 typedef int rank_index_type;
+
 /** Index of a local cell (0..n_local_cells-1) or the
  * total number of local cells (n_local_cells).
  */
-
-#define UNKNOWN_RANK (static_cast<rank_type>(-1))
-
 typedef int local_cell_index_type;
+
 /** Index of a ghost cell (0..n_ghost_cells-1) or the
  * total number of ghost cells (n_ghost_cells).
  */
 typedef int ghost_cell_index_type;
+
 /** Index of a local (0..n_local_cells-1) or
  * ghost cell
  * (n_local_cells..n_local_cells+n_ghost_cells-1)
@@ -80,6 +85,7 @@ typedef int ghost_cell_index_type;
  * process (n_local_cells + n_ghost_cells).
  */
 typedef int local_or_ghost_cell_index_type;
+
 /** Global cell index (unique across all
  * processes) or the number total number of
  * cells across all processes.
