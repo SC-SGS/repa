@@ -253,7 +253,9 @@ struct ParallelLCGrid {
      * Use *only* if NDEBUG is *not* set.
      *
      */
-    virtual global_cell_index_type global_hash(local_or_ghost_cell_index_type cellidx) = 0;
+    virtual global_cell_index_type
+    global_hash(local_or_ghost_cell_index_type cellidx)
+        = 0;
 
 protected:
     boost::mpi::communicator comm, comm_cart;
