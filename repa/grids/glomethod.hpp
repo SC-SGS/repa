@@ -74,9 +74,6 @@ protected:
     // subdomain associated to this process. This ordering is imposed via
     // pargrid.hpp and ESPResSo.
     std::vector<global_cell_index_type> cells;
-    // Stores the global partitioning. One rank per cell. Index via global
-    // index.
-    std::vector<rank_type> partition;
 
     // Stores the mapping of a global linearized index to a
     // local linearized index or an ghost linearized index.
@@ -108,6 +105,15 @@ protected:
                                        rank_type owner)
     {
     }
+
+    // Function that globally resolves a cell index to a rank.
+    // Might return UNKNOWN_RANK if cell "idx" is irrelevant for
+    // this process (no local cell and no ghost cell).
+    //
+    //
+    // @param idx cell index to resolve
+    // @returns rank which is responsible for global cell index idx
+    virtual rank_type rank_of_cell(global_cell_index_type idx) = 0;
 
     // Reinitializes the subdomain and communication data structures
     // after repartitioning.

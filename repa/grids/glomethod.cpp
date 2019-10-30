@@ -83,7 +83,7 @@ local_cell_index_type GloMethod::position_to_cell_index(Vec3d pos)
 
 rank_type GloMethod::position_to_rank(Vec3d pos)
 {
-    auto r = partition[gbox.cell_at_pos(pos)];
+    auto r = rank_of_cell(gbox.cell_at_pos(pos));
 
     if (r < 0)
         throw std::runtime_error("Cell not in scope of process");
@@ -130,42 +130,6 @@ GloMethod::GloMethod(const boost::mpi::communicator &comm,
     : ParallelLCGrid(comm, box_size, min_cell_size),
       gbox(box_size, min_cell_size)
 {
-    global_cell_index_type nglocells = gbox.ncells();
-    local_cell_index_type ncells_per_proc = static_cast<local_cell_index_type>(
-        std::ceil(static_cast<double>(nglocells) / comm_cart.size()));
-
-    // Initial partitioning
-    partition.resize(nglocells);
-
-    // Line-wise init
-    for (global_cell_index_type i = 0; i < nglocells; ++i) {
-        partition[i] = i / ncells_per_proc;
-    }
-
-    // TODO: choose init?
-
-    //// Init to equally sized boxes on Cartesian grid
-    // int dims[3] = {0, 0, 0};
-    // MPI_Dims_create(comm_cart.size(), 3, dims);
-
-    // auto cellgrid = gbox.grid_size();
-    // Vec3i cells_per_proc = {{
-    //    static_cast<int>(std::ceil(static_cast<double>(cellgrid[0]) /
-    //    dims[0])), static_cast<int>(std::ceil(static_cast<double>(cellgrid[1])
-    //    / dims[1])),
-    //    static_cast<int>(std::ceil(static_cast<double>(cellgrid[2]) /
-    //    dims[2])),
-    //}};
-
-    // for (global_cell_index_type i = 0; i < nglocells; ++i) {
-    //  auto cellidx = gbox.unlinearize(i);
-    //  // Transform cellidx to 3d proc coord
-    //  for (int i = 0; i < 3; ++i)
-    //    cellidx[i] /= cells_per_proc[i];
-    //  int rank;
-    //  MPI_Cart_rank(comm_cart, cellidx.data(), &rank);
-    //  partition[i] = rank;
-    //}
 }
 
 void GloMethod::after_construction()
@@ -182,7 +146,7 @@ GloMethod::~GloMethod()
  */
 void GloMethod::init(bool firstcall)
 {
-    const global_cell_index_type nglocells = partition.size();
+    const global_cell_index_type nglocells = gbox.ncells();
 
     pre_init(firstcall);
 
@@ -194,7 +158,7 @@ void GloMethod::init(bool firstcall)
 
     // Extract the local cells from "partition".
     for (global_cell_index_type i = 0; i < nglocells; i++) {
-        if (partition[i] == comm_cart.rank()) {
+        if (rank_of_cell(i) == comm_cart.rank()) {
             // Vector of own cells
             cells.push_back(i);
             // Index mapping from global to local
@@ -213,7 +177,7 @@ void GloMethod::init(bool firstcall)
     for (local_cell_index_type i = 0; i < localCells; i++) {
         for (global_cell_index_type neighborIndex :
              gbox.full_shell_neigh_without_center(cells[i])) {
-            rank_type owner = partition[neighborIndex];
+            rank_type owner = rank_of_cell(neighborIndex);
             if (owner == comm_cart.rank())
                 continue;
 

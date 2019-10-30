@@ -34,6 +34,7 @@
 #include "util/ensure.hpp"
 #include "util/push_back_unique.hpp"
 #include "util/vector_coerce.hpp"
+#include "util/initial_partitioning.hpp"
 
 #define MPI_IDX_T boost::mpi::get_mpi_datatype(static_cast<idx_t>(0))
 
@@ -49,6 +50,13 @@ Graph::Graph(const boost::mpi::communicator &comm,
              double min_cell_size)
     : GloMethod(comm, box_size, min_cell_size)
 {
+    // Initial partitioning
+    partition.resize(gbox.ncells());
+    util::InitPartitioning{gbox, comm}(
+        util::InitialPartitionType::LINEAR,
+        [this](global_cell_index_type idx, rank_type r) {
+            this->partition[idx] = r;
+        });
 }
 
 Graph::~Graph()
@@ -266,7 +274,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
     // Result parameters
     idx_t edgecut;
-    std::vector<idx_t> part(nvtx, -1);
+    std::vector<idx_t> part(nvtx, static_cast<idx_t>(UNKNOWN_RANK));
 
     if (ParMETIS_V3_PartKway(vtxdist.data(), xadj.data(), adjncy.data(),
                              vwgt.data(), adjwgt.data(), &wgtflag, &numflag,
@@ -287,14 +295,14 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 #ifdef GRAPH_DEBUG
     ENSURE(parti.size() == nvtx);
     for (auto r : parti) {
-        ENSURE(r != -1);
+        ENSURE(r != static_cast<idx_t>(UNKNOWN_RANK));
         ENSURE(0 <= r && r < comm_cart.size());
     }
 #endif
 
 #ifdef GRAPH_DEBUG
     std::fill(std::begin(partition), std::end(partition),
-              static_cast<rank_type>(-1));
+              UNKNOWN_RANK);
 #endif
 
     util::all_gatherv_displ(comm_cart, parti.cref(), vtxdist, partition);
@@ -302,7 +310,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 #ifdef GRAPH_DEBUG
     ENSURE(partition.size() == nglocells);
     for (int r : partition) {
-        ENSURE(r != -1);
+        ENSURE(r != UNKNOWN_RANK);
         ENSURE(0 <= r && r < comm_cart.size());
     }
 #endif
