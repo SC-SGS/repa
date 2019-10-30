@@ -399,7 +399,7 @@ rank_index_type P4estGrid::n_neighbors()
 
 rank_type P4estGrid::neighbor_rank(rank_index_type i)
 {
-    if (i < 0 || i > m_neighranks.size())
+    if (i < 0 || i > n_neighbors())
         throw std::domain_error("Neighbor rank out of bounds.");
     return m_neighranks[i];
 }
