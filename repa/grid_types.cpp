@@ -45,10 +45,10 @@ static const std::unordered_map<std::string, GridType> grid_type_registry
 #define P4EST_AVAIL false
 #endif
 
-#ifdef HAVE_METIS
-#define METIS_AVAIL true
+#ifdef HAVE_PARMETIS
+#define PARMETIS_AVAIL true
 #else
-#define METIS_AVAIL false
+#define PARMETIS_AVAIL false
 #endif
 
 #ifdef HAVE_CGAL
@@ -69,11 +69,13 @@ struct enum_hash_compat {
 
 // Awaiting C++20 which will finally have designated initializers -.-
 static const std::unordered_map<GridType, bool, enum_hash_compat>
-    grid_type_availability
-    = {{GridType::P4EST, P4EST_AVAIL},       {GridType::CART, true},
-       {GridType::GRAPH, METIS_AVAIL},       {GridType::DIFF, true},
-       {GridType::HYB_GP_DIFF, METIS_AVAIL}, {GridType::KD_TREE, KDPART_AVAIL},
-       {GridType::GRIDBASED, CGAL_AVAIL}};
+    grid_type_availability = {{GridType::P4EST, P4EST_AVAIL},
+                              {GridType::CART, true},
+                              {GridType::GRAPH, PARMETIS_AVAIL},
+                              {GridType::DIFF, true},
+                              {GridType::HYB_GP_DIFF, PARMETIS_AVAIL},
+                              {GridType::KD_TREE, KDPART_AVAIL},
+                              {GridType::GRIDBASED, CGAL_AVAIL}};
 
 } // namespace
 

@@ -20,7 +20,7 @@
 #include "pargrid_factory.hpp"
 #include "grids/cart.hpp"
 #include "grids/diffusion.hpp"
-#ifdef HAVE_METIS
+#ifdef HAVE_PARMETIS
 #include "grids/graph.hpp"
 #include "grids/hybrid-gp-diff.hpp"
 #endif
@@ -59,7 +59,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         break;
 
     case GridType::GRAPH:
-#ifdef HAVE_METIS
+#ifdef HAVE_PARMETIS
         r = new Graph(comm, box_size, min_cell_size);
 #else
         throw std::invalid_argument(
@@ -81,7 +81,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         break;
 
     case GridType::HYB_GP_DIFF:
-#ifdef HAVE_METIS
+#ifdef HAVE_PARMETIS
         r = new HybridGPDiff(comm, box_size, min_cell_size);
 #else
         throw std::invalid_argument(
