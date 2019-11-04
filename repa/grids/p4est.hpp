@@ -21,8 +21,6 @@
 
 #pragma once
 
-//#ifdef HAVE_P4EST
-
 #include "util/p4est_deleter.hpp"
 
 #include "../pargrid.hpp"
@@ -145,5 +143,3 @@ private:
 };
 } // namespace grids
 } // namespace repa
-
-//#endif // HAVE_P4EST

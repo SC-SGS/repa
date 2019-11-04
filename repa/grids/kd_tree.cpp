@@ -18,8 +18,6 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-//#ifdef HAVE_KDPART
-
 #include "kd_tree.hpp"
 #include "util/linearize.hpp"
 #include "util/neighbor_offsets.hpp"
@@ -575,5 +573,3 @@ KDTreeGrid::global_hash(local_or_ghost_cell_index_type cellidx)
 
 } // namespace grids
 } // namespace repa
-
-//#endif // HAVE_KDPART

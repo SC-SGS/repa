@@ -21,8 +21,11 @@ include(define_test)
 # Unit tests
 define_test(NAME test_vec SRC test_vec.cpp SINGLEPROC)
 define_test(NAME test_integral_range SRC test_integral_range.cpp SINGLEPROC)
-define_test(NAME test_tetra SRC test_tetra.cpp SINGLEPROC)
 define_test(NAME test_unknown_exceptions SRC test_unknown_exceptions.cpp SINGLEPROC)
+
+if(WITH_CGAL AND CGAL_FOUND)
+  define_test(NAME test_tetra SRC test_tetra.cpp SINGLEPROC)
+endif(WITH_CGAL AND CGAL_FOUND)
 
 # Integration tests
 define_test(NAME test_grid_types SRC test_grid_types.cpp)

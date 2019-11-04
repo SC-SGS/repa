@@ -20,8 +20,6 @@
 
 #pragma once
 
-//#ifdef HAVE_KDPART
-
 #include <cstring>
 #include <mpi.h>
 #include <tuple>
@@ -217,5 +215,3 @@ public:
 
 } // namespace grids
 } // namespace repa
-
-//#endif // HAVE_KDPART

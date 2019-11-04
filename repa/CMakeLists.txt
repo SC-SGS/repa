@@ -18,19 +18,39 @@
 
 set(repa_SRC
     grids/glomethod.cpp
-    grids/graph.cpp
-    grids/gridbased.cpp
     grids/diffusion.cpp
-    grids/p4est.cpp
-    grids/kd_tree.cpp
-    grids/hybrid-gp-diff.cpp
     grids/cart.cpp
     grids/util/neighbor_offsets.cpp
-    grids/util/tetra.cpp
     grid_types.cpp
     pargrid_factory.cpp
     pargrid.cpp
 )
+
+if(WITH_KDPART AND KDPART_FOUND)
+  set(repa_SRC
+      ${repa_SRC}
+      grids/kd_tree.cpp)
+endif(WITH_KDPART AND KDPART_FOUND)
+
+if(WITH_CGAL AND CGAL_FOUND)
+  set(repa_SRC
+      ${repa_SRC}
+      grids/util/tetra.cpp
+      grids/gridbased.cpp)
+endif(WITH_CGAL AND CGAL_FOUND)
+
+if(WITH_P4EST AND P4EST_FOUND)
+  set(repa_SRC
+      ${repa_SRC}
+      grids/p4est.cpp)
+endif(WITH_P4EST AND P4EST_FOUND)
+
+if(WITH_PARMETIS AND PARMETIS_FOUND)
+  set(repa_SRC
+      ${repa_SRC}
+      grids/graph.cpp
+      grids/hybrid-gp-diff.cpp)
+endif(WITH_PARMETIS AND PARMETIS_FOUND)
 
 set(repa_HDR
     repa.hpp
@@ -63,7 +83,7 @@ endif(WITH_P4EST AND P4EST_FOUND)
 if(WITH_PARMETIS AND PARMETIS_FOUND)
   target_include_directories(repa PUBLIC ${PARMETIS_INCLUDE_DIR})
   target_link_libraries(repa PUBLIC ${PARMETIS_LIBRARIES})
-  add_definitions(-DHAVE_METIS)
+  add_definitions(-DHAVE_PARMETIS)
 endif(WITH_PARMETIS AND PARMETIS_FOUND)
 
 target_link_libraries(repa 
