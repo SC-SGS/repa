@@ -27,9 +27,9 @@
 
 #include "util/ensure.hpp"
 #include "util/fill.hpp"
+#include "util/initial_partitioning.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/push_back_unique.hpp"
-#include "util/initial_partitioning.hpp"
 
 #ifndef NDEBUG
 #define DIFFUSION_DEBUG
@@ -39,7 +39,7 @@ namespace boost {
 namespace serialization {
 template <typename Archive>
 void load(Archive &ar,
-          repa::grids::Diffusion::CellNeighborhood &n,
+          repa::grids::__diff_impl::CellNeighborhood &n,
           const unsigned int /* file_version */)
 {
     ar >> n.basecell;
@@ -48,7 +48,7 @@ void load(Archive &ar,
 
 template <typename Archive>
 void save(Archive &ar,
-          const repa::grids::Diffusion::CellNeighborhood &n,
+          const repa::grids::__diff_impl::CellNeighborhood &n,
           const unsigned int /* file_version */)
 {
     ar << n.basecell;
@@ -57,7 +57,7 @@ void save(Archive &ar,
 
 template <class Archive>
 void serialize(Archive &ar,
-               repa::grids::Diffusion::CellNeighborhood &n,
+               repa::grids::__diff_impl::CellNeighborhood &n,
                const unsigned int file_version)
 {
     split_free(ar, n, file_version);
@@ -196,7 +196,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 
     // All send volumes from all processes
     PerNeighbor<PerNeighbor<GlobalCellIndices>>
-    //          ^^^^^^^^^^^ this "PerNeighbor" is actually "PerNeighborsNeighbor"
+        //          ^^^^^^^^^^^ this "PerNeighbor" is actually
+        //          "PerNeighborsNeighbor"
         received_cells(neighbors.size());
     for (rank_index_type i = 0; i < neighbors.size(); ++i) {
         rreq_cells[i] = comm_cart.irecv(neighbors[i], 2, received_cells[i]);
@@ -208,7 +209,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     for (size_t from = 0; from < received_cells.size(); ++from) {
         for (size_t to = 0; to < received_cells[from].size(); ++to) {
             // Extract target rank, again.
-            rank_type target_rank = static_cast<rank_type>(received_cells[from][to].back());
+            rank_type target_rank
+                = static_cast<rank_type>(received_cells[from][to].back());
             received_cells[from][to].pop_back();
 
             fill_index_range(partition, std::begin(received_cells[from][to]),
@@ -251,7 +253,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     }
 
     // All send volumes from all processes
-    PerNeighbor<CellNeighborhoodPerCell> received_neighborhood(neighbors.size());
+    PerNeighbor<__diff_impl::CellNeighborhoodPerCell> received_neighborhood(
+        neighbors.size());
     for (rank_index_type i = 0; i < neighbors.size(); ++i) {
         rreq_neigh[i]
             = comm_cart.irecv(neighbors[i], 2, received_neighborhood[i]);
@@ -361,11 +364,11 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
     return to_send;
 }
 
-Diffusion::PerNeighbor<Diffusion::CellNeighborhoodPerCell>
-Diffusion::sendNeighbourhood(
-    const PerNeighbor<GlobalCellIndices> &toSend)
+Diffusion::PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
+Diffusion::sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend)
 {
-    PerNeighbor<CellNeighborhoodPerCell> sendVectors(toSend.size());
+    PerNeighbor<__diff_impl::CellNeighborhoodPerCell> sendVectors(
+        toSend.size());
     for (size_t i = 0; i < toSend.size(); ++i) {
         sendVectors[i].resize(toSend[i].size());
         for (size_t j = 0; j < toSend[i].size(); ++j) {
@@ -388,7 +391,7 @@ Diffusion::sendNeighbourhood(
  * partition array is updated. (Only neighbourhood is changed)
  */
 void Diffusion::updateReceivedNeighbourhood(
-    const PerNeighbor<CellNeighborhoodPerCell> &neighs)
+    const PerNeighbor<__diff_impl::CellNeighborhoodPerCell> &neighs)
 {
     for (size_t i = 0; i < neighs.size(); ++i) {
         for (size_t j = 0; j < neighs[i].size(); ++j) {
