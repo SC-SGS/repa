@@ -102,7 +102,7 @@ struct Vec {
     }
     constexpr Vec(Vec &&) = default;
     constexpr Vec(const Vec &) = default;
-    constexpr Vec &operator=(const Vec &) = default;
+    Vec &operator=(const Vec &) = default;
 
     constexpr Vec(underlying_type &&arr)
         : m_data(std::forward<underlying_type>(arr))
