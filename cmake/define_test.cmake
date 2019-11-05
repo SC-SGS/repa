@@ -50,8 +50,10 @@ function(define_test)
     endif(TEST_SINGLEPROC)
     foreach(nproc RANGE 1 ${TEST_UPPER_BOUND} 1)
         add_test(NAME "${TEST_NAME}-${nproc}"
-                 COMMAND ${MPIEXEC} "--oversubscribe"
+                 COMMAND ${MPIEXEC}
                          ${MPIEXEC_NUMPROC_FLAG} ${nproc}
-                         ${MPIEXEC_PREFLAGS} ${TEST_NAME} ${MPIEXEC_POSTFLAGS})
+                         ${MPIEXEC_PREFLAGS}
+                         ${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}
+                         ${MPIEXEC_POSTFLAGS})
     endforeach()
 endfunction(define_test)

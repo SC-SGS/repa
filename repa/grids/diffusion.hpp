@@ -30,6 +30,16 @@
 namespace repa {
 namespace grids {
 
+namespace __diff_impl {
+// Struct for communication of neightbohood information
+struct CellNeighborhood {
+    global_cell_index_type basecell;
+    std::array<rank_type, 26> neighranks;
+};
+
+using CellNeighborhoodPerCell = std::vector<CellNeighborhood>;
+} // namespace __diff_impl
+
 /** Diffusively load-balanced grid.
  * Processes iteratively exchange boundary cells with neighbors.
  */
@@ -92,26 +102,18 @@ private:
      */
     using GlobalCellIndices = std::vector<global_cell_index_type>;
 
-
     // Computes vector of vectors of cells which has to be send to neighbours
     PerNeighbor<GlobalCellIndices>
     compute_send_list(std::vector<double> &&sendLoads,
                       const std::vector<double> &weights);
 
-    // Struct for communication of neightbohood information
-    struct CellNeighborhood {
-        global_cell_index_type basecell;
-        std::array<rank_type, 26> neighranks;
-    };
-
-    using CellNeighborhoodPerCell = std::vector<CellNeighborhood>;
     // Send message with neighbourhood of received cells in "sendCells"
-    PerNeighbor<CellNeighborhoodPerCell> sendNeighbourhood(
-        const PerNeighbor<GlobalCellIndices> &toSend);
+    PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
+    sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend);
 
     // Update partition array
     void updateReceivedNeighbourhood(
-        const PerNeighbor<CellNeighborhoodPerCell> &neighbourhood);
+        const PerNeighbor<__diff_impl::CellNeighborhoodPerCell> &neighbourhood);
 };
 } // namespace grids
 } // namespace repa

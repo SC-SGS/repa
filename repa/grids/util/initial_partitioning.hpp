@@ -67,8 +67,8 @@ void init_part_cartesian(const globox::GlobalBox<global_cell_index_type> &gbox,
     for (global_cell_index_type i = 0; i < nglobalcells; ++i) {
         auto cellidx = util::unlinearize(i, gbox.grid_size());
         // Transform cellidx to 3d proc coord
-        for (int i = 0; i < 3; ++i)
-            cellidx[i] /= cells_per_proc[i];
+        for (int d = 0; d < 3; ++d)
+            cellidx[d] /= cells_per_proc[d];
         int rank;
         MPI_Cart_rank(comm, cellidx.data(), &rank);
         assign_cell(i, rank);

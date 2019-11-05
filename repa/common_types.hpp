@@ -102,7 +102,7 @@ struct Vec {
     }
     constexpr Vec(Vec &&) = default;
     constexpr Vec(const Vec &) = default;
-    constexpr Vec &operator=(const Vec &) = default;
+    Vec &operator=(const Vec &) = default;
 
     constexpr Vec(underlying_type &&arr)
         : m_data(std::forward<underlying_type>(arr))
@@ -118,7 +118,7 @@ struct Vec {
     {
     }
 
-    constexpr iterator begin()
+    iterator begin()
     {
         return m_data.begin();
     }
@@ -126,11 +126,11 @@ struct Vec {
     {
         return m_data.cbegin();
     }
-    constexpr const_iterator begin() const
+    const_iterator begin() const
     {
         return cbegin();
     }
-    constexpr iterator end()
+    iterator end()
     {
         return m_data.end();
     }
@@ -138,12 +138,12 @@ struct Vec {
     {
         return m_data.cend();
     }
-    constexpr const_iterator end() const
+    const_iterator end() const
     {
         return cend();
     }
 
-    constexpr reverse_iterator rbegin()
+    reverse_iterator rbegin()
     {
         return m_data.rbegin();
     }
@@ -151,11 +151,11 @@ struct Vec {
     {
         return m_data.crbegin();
     }
-    constexpr const_reverse_iterator rbegin() const
+    const_reverse_iterator rbegin() const
     {
         return crbegin();
     }
-    constexpr reverse_iterator rend()
+    reverse_iterator rend()
     {
         return m_data.rend();
     }
@@ -163,7 +163,7 @@ struct Vec {
     {
         return m_data.crend();
     }
-    constexpr const_reverse_iterator rend() const
+    const_reverse_iterator rend() const
     {
         return crend();
     }
@@ -180,23 +180,23 @@ struct Vec {
     {
         return m_data.max_size();
     }
-    constexpr T *data()
+    T *data()
     {
         static_assert(N > 0, "Vec::data() requires actual elements");
         return m_data.data();
     }
-    constexpr const T *data() const
+    const T *data() const
     {
         static_assert(N > 0, "Vec::data() requires actual elements");
         return m_data.data();
     }
 
-    constexpr T &operator[](size_type i)
+    T &operator[](size_type i)
     {
         assert(i >= 0 && i < N);
         return m_data[i];
     }
-    constexpr const T &operator[](size_type i) const
+    const T &operator[](size_type i) const
     {
         assert(i >= 0 && i < N);
         return m_data[i];
@@ -235,11 +235,11 @@ struct Vec {
         ar &m_data;
     }
 
-    constexpr const underlying_type &as_array() const
+    const underlying_type &as_array() const
     {
         return m_data;
     }
-    constexpr underlying_type &as_array()
+    underlying_type &as_array()
     {
         return m_data;
     }
@@ -265,19 +265,19 @@ typedef std::function<void(void)> Thunk;
 template <typename T,
           T min,
           T max,
-          typename = typename std::enable_if_t<std::is_integral<T>::value>>
+          typename = typename std::enable_if<std::is_integral<T>::value>::type>
 struct IntegralRange {
     typedef T value_type;
 
     template <typename S,
-              typename = typename std::enable_if_t<std::is_integral<S>::value>>
+              typename = typename std::enable_if<std::is_integral<S>::value>::type>
     inline IntegralRange(S v) : value(static_cast<T>(v))
     {
         t_assert(in_bounds(v));
     }
 
     template <typename S,
-              typename = typename std::enable_if_t<std::is_integral<S>::value>>
+              typename = typename std::enable_if<std::is_integral<S>::value>::type>
     inline IntegralRange operator=(S v)
     {
         t_assert(in_bounds(v));
@@ -291,11 +291,11 @@ struct IntegralRange {
     }
 
     template <typename S,
-              typename = typename std::enable_if_t<std::is_integral<S>::value>>
+              typename = typename std::enable_if<std::is_integral<S>::value>::type>
     static inline bool in_bounds(S v)
     {
         // Evaluate range check on wide base type.
-        typedef std::common_type_t<T, S> base_type;
+        typedef typename std::common_type<T, S>::type base_type;
         return static_cast<base_type>(v) >= static_cast<base_type>(min)
                && static_cast<base_type>(v) <= static_cast<base_type>(max);
     }
