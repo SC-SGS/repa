@@ -265,19 +265,19 @@ typedef std::function<void(void)> Thunk;
 template <typename T,
           T min,
           T max,
-          typename = typename std::enable_if_t<std::is_integral<T>::value>>
+          typename = typename std::enable_if<std::is_integral<T>::value>::type>
 struct IntegralRange {
     typedef T value_type;
 
     template <typename S,
-              typename = typename std::enable_if_t<std::is_integral<S>::value>>
+              typename = typename std::enable_if<std::is_integral<S>::value>::type>
     inline IntegralRange(S v) : value(static_cast<T>(v))
     {
         t_assert(in_bounds(v));
     }
 
     template <typename S,
-              typename = typename std::enable_if_t<std::is_integral<S>::value>>
+              typename = typename std::enable_if<std::is_integral<S>::value>::type>
     inline IntegralRange operator=(S v)
     {
         t_assert(in_bounds(v));
@@ -291,11 +291,11 @@ struct IntegralRange {
     }
 
     template <typename S,
-              typename = typename std::enable_if_t<std::is_integral<S>::value>>
+              typename = typename std::enable_if<std::is_integral<S>::value>::type>
     static inline bool in_bounds(S v)
     {
         // Evaluate range check on wide base type.
-        typedef std::common_type_t<T, S> base_type;
+        typedef typename std::common_type<T, S>::type base_type;
         return static_cast<base_type>(v) >= static_cast<base_type>(min)
                && static_cast<base_type>(v) <= static_cast<base_type>(max);
     }
