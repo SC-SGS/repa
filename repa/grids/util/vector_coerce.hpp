@@ -21,6 +21,7 @@
 #pragma once
 
 #include <algorithm>
+#include <iterator>
 #include <vector>
 
 namespace repa {
@@ -77,7 +78,7 @@ struct VectorCoerce {
     VectorCoerce(in_vec_cref in)
     {
         out.reserve(in.size());
-        std::transform(std::begin(in), std::end(in), std::begin(out),
+        std::transform(std::begin(in), std::end(in), std::back_inserter(out),
                        [](const From &v) { return static_cast<To>(v); });
     }
 
