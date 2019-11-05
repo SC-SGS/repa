@@ -52,6 +52,8 @@ function(define_test)
         add_test(NAME "${TEST_NAME}-${nproc}"
                  COMMAND ${MPIEXEC}
                          ${MPIEXEC_NUMPROC_FLAG} ${nproc}
-                         ${MPIEXEC_PREFLAGS} ${TEST_NAME} ${MPIEXEC_POSTFLAGS})
+                         ${MPIEXEC_PREFLAGS}
+                         ${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}
+                         ${MPIEXEC_POSTFLAGS})
     endforeach()
 endfunction(define_test)
