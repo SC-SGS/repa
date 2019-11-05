@@ -27,21 +27,24 @@ namespace repa {
 namespace util {
 
 template <typename T,
-          typename = std::enable_if_t<std::is_floating_point<T>::value>>
+          typename
+          = typename std::enable_if<std::is_floating_point<T>::value>::type>
 T norm2(const T *v)
 {
     return std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 }
 
 template <typename T,
-          typename = std::enable_if_t<std::is_floating_point<T>::value>>
+          typename
+          = typename std::enable_if<std::is_floating_point<T>::value>::type>
 T norm2(const Vec3<T> &v)
 {
     return norm2(v.data());
 }
 
 template <typename T,
-          typename = std::enable_if_t<std::is_floating_point<T>::value>>
+          typename
+          = typename std::enable_if<std::is_floating_point<T>::value>::type>
 T dist2(const Vec3<T> &v, const Vec3<T> &w)
 {
     Vec3<T> vw;
