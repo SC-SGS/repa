@@ -24,6 +24,12 @@ find_path(PARMETIS_INCLUDE_DIR
           ENV C_INCLUDE_PATH
           PATH_SUFFIXES include)
 
+find_path(METIS_INCLUDE_DIR
+          metis.h
+          HINTS ${PARMETIS_DIR}
+          ENV C_INCLUDE_PATH
+          PATH_SUFFIXES include)
+
 find_library(PARMETIS_LIBRARIES
              parmetis
              HINTS ${PARMETIS_DIR}

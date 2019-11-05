@@ -81,7 +81,9 @@ if(WITH_P4EST AND P4EST_FOUND)
 endif(WITH_P4EST AND P4EST_FOUND)
 
 if(WITH_PARMETIS AND PARMETIS_FOUND)
-  target_include_directories(repa PUBLIC ${PARMETIS_INCLUDE_DIR})
+  target_include_directories(repa
+                             PUBLIC ${PARMETIS_INCLUDE_DIR}
+                                    ${METIS_INCLUDE_DIR})
   target_link_libraries(repa PUBLIC ${PARMETIS_LIBRARIES})
   add_definitions(-DHAVE_PARMETIS)
 endif(WITH_PARMETIS AND PARMETIS_FOUND)
