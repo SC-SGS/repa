@@ -56,13 +56,13 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
     for (size_t i = 0; i < grid_size.size(); ++i) {
         BOOST_TEST((cell_size[i] > 0.));
         BOOST_TEST((grid_size[i] > 0));
-        BOOST_TEST(grid_size[i] >= t.mings);
-        BOOST_TEST(is_close(grid_size[i] * cell_size[i], t.box[i]));
+        BOOST_TEST(grid_size[i] >= t.mings());
+        BOOST_TEST(is_close(grid_size[i] * cell_size[i], t.box()[i]));
     }
 }
 
 BOOST_AUTO_TEST_CASE(test_grid_types)
 {
     boost::mpi::environment env;
-    default_test_env().with_repart().all_grids().run(test);
+    testenv::TEnv::default_test_env().with_repart().all_grids().run(test);
 }

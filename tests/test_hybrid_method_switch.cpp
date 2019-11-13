@@ -50,12 +50,12 @@ static void set_set(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 BOOST_AUTO_TEST_CASE(test_hybrid_method_switch)
 {
     boost::mpi::environment env;
-    default_test_env()
+    testenv::TEnv::default_test_env()
         .with_repart_twice()
         .only({repa::GridType::HYB_GP_DIFF})
         .run(set_toggle);
 
-    default_test_env()
+    testenv::TEnv::default_test_env()
         .with_repart_twice()
         .only({repa::GridType::HYB_GP_DIFF})
         .run(set_set);

@@ -21,11 +21,6 @@
 #include <optional>
 #include <random>
 
-testenv::TEnv default_test_env(repa::ExtraParams ep)
-{
-    return testenv::TEnv{ep};
-}
-
 static std::vector<double> get_random_vec(size_t n)
 {
     std::random_device rd;
@@ -41,12 +36,12 @@ static std::vector<double> get_random_vec(size_t n)
 }
 
 static void repartition_helper(repa::grids::ParallelLCGrid *grid,
-                               testenv::MetricFunc *f)
+                               testenv::TEnv::MetricFunc f)
 {
     auto noop = []() {};
     auto ccm = [](int, int) { return 1.0; };
     std::vector<double> metric_values
-        = (f ? *f : get_random_vec)(static_cast<size_t>(grid->n_local_cells()));
+        = (f ? f : get_random_vec)(static_cast<size_t>(grid->n_local_cells()));
     auto metric = [&metric_values]() { return metric_values; };
 
     BOOST_CHECK_NO_THROW(grid->repartition(metric, ccm, noop));
@@ -54,10 +49,39 @@ static void repartition_helper(repa::grids::ParallelLCGrid *grid,
 
 namespace testenv {
 
-TEnv::TEnv(const boost::mpi::communicator &comm,
-           repa::Vec3d box,
-           double mings,
-           repa::ExtraParams ep)
+struct TEnv::TEnv_impl {
+    boost::mpi::communicator comm;
+    repa::Vec3d box;
+    double mings;
+    repa::ExtraParams ep;
+    std::set<repa::GridType> grids;
+    bool repart = true, repart_twice = false;
+    MetricFunc get_metric = nullptr;
+
+    TEnv_impl(const boost::mpi::communicator &comm,
+              repa::Vec3d box,
+              double mings,
+              repa::ExtraParams ep);
+    TEnv_impl(repa::ExtraParams ep);
+
+    void with_repart();
+    void with_repart(MetricFunc f);
+    void with_repart_twice();
+    void without_repart();
+    void all_grids();
+    void only(std::set<repa::GridType> s);
+    void exclude(std::set<repa::GridType> s);
+
+    using TestFunc = std::function<void(repa::grids::ParallelLCGrid *grid,
+                                        repa::GridType gt)>;
+
+    void run(TestFunc test_func);
+};
+
+TEnv::TEnv_impl::TEnv_impl(const boost::mpi::communicator &comm,
+                           repa::Vec3d box,
+                           double mings,
+                           repa::ExtraParams ep)
     : comm(comm, boost::mpi::comm_duplicate),
       box(std::move(box)),
       mings(mings),
@@ -65,7 +89,7 @@ TEnv::TEnv(const boost::mpi::communicator &comm,
 {
 }
 
-TEnv::TEnv(repa::ExtraParams ep) : mings(1.0), ep(ep)
+TEnv::TEnv_impl::TEnv_impl(repa::ExtraParams ep) : mings(1.0), ep(ep)
 {
     // Devise some appropriately sized grid suitable for all methods.
     repa::Vec3i dims{0, 0, 0};
@@ -74,40 +98,35 @@ TEnv::TEnv(repa::ExtraParams ep) : mings(1.0), ep(ep)
         box[i] = mings * 5 * (dims[i] + 1);
 }
 
-TEnv &TEnv::with_repart()
+void TEnv::TEnv_impl::with_repart()
 {
     repart = true;
     repart_twice = false;
-    return *this;
 }
 
-TEnv &TEnv::with_repart(MetricFunc &f)
+void TEnv::TEnv_impl::with_repart(MetricFunc f)
 {
-    get_metric = &f;
-    return with_repart();
+    get_metric = f;
 }
 
-TEnv &TEnv::with_repart_twice()
+void TEnv::TEnv_impl::with_repart_twice()
 {
     repart = true;
     repart_twice = true;
-    return *this;
 }
 
-TEnv &TEnv::without_repart()
+void TEnv::TEnv_impl::without_repart()
 {
     repart = false;
     repart_twice = false;
-    return *this;
 }
 
-TEnv &TEnv::all_grids()
+void TEnv::TEnv_impl::all_grids()
 {
     grids = repa::supported_grid_types();
-    return *this;
 }
 
-TEnv &TEnv::only(std::set<repa::GridType> s)
+void TEnv::TEnv_impl::only(std::set<repa::GridType> s)
 {
     grids.clear();
     auto supported = repa::supported_grid_types();
@@ -115,17 +134,15 @@ TEnv &TEnv::only(std::set<repa::GridType> s)
         if (supported.find(gt) != std::end(supported))
             grids.insert(gt);
     }
-    return *this;
 }
 
-TEnv &TEnv::exclude(std::set<repa::GridType> s)
+void TEnv::TEnv_impl::exclude(std::set<repa::GridType> s)
 {
     for (const auto gt : s)
         grids.erase(gt);
-    return *this;
 }
 
-void TEnv::run_impl(TestFunc test_func)
+void TEnv::TEnv_impl::run(TestFunc test_func)
 {
     for (const auto gt : grids) {
         // Skip unavailable grids
@@ -145,29 +162,97 @@ void TEnv::run_impl(TestFunc test_func)
         BOOST_CHECK_NO_THROW(up = repa::make_pargrid(gt, comm, box, mings, ep));
         BOOST_TEST(up.get() != nullptr);
 
-        test_func(*this, up.get(), gt);
+        test_func(up.get(), gt);
 
         if (!repart)
             continue;
         repartition_helper(up.get(), get_metric);
 
-        test_func(*this, up.get(), gt);
+        test_func(up.get(), gt);
 
         if (!repart_twice)
             continue;
         repartition_helper(up.get(), get_metric);
 
-        test_func(*this, up.get(), gt);
+        test_func(up.get(), gt);
     }
 }
 
-void TEnv::run(Fno_gt test_func)
+/// TEnv
+
+TEnv &TEnv::with_repart()
 {
-    run_impl([test_func](auto te, auto grid, auto) { test_func(te, grid); });
+    te_impl->with_repart();
+    return *this;
 }
-void TEnv::run(Fwith_gt test_func)
+
+TEnv &TEnv::with_repart(MetricFunc f)
 {
-    run_impl(
-        [test_func](auto te, auto grid, auto gt) { test_func(te, grid, gt); });
+    te_impl->with_repart(f);
+    return *this;
 }
+TEnv &TEnv::with_repart_twice()
+{
+    te_impl->with_repart_twice();
+    return *this;
+}
+TEnv &TEnv::without_repart()
+{
+    te_impl->without_repart();
+    return *this;
+}
+TEnv &TEnv::all_grids()
+{
+    te_impl->all_grids();
+    return *this;
+}
+TEnv &TEnv::only(std::set<repa::GridType> s)
+{
+    te_impl->only(s);
+    return *this;
+}
+TEnv &TEnv::exclude(std::set<repa::GridType> s)
+{
+    te_impl->exclude(s);
+    return *this;
+}
+
+void TEnv::run(Test_Func_No_GridType test_func)
+{
+    te_impl->run(
+        [this, test_func](auto grid, auto) { test_func(*this, grid); });
+}
+void TEnv::run(Test_Func_With_GridType test_func)
+{
+    te_impl->run(
+        [this, test_func](auto grid, auto gt) { test_func(*this, grid, gt); });
+}
+
+TEnv::TEnv(repa::ExtraParams ep) : te_impl(new TEnv_impl(ep))
+{
+}
+
+TEnv TEnv::default_test_env(repa::ExtraParams ep)
+{
+    return testenv::TEnv{ep};
+}
+
+TEnv::~TEnv() = default;
+TEnv::TEnv(TEnv&&) = default;
+
+const boost::mpi::communicator &TEnv::comm() const
+{
+    return te_impl->comm;
+}
+
+double TEnv::mings() const
+{
+    return te_impl->mings;
+}
+
+const repa::Vec3d &TEnv::box() const
+{
+    return te_impl->box;
+}
+
 } // namespace testenv

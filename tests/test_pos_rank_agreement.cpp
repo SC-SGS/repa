@@ -105,8 +105,8 @@ static void test_position(const boost::mpi::communicator &comm,
 
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
-    const auto &comm = t.comm;
-    const auto &box = t.box;
+    const auto &comm = t.comm();
+    const auto &box = t.box();
     // Test reguar grid
     auto cell_size = grid->cell_size();
     repa::Vec3d pos;
@@ -142,12 +142,12 @@ BOOST_AUTO_TEST_CASE(test_pos_rank_agreement)
     boost::mpi::environment env;
     // Gridbased and Diffusion do not allow for position_to_rank after
     // repartitioning, so test statically.
-    default_test_env()
+    testenv::TEnv::default_test_env()
         .without_repart()
         .only({repa::GridType::DIFF, repa::GridType::GRIDBASED,
                repa::GridType::HYB_GP_DIFF})
         .run(test);
-    default_test_env()
+    testenv::TEnv::default_test_env()
         .with_repart()
         .all_grids()
         .exclude({repa::GridType::DIFF, repa::GridType::GRIDBASED,

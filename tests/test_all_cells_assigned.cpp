@@ -61,13 +61,13 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
     auto cell_size = grid->cell_size();
     repa::Vec3d pos;
 
-    for (pos[0] = .5 * cell_size[0]; pos[0] < t.box[0];
+    for (pos[0] = .5 * cell_size[0]; pos[0] < t.box()[0];
          pos[0] += cell_size[0]) {
-        for (pos[1] = .5 * cell_size[1]; pos[1] < t.box[1];
+        for (pos[1] = .5 * cell_size[1]; pos[1] < t.box()[1];
              pos[1] += cell_size[1]) {
-            for (pos[2] = .5 * cell_size[2]; pos[2] < t.box[2];
+            for (pos[2] = .5 * cell_size[2]; pos[2] < t.box()[2];
                  pos[2] += cell_size[2]) {
-                test_exactly_one_assigned_process(t.comm, grid, pos);
+                test_exactly_one_assigned_process(t.comm(), grid, pos);
             }
         }
     }
@@ -78,5 +78,5 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 BOOST_AUTO_TEST_CASE(test_all_cells_assigned)
 {
     boost::mpi::environment env;
-    default_test_env().with_repart().all_grids().run(test);
+    testenv::TEnv::default_test_env().with_repart().all_grids().run(test);
 }

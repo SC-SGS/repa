@@ -82,7 +82,7 @@ static void test(const testenv::TEnv &t,
                  repa::grids::ParallelLCGrid *grid,
                  repa::GridType gt)
 {
-    const auto &comm = t.comm;
+    const auto &comm = t.comm();
     auto gexds = grid->get_boundary_info();
     auto neighborranks = neighranks(grid);
 
@@ -178,5 +178,5 @@ static void test(const testenv::TEnv &t,
 BOOST_AUTO_TEST_CASE(test_ghost_exchange_volume)
 {
     boost::mpi::environment env;
-    default_test_env().with_repart().all_grids().run(test);
+    testenv::TEnv::default_test_env().with_repart().all_grids().run(test);
 }

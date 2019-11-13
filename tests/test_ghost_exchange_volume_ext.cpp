@@ -66,7 +66,7 @@ void serialize(Archive &ar,
 
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
-    const auto &comm = t.comm;
+    const auto &comm = t.comm();
     auto gexds = grid->get_boundary_info();
     auto idx_to_glo = [grid](int idx) { return grid->global_hash(idx); };
 
@@ -108,5 +108,5 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 BOOST_AUTO_TEST_CASE(test_ghost_exchange_volume)
 {
     boost::mpi::environment env;
-    default_test_env().without_repart().all_grids().run(test);
+    testenv::TEnv::default_test_env().without_repart().all_grids().run(test);
 }

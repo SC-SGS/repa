@@ -62,7 +62,7 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 BOOST_AUTO_TEST_CASE(test_extra_params)
 {
     boost::mpi::environment env;
-    default_test_env(epcallcount.ep)
+    testenv::TEnv::default_test_env(epcallcount.ep)
         .with_repart()
         .only({repa::GridType::GRIDBASED})
         .run(test);

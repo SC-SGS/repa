@@ -63,5 +63,5 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 BOOST_AUTO_TEST_CASE(test_neighborhood_symmetry)
 {
     boost::mpi::environment env;
-    default_test_env().with_repart().all_grids().run(test);
+    testenv::TEnv::default_test_env().with_repart().all_grids().run(test);
 }

@@ -21,49 +21,43 @@
 #include "repa/repa.hpp"
 #include <boost/mpi/communicator.hpp>
 #include <functional>
+#include <memory>
 #include <set>
 
 namespace testenv {
 
-using MetricFunc = std::function<std::vector<double>(size_t)>;
-
 struct TEnv {
-    boost::mpi::communicator comm;
-    repa::Vec3d box;
-    double mings;
-    repa::ExtraParams ep;
-    std::set<repa::GridType> grids;
-    bool repart = true, repart_twice = false;
-    MetricFunc *get_metric = nullptr;
-
-    TEnv(const boost::mpi::communicator &comm,
-         repa::Vec3d box,
-         double mings,
-         repa::ExtraParams ep);
-    TEnv(repa::ExtraParams ep);
+    using MetricFunc = std::function<std::vector<double>(size_t)>;
+    using Test_Func_No_GridType
+        = std::function<void(const TEnv &, repa::grids::ParallelLCGrid *)>;
+    using Test_Func_With_GridType = std::function<void(
+        const TEnv &, repa::grids::ParallelLCGrid *, repa::GridType)>;
 
     TEnv &with_repart();
-    TEnv &with_repart(MetricFunc &f);
+    TEnv &with_repart(MetricFunc f);
     TEnv &with_repart_twice();
     TEnv &without_repart();
     TEnv &all_grids();
     TEnv &only(std::set<repa::GridType> s);
     TEnv &exclude(std::set<repa::GridType> s);
 
-    using Fno_gt
-        = std::function<void(const TEnv &, repa::grids::ParallelLCGrid *)>;
-    using Fwith_gt = std::function<void(
-        const TEnv &, repa::grids::ParallelLCGrid *, repa::GridType)>;
+    void run(Test_Func_No_GridType test_func);
+    void run(Test_Func_With_GridType test_func);
 
-   void run(Fno_gt test_func);
-   void run(Fwith_gt test_func);
+    static testenv::TEnv default_test_env(repa::ExtraParams ep
+                                          = repa::ExtraParams{});
+    ~TEnv();
+    TEnv(TEnv&&);
+
+    const boost::mpi::communicator &comm() const;
+    double mings() const;
+    const repa::Vec3d &box() const;
 
 private:
-    using TestFunc = std::function<void(
-        const TEnv &te, repa::grids::ParallelLCGrid *grid, repa::GridType gt)>;
+    TEnv(repa::ExtraParams ep);
 
-    void run_impl(TestFunc test_func);
+    struct TEnv_impl;
+    std::unique_ptr<TEnv_impl> te_impl;
 };
-} // namespace testenv
 
-testenv::TEnv default_test_env(repa::ExtraParams ep = repa::ExtraParams{});
+} // namespace testenv

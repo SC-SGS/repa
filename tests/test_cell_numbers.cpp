@@ -41,7 +41,7 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
     BOOST_TEST(nlocalcells >= 0);
 
     int nglobalcells
-        = boost::mpi::all_reduce(t.comm, nlocalcells, std::plus<int>{});
+        = boost::mpi::all_reduce(t.comm(), nlocalcells, std::plus<int>{});
     BOOST_TEST(nglobalcells > 0);
 
     auto gs = grid->grid_size();
@@ -50,11 +50,11 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
     // Full-halo grids might have more ghost than local cells on 1 process only
     // and very small grids.
     BOOST_TEST(
-        if_then(t.comm.size() >= 2, grid->n_ghost_cells() <= nglobalcells));
+        if_then(t.comm().size() >= 2, grid->n_ghost_cells() <= nglobalcells));
 }
 
 BOOST_AUTO_TEST_CASE(test_cell_numbers)
 {
     boost::mpi::environment env;
-    default_test_env().with_repart().all_grids().run(test);
+    testenv::TEnv::default_test_env().with_repart().all_grids().run(test);
 }
