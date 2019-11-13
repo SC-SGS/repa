@@ -26,7 +26,6 @@
 #include "testenv.hpp"
 #include <algorithm>
 #include <boost/mpi/collectives.hpp>
-#include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #include <boost/serialization/vector.hpp>
 #include <repa/repa.hpp>
@@ -65,7 +64,7 @@ void serialize(Archive &ar,
 } // namespace serialization
 } // namespace boost
 
-static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     const auto &comm = t.comm;
     auto gexds = grid->get_boundary_info();

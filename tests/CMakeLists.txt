@@ -18,6 +18,10 @@
 
 include(define_test)
 
+add_library(testenv STATIC "testenv.cpp")
+target_include_directories(testenv PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_link_libraries(testenv PRIVATE repa)
+
 # Unit tests
 define_test(NAME test_vec SRC test_vec.cpp SINGLEPROC)
 define_test(NAME test_integral_range SRC test_integral_range.cpp SINGLEPROC)
@@ -28,21 +32,21 @@ if(WITH_CGAL AND CGAL_FOUND)
 endif(WITH_CGAL AND CGAL_FOUND)
 
 # Integration tests
-define_test(NAME test_grid_types SRC test_grid_types.cpp)
-define_test(NAME test_repart SRC test_repart.cpp)
-define_test(NAME test_extra_params SRC test_extra_params.cpp)
-define_test(NAME test_hybrid_method_switch SRC test_hybrid_method_switch.cpp)
-define_test(NAME test_cell_numbers SRC test_cell_numbers.cpp)
-define_test(NAME test_neighborhood_symmetry SRC test_neighborhood_symmetry.cpp)
-define_test(NAME test_process_neighborhood_symmetry SRC test_process_neighborhood_symmetry.cpp)
-define_test(NAME test_all_cells_assigned SRC test_all_cells_assigned.cpp)
-define_test(NAME test_all_ghost_cells_valid SRC test_all_ghost_cells_valid.cpp)
-define_test(NAME test_ghost_exchange_volume SRC test_ghost_exchange_volume.cpp)
-define_test(NAME test_pos_rank_agreement SRC test_pos_rank_agreement.cpp)
+define_test(NAME test_grid_types SRC test_grid_types.cpp LIBRARIES testenv)
+define_test(NAME test_repart SRC test_repart.cpp LIBRARIES testenv)
+define_test(NAME test_extra_params SRC test_extra_params.cpp LIBRARIES testenv)
+define_test(NAME test_hybrid_method_switch SRC test_hybrid_method_switch.cpp LIBRARIES testenv)
+define_test(NAME test_cell_numbers SRC test_cell_numbers.cpp LIBRARIES testenv)
+define_test(NAME test_neighborhood_symmetry SRC test_neighborhood_symmetry.cpp LIBRARIES testenv)
+define_test(NAME test_process_neighborhood_symmetry SRC test_process_neighborhood_symmetry.cpp LIBRARIES testenv)
+define_test(NAME test_all_cells_assigned SRC test_all_cells_assigned.cpp LIBRARIES testenv)
+define_test(NAME test_all_ghost_cells_valid SRC test_all_ghost_cells_valid.cpp LIBRARIES testenv)
+define_test(NAME test_ghost_exchange_volume SRC test_ghost_exchange_volume.cpp LIBRARIES testenv)
+define_test(NAME test_pos_rank_agreement SRC test_pos_rank_agreement.cpp LIBRARIES testenv)
 
 # ghost_exchange_volume_ext requires debug build (NDEBUG *not* set).
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-  define_test(NAME test_ghost_exchange_volume_ext SRC test_ghost_exchange_volume_ext.cpp)
+  define_test(NAME test_ghost_exchange_volume_ext SRC test_ghost_exchange_volume_ext.cpp LIBRARIES testenv)
 else()
   message(STATUS "WITH_TESTS: Skipping tests that need a debug build (build type: ${CMAKE_BUILD_TYPE}).")
 endif()

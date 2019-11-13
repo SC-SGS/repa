@@ -51,7 +51,7 @@ bool if_then(bool a, bool b)
     return !a || b;
 }
 
-static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     (void)t;
     auto nlc = grid->n_local_cells();

@@ -49,7 +49,7 @@ bool is_close(T a, T b, T eps = T{1e-14})
     return relative_distance(a, b) < eps;
 }
 
-static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     auto grid_size = grid->grid_size();
     auto cell_size = grid->cell_size();

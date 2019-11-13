@@ -40,7 +40,7 @@ static bool has_neighbor(repa::grids::ParallelLCGrid *grid,
     return false;
 }
 
-static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     (void)t;
     for (int c = 0; c < grid->n_local_cells(); ++c) {

@@ -28,16 +28,17 @@
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
-static void set_toggle(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void set_toggle(const testenv::TEnv &t,
+                       repa::grids::ParallelLCGrid *grid)
 {
-    (void) t;
+    (void)t;
     grid->command("toggle");
 }
 
-static void set_set(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void set_set(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     static int ncalls = 0;
-    (void) t;
+    (void)t;
 
     if (ncalls % 2 == 0)
         grid->command("set diffusion");

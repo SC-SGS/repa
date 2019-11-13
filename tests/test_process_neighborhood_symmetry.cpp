@@ -31,7 +31,7 @@
 #include <boost/serialization/vector.hpp>
 #include <repa/repa.hpp>
 
-static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     const auto &comm = t.comm;
     std::vector<int> neighranks;

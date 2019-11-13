@@ -103,7 +103,7 @@ static void test_position(const boost::mpi::communicator &comm,
     test_agreement(comm, rank);
 }
 
-static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     const auto &comm = t.comm;
     const auto &box = t.box;

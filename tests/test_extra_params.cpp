@@ -25,10 +25,7 @@
 #include <boost/test/included/unit_test.hpp>
 
 #include "testenv.hpp"
-#include <boost/mpi/collectives.hpp>
-#include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
-#include <random>
 #include <repa/repa.hpp>
 
 /** Helper struct that counts the number of times ep.subdomain_center
@@ -50,7 +47,7 @@ static struct EPCallCount {
     }
 } epcallcount;
 
-static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     static int ncalls = 0;
     // On second call (the call to 'test' after repartition),

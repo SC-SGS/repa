@@ -78,8 +78,9 @@ static std::vector<int> neighranks(repa::grids::ParallelLCGrid *grid)
     return res;
 }
 
-static void
-test(const TEnv &t, repa::grids::ParallelLCGrid *grid, repa::GridType gt)
+static void test(const testenv::TEnv &t,
+                 repa::grids::ParallelLCGrid *grid,
+                 repa::GridType gt)
 {
     const auto &comm = t.comm;
     auto gexds = grid->get_boundary_info();
@@ -94,12 +95,13 @@ test(const TEnv &t, repa::grids::ParallelLCGrid *grid, repa::GridType gt)
 
     // Verify consistency of neighbor information with ghost communications
     // Grid-based grid must only be reverse consistent. Forward consistency is
-    // not required due to the changes in 17f4be5 and 85de5a9 
+    // not required due to the changes in 17f4be5 and 85de5a9
     for (auto rank : neighborranks) {
-        BOOST_TEST(if_then(gt != repa::GridType::GRIDBASED,
-            std::find_if(std::begin(gexds), std::end(gexds),
-                          [rank](auto gexd) { return gexd.dest == rank; })
-             != std::end(gexds)));
+        BOOST_TEST(if_then(
+            gt != repa::GridType::GRIDBASED,
+            std::find_if(std::begin(gexds), std::end(gexds), [rank](auto gexd) {
+                return gexd.dest == rank;
+            }) != std::end(gexds)));
     }
 
     // Vice versa ("Reverse consistency")

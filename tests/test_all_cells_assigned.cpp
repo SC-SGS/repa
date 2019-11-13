@@ -55,7 +55,7 @@ test_exactly_one_assigned_process(const boost::mpi::communicator &comm,
     BOOST_TEST(nresp == 1);
 }
 
-static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     // Test reguar grid
     auto cell_size = grid->cell_size();

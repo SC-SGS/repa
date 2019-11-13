@@ -26,7 +26,6 @@
 
 #include "testenv.hpp"
 #include <boost/mpi/collectives.hpp>
-#include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
@@ -36,7 +35,7 @@ static bool if_then(bool a, bool b)
     return !a || b;
 }
 
-static void test(const TEnv &t, repa::grids::ParallelLCGrid *grid)
+static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     int nlocalcells = grid->n_local_cells();
     BOOST_TEST(nlocalcells >= 0);
