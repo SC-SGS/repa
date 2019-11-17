@@ -1,0 +1,57 @@
+image: "conni2461/ipvs"
+
+stages:
+    - build
+    - test
+
+build-debug:
+    stage: build
+    script:
+        - mkdir build && cd build
+        - cmake .. -DKDPART_DIR="${DEP_DIR}" -DP4EST_DIR="${DEP_DIR}" \
+          -DCMAKE_BUILD_TYPE=Debug -DMPIEXEC_PREFLAGS="--allow-run-as-root"
+        - make
+    cache:
+        key: build-debug
+        paths:
+            - ./build
+        policy: push
+
+build-release:
+    stage: build
+    script:
+        - mkdir build && cd build
+        - cmake .. -DKDPART_DIR="${DEP_DIR}" -DP4EST_DIR="${DEP_DIR}" \
+          -DCMAKE_BUILD_TYPE=Release -DMPIEXEC_PREFLAGS="--allow-run-as-root"
+        - make
+    cache:
+        key: build-release
+        paths:
+            - ./build
+        policy: push
+    artifacts:
+        expire_in: 2 weeks
+        path:
+            - ./build/repa/librepa.so
+
+test-debug:
+    stage: test
+    script:
+        - cd build
+        - make test
+    cache:
+        key: build-debug
+        paths:
+            - ./build
+        policy: pull
+
+test-release:
+    stage: test
+    script:
+        - cd build
+        - make test
+    cache:
+        key: build-release
+        paths:
+            - ./build
+        policy: pull
