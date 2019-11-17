@@ -31,7 +31,7 @@ build-release:
         policy: push
     artifacts:
         expire_in: 2 weeks
-        path:
+        paths:
             - ./build/repa/librepa.so
 
 test-debug:
