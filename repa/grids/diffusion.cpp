@@ -224,7 +224,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     // END of first communication step
     //
 #ifdef DIFFUSION_DEBUG
-    std::vector<int> p2 = partition;
+    auto p2{partition};
     for (auto &el : p2)
         if (el != comm_cart.rank())
             el = UNKNOWN_RANK;
