@@ -52,6 +52,8 @@ void init_part_cartesian(const globox::GlobalBox<global_cell_index_type> &gbox,
                          const boost::mpi::communicator &comm,
                          AssignFunc &&assign_cell)
 {
+    assert(comm.has_cartesian_topology());
+
     auto nglobalcells = gbox.ncells();
 
     int dims[3] = {0, 0, 0};
