@@ -291,6 +291,7 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
     util::InitPartitioning{gbox, comm_cart}(
         util::InitialPartitionType::LINEAR,
         [this](global_cell_index_type idx, rank_type r) {
+            assert(r >= 0 && r < this->comm.size());
             this->partition[idx] = r;
         });
 }
