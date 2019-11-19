@@ -32,7 +32,7 @@ option(WITH_CGAL "Build with grid-based LB support" ON)
 option(WITH_KDPART "Build with kd grid support" ON)
 
 option(WITH_TESTS "Perform unit tests" ON)
-option(WITH_COVERAGE "Coverage for tests" ON)
+option(WITH_COVERAGE "Coverage for tests" OFF)
 
 if(WITH_KDPART)
   find_package(KDPart REQUIRED)
