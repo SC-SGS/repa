@@ -49,6 +49,30 @@ struct Diffusion : public GloMethod {
               double min_cell_size);
     ~Diffusion();
 
+protected:
+    /*
+     * Determines the status of each process (underloaded, overloaded)
+     * in the neighborhood given the local load and returns the volume of load
+     * to send to each neighbor. On underloaded processes, returns a vector of
+     * zeros.
+     *
+     * This call is collective on neighcomm.
+     *
+     * Default implementation follows [Willebeek Le Mair and Reeves, IEEE Tr.
+     * Par. Distr. Sys. 4(9), Sep 1993] propose
+     *
+     * @param neighcomm Graph communicator which reflects the neighbor
+     * relationship amongst processes (undirected edges), without edges to the
+     *                  process itself.
+     * @param load The load of the calling process.
+     * @returns Vector of load values ordered according to the neighborhood
+     *          ordering in neighcomm.
+     */
+    virtual std::vector<double> compute_send_volume(double load);
+
+    // Neighborhood communicator
+    MPI_Comm neighcomm;
+
 private:
     friend struct HybridGPDiff; // Needs access to "partition" vector
 
@@ -77,9 +101,6 @@ private:
     // Key is the local cell ID and value a set of ranks
     std::map<local_cell_index_type, std::vector<rank_type>>
         borderCellsNeighbors;
-
-    // Neighborhood communicator
-    MPI_Comm neighcomm;
 
     // Stores the global partitioning. One rank per cell. Index via global
     // index.

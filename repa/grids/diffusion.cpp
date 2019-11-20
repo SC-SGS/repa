@@ -65,23 +65,10 @@ void serialize(Archive &ar,
 } // namespace serialization
 } // namespace boost
 
-/*
- * Determines the status of each process (underloaded, overloaded)
- * in the neighborhood given the local load and returns the volume of load to
- * send to each neighbor. On underloaded processes, returns a vector of zeros.
- *
- * This call is collective on neighcomm.
- *
- * See Willebeek Le Mair and Reeves, IEEE Tr. Par. Distr. Sys. 4(9), Sep 1993
- *
- * @param neighcomm Graph communicator which reflects the neighbor relationship
- *                  amongst processes (undirected edges), without edges to the
- *                  process itself.
- * @param load The load of the calling process.
- * @returns Vector of load values ordered according to the neighborhood
- *          ordering in neighcomm.
- */
-static std::vector<double> compute_send_volume(MPI_Comm neighcomm, double load)
+namespace repa {
+namespace grids {
+
+std::vector<double> Diffusion::compute_send_volume(double load)
 {
     int nneigh = repa::util::mpi_undirected_neighbor_count(neighcomm);
     // Exchange load in local neighborhood
@@ -117,9 +104,6 @@ static std::vector<double> compute_send_volume(MPI_Comm neighcomm, double load)
     return deficiency;
 }
 
-namespace repa {
-namespace grids {
-
 void Diffusion::clear_unknown_cell_ownership()
 {
     auto is_my_cell = [this](local_or_ghost_cell_index_type neighcell) {
@@ -150,7 +134,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         = std::accumulate(std::begin(cellweights), std::end(cellweights), 0.0);
 
     std::vector<double> send_volume
-        = compute_send_volume(neighcomm, local_load);
+        = compute_send_volume(local_load);
 #ifdef DIFFUSION_DEBUG
     ENSURE(send_volume.size() == neighbors.size());
 #endif
