@@ -43,7 +43,7 @@ static void fill_index_range(std::vector<T> &data,
 {
     using idx_type = typename FwdIt::value_type;
     std::for_each(first_index, last_index, [&data, &val](idx_type i) {
-#ifdef NDEBUG
+#ifndef NDEBUG
         data[i] = val;
 #else
         data.at(i) = val;
