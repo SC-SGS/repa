@@ -7,11 +7,12 @@ Repa is a library for *load-balanced*, regular grids.
 ### Required
 
 - MPI distribution (e.g. [OpenMPI](https://www.open-mpi.org/))
-- [Boost](https://www.boost.org/) (mpi, serialization)
+- [Boost](https://www.boost.org/) (mpi, serialization) [1] [2]
 - [CMake](https://cmake.org/) and Make/Ninja/... for building
 - C++14 compatible compiler
 
-Note, that Boost::MPI must be compiled with the chosen MPI distribution.
+[1] Note, that Boost::MPI must be compiled with the chosen MPI distribution. <br/>
+[2] Currently, only Boost 1.67.0 and Boost 1.68.0 are supported. Previous and later versions (< 1.67.0 and 1.69.0–1.72.0) contain Boost::MPI bugs that we cannot work around.
 
 ### Optional
 
