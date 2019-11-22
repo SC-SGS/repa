@@ -12,7 +12,7 @@ Repa is a library for *load-balanced*, regular grids.
 - C++14 compatible compiler
 
 [1] Note, that Boost::MPI must be compiled with the chosen MPI distribution. <br/>
-[2] Currently, only Boost 1.67.0 and Boost 1.68.0 are supported. Previous and later versions (< 1.67.0 and 1.69.0–1.72.0) contain Boost::MPI bugs that we cannot work around.
+[2] Currently, only Boost 1.67.0 and Boost 1.68.0 are supported. Previous and later versions (<1.67.0 and 1.69.0–1.72.0) contain Boost::MPI bugs that we cannot work around.
 
 ### Optional
 
