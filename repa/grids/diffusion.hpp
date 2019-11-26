@@ -71,7 +71,7 @@ protected:
     virtual std::vector<double> compute_send_volume(double load);
 
     // Neighborhood communicator
-    MPI_Comm neighcomm;
+    boost::mpi::communicator neighcomm;
 
 private:
     friend struct HybridGPDiff; // Needs access to "partition" vector

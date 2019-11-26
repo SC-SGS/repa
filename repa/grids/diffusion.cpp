@@ -268,7 +268,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 Diffusion::Diffusion(const boost::mpi::communicator &comm,
                      Vec3d box_size,
                      double min_cell_size)
-    : GloMethod(comm, box_size, min_cell_size), neighcomm(MPI_COMM_NULL)
+    : GloMethod(comm, box_size, min_cell_size)
 {
     // Initial partitioning
     partition.resize(gbox.ncells());
@@ -282,10 +282,6 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
 
 Diffusion::~Diffusion()
 {
-    int finalized = 0;
-    MPI_Finalized(&finalized);
-    if (neighcomm != MPI_COMM_NULL && !finalized)
-        MPI_Comm_free(&neighcomm);
 }
 
 /*
@@ -402,31 +398,7 @@ void Diffusion::pre_init(bool firstcall)
 void Diffusion::post_init(bool firstcall)
 {
     // Create graph comm with current process structure
-    if (neighcomm != MPI_COMM_NULL)
-        MPI_Comm_free(&neighcomm);
-
-    // Edges to all processes in "neighbors"
-    MPI_Dist_graph_create_adjacent(
-        comm_cart, neighbors.size(), neighbors.data(),
-        static_cast<const int *>(MPI_UNWEIGHTED), neighbors.size(),
-        neighbors.data(), static_cast<const int *>(MPI_UNWEIGHTED),
-        MPI_INFO_NULL, 0, &neighcomm);
-
-#ifdef DIFFUSION_DEBUG
-    int indegree = 0, outdegree = 0, weighted = 0;
-    MPI_Dist_graph_neighbors_count(neighcomm, &indegree, &outdegree, &weighted);
-    ENSURE(!weighted);
-    ENSURE(static_cast<size_t>(indegree) == neighbors.size());
-    ENSURE(static_cast<size_t>(outdegree) == neighbors.size());
-    std::vector<int> __ineighs(indegree, -1), __iw(indegree, -1);
-    std::vector<int> __oneighs(outdegree, -1), __ow(outdegree, -1);
-    MPI_Dist_graph_neighbors(neighcomm, indegree, __ineighs.data(), __iw.data(),
-                             outdegree, __oneighs.data(), __ow.data());
-    for (size_t i = 0; i < neighbors.size(); ++i) {
-        ENSURE(__ineighs[i] == neighbors[i]);
-        ENSURE(__oneighs[i] == neighbors[i]);
-    }
-#endif
+    neighcomm = util::undirected_mpi_communicator(comm_cart, neighbors);
 }
 
 void Diffusion::init_new_foreign_cell(local_cell_index_type localcell,

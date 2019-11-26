@@ -36,5 +36,39 @@ inline int mpi_undirected_neighbor_count(MPI_Comm neighcomm)
     return indegree;
 }
 
+/** Returns a boost::mpi::communicator with a undirected Dist_graph
+ * topology.
+ */
+inline boost::mpi::communicator
+undirected_mpi_communicator(MPI_Comm parent_communicator,
+                            const std::vector<int> &neighbor_ranks)
+{
+    MPI_Comm comm;
+    // Edges to all processes in "neighbors"
+    MPI_Dist_graph_create_adjacent(
+        parent_communicator, neighbor_ranks.size(), neighbor_ranks.data(),
+        static_cast<const int *>(MPI_UNWEIGHTED), neighbor_ranks.size(),
+        neighbor_ranks.data(), static_cast<const int *>(MPI_UNWEIGHTED),
+        MPI_INFO_NULL, 0, &comm);
+
+#ifndef NDEBUG
+    int indegree = 0, outdegree = 0, weighted = 0;
+    MPI_Dist_graph_neighbors_count(comm, &indegree, &outdegree, &weighted);
+    assert(!weighted);
+    assert(static_cast<size_t>(indegree) == neighbor_ranks.size());
+    assert(static_cast<size_t>(outdegree) == neighbor_ranks.size());
+    std::vector<int> __ineighs(indegree, -1), __iw(indegree, -1);
+    std::vector<int> __oneighs(outdegree, -1), __ow(outdegree, -1);
+    MPI_Dist_graph_neighbors(comm, indegree, __ineighs.data(), __iw.data(),
+                             outdegree, __oneighs.data(), __ow.data());
+    for (size_t i = 0; i < neighbor_ranks.size(); ++i) {
+        assert(__ineighs[i] == neighbor_ranks[i]);
+        assert(__oneighs[i] == neighbor_ranks[i]);
+    }
+#endif
+
+    return boost::mpi::communicator{comm, boost::mpi::comm_take_ownership};
+}
+
 } // namespace util
 } // namespace repa
