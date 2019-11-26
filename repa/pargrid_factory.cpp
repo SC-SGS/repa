@@ -20,6 +20,7 @@
 #include "pargrid_factory.hpp"
 #include "grids/cart.hpp"
 #include "grids/diffusion.hpp"
+#include "grids/schornbaum.hpp"
 #ifdef HAVE_PARMETIS
 #include "grids/graph.hpp"
 #include "grids/hybrid-gp-diff.hpp"
@@ -69,6 +70,10 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
 
     case GridType::DIFF:
         r = new Diffusion(comm, box_size, min_cell_size);
+        break;
+
+    case GridType::SCHORN:
+        r = new Schornbaum(comm, box_size, min_cell_size);
         break;
 
     case GridType::KD_TREE:
