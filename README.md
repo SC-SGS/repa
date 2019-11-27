@@ -77,10 +77,13 @@ along with Repa.  If not, see <https://www.gnu.org/licenses/>.
 ## Contributors
 
 Core:
+
 - Steffen Hirschmann
 
 Contributors:
+
 - Adriaan Nieß
 - Maximilian Wildbrett
 - Malte Brunn
 - Michael Lahnert
+- Simon Hauser
