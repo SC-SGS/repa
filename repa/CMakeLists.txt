@@ -19,6 +19,7 @@
 set(repa_SRC
     grids/glomethod.cpp
     grids/diffusion.cpp
+    grids/psdiffusion.cpp
     grids/cart.cpp
     grids/util/neighbor_offsets.cpp
     grid_types.cpp
@@ -88,7 +89,7 @@ if(WITH_PARMETIS AND PARMETIS_FOUND)
   add_definitions(-DHAVE_PARMETIS)
 endif(WITH_PARMETIS AND PARMETIS_FOUND)
 
-target_link_libraries(repa 
+target_link_libraries(repa
                       PUBLIC ${MPI_CXX_LIBRARIES}
                              ${Boost_MPI_LIBRARIES}
                              ${Boost_SERIALIZATION_LIBRARIES})
