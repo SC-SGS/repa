@@ -27,34 +27,36 @@ Same note as above goes for KDPart and ParMETIS.
 ### Linux Distributions
 
 MPI, Boost, ParMETIS and CGAL can be installed e.g. on Debian/Ubuntu using:
+
 ```sh
-$ apt-get install openmpi-bin libboost-all-dev libparmetis-dev libcgal-dev cmake
+apt-get install openmpi-bin libboost-all-dev libparmetis-dev libcgal-dev cmake
 ```
 
 Install dependencies:
+
 ```sh
-$ mkdir -p dep/src && cd dep/src
-$ sh -c 'git clone https://github.com/hirschsn/kdpart \
-            && cd kdpart \
-            && make \
-            && make install PREFIX="$(pwd)/../.."'
-$ sh -c 'git clone --recursive https://github.com/lahnerml/p4est --branch p4est-ESPResSo-integration \
-            && cd p4est \
-            && ./bootstrap \
-            && ./configure --prefix="$(pwd)/../.." --enable-mpi \
-            && make \
-            && make install'
-$ DEP_DIR="$(pwd)/.."
+mkdir -p dep/src && cd dep/src
+sh -c 'git clone https://github.com/hirschsn/kdpart \
+          && cd kdpart \
+          && make \
+          && make install PREFIX="$(pwd)/../.."'
+sh -c 'git clone --recursive https://github.com/lahnerml/p4est --branch p4est-ESPResSo-integration \
+          && cd p4est \
+          && ./bootstrap \
+          && ./configure --prefix="$(pwd)/../.." --enable-mpi \
+          && make \
+          && make install'
+DEP_DIR="$(pwd)/.."
 ```
 
 ## Build
 
 ```sh
-$ git clone https://github.com/hirschsn/repa && cd repa
-$ mkdir build && cd build
-$ cmake .. -DKDPART_DIR="${DEP_DIR}" -DP4EST_DIR="${DEP_DIR}"
-$ make
-$ make test # Optional
+git clone https://github.com/hirschsn/repa && cd repa
+mkdir build && cd build
+cmake .. -DKDPART_DIR="${DEP_DIR}" -DP4EST_DIR="${DEP_DIR}"
+make
+make test # Optional
 ```
 
 ## License
@@ -77,10 +79,13 @@ along with Repa.  If not, see <https://www.gnu.org/licenses/>.
 ## Contributors
 
 Core:
+
 - Steffen Hirschmann
 
 Contributors:
+
 - Adriaan Nieß
 - Maximilian Wildbrett
 - Malte Brunn
 - Michael Lahnert
+- Simon Hauser
