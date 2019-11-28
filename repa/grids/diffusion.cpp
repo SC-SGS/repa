@@ -1,6 +1,5 @@
 /**
- * Copyright 2017-2019 Steffen Hirschmann
- * Copyright 2017-2018 Maximilian Wildbrett
+ * Copyright 2017-2019 The repa authors
  *
  * This file is part of Repa.
  *
