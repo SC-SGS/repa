@@ -20,6 +20,7 @@
 #pragma once
 
 #include "common_types.hpp"
+#include "pargrid.hpp" // rank_type
 #include <mpi.h>
 
 namespace repa {
@@ -36,6 +37,13 @@ inline Vec3i mpi_cart_get_coords(MPI_Comm comm)
 {
     Vec3i coords, _dummy, _dummy2;
     MPI_Cart_get(comm, 3, _dummy.data(), _dummy2.data(), coords.data());
+    return coords;
+}
+
+inline Vec3i mpi_cart_get_coords(MPI_Comm comm, grids::rank_type r)
+{
+    Vec3i coords;
+    MPI_Cart_coords(comm, static_cast<int>(r), 3, coords.data());
     return coords;
 }
 

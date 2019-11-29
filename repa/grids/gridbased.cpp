@@ -44,13 +44,10 @@ rank_type GridBasedGrid::gloidx_to_rank(global_cell_index_type idx)
 
 std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
 {
-    Vec3i c, off;
-    MPI_Cart_coords(comm_cart, r, 3, c.data());
+    const Vec3i coord = util::mpi_cart_get_coords(comm_cart, r);
+    const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
 
     std::array<Vec3d, 8> result;
-
-    Vec3i dims = util::mpi_cart_get_dims(comm_cart);
-
     size_t i = 0;
     // Ranks holding the bounding box grid points of "r" = (c0, c1, c2) are:
     // (c0,     c1,     c2) upper right back corner,
@@ -61,6 +58,7 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
     // ... 2 more ...
     // (c0 - 1, c1 - 1, c2 - 1) lower left front corner
     // In total the set: {c0, c0 - 1} x {c1, c1 - 1} x {c2, c2 - 1}
+    Vec3i off;
     for (off[0] = 0; off[0] <= 1; ++off[0]) {
         for (off[1] = 0; off[1] <= 1; ++off[1]) {
             for (off[2] = 0; off[2] <= 1; ++off[2]) {
@@ -68,7 +66,7 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
                 Vec3i nc, mirror{0, 0, 0};
 
                 for (int d = 0; d < 3; ++d) {
-                    nc[d] = c[d] - off[d];
+                    nc[d] = coord[d] - off[d];
 
                     // Periodically wrap to the correct processor
                     // and save the wrapping to correct the grid point later.
@@ -109,19 +107,20 @@ void GridBasedGrid::init_neighbors()
     neighbor_ranks.clear();
     neighbor_idx.clear();
 
-    Vec3i c, off, dims, _dummy;
-    MPI_Cart_get(comm_cart, 3, dims.data(), _dummy.data(), c.data());
+    const Vec3i coord = util::mpi_cart_get_coords(comm_cart);
+    const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
 
     std::vector<rank_type> source_neigh,
         dest_neigh; // Send and receive neighborhood for repart
     rank_index_type nneigh = 0;
+    Vec3i off;
     for (off[0] = -1; off[0] <= 1; ++off[0]) {
         for (off[1] = -1; off[1] <= 1; ++off[1]) {
             for (off[2] = -1; off[2] <= 1; ++off[2]) {
                 Vec3i nc;
 
                 for (int d = 0; d < 3; ++d) {
-                    nc[d] = c[d] + off[d];
+                    nc[d] = coord[d] + off[d];
 
                     // Periodic wrap
                     if (nc[d] < 0)
