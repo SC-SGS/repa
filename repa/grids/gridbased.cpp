@@ -155,16 +155,10 @@ void GridBasedGrid::init_neighbors()
     for (rank_index_type i = 0; i < nneigh; ++i)
         neighbor_idx[neighbor_ranks[i]] = i;
 
-    if (neighcomm != MPI_COMM_NULL)
-        MPI_Comm_free(&neighcomm);
-
     source_neigh.push_back(comm_cart.rank());
     dest_neigh.push_back(comm_cart.rank());
-    MPI_Dist_graph_create_adjacent(
-        comm_cart, source_neigh.size(), source_neigh.data(),
-        static_cast<const int *>(MPI_UNWEIGHTED), dest_neigh.size(),
-        dest_neigh.data(), static_cast<const int *>(MPI_UNWEIGHTED),
-        MPI_INFO_NULL, 0, &neighcomm);
+    neighcomm
+        = util::directed_mpi_communicator(comm_cart, source_neigh, dest_neigh);
 }
 
 void GridBasedGrid::init_octagons()
@@ -293,7 +287,6 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
     : ParallelLCGrid(comm, box_size, min_cell_size),
       mu(1.0),
       gbox(box_size, min_cell_size),
-      neighcomm(MPI_COMM_NULL),
       subdomain_midpoint(ep.subdomain_midpoint
                              ? ep.subdomain_midpoint
                              : decltype(subdomain_midpoint){std::bind(
@@ -305,10 +298,6 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
 
 GridBasedGrid::~GridBasedGrid()
 {
-    int finalized = 0;
-    MPI_Finalized(&finalized);
-    if (neighcomm != MPI_COMM_NULL && !finalized)
-        MPI_Comm_free(&neighcomm);
 }
 
 local_cell_index_type GridBasedGrid::n_local_cells()
