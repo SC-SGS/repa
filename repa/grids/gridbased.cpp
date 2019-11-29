@@ -158,7 +158,7 @@ void GridBasedGrid::init_neighbors()
     source_neigh.push_back(comm_cart.rank());
     dest_neigh.push_back(comm_cart.rank());
     neighcomm
-        = util::directed_mpi_communicator(comm_cart, source_neigh, dest_neigh);
+        = util::directed_graph_communicator(comm_cart, source_neigh, dest_neigh);
 }
 
 void GridBasedGrid::init_octagons()

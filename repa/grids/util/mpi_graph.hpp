@@ -40,7 +40,7 @@ inline int mpi_undirected_neighbor_count(MPI_Comm neighcomm)
  * topology.
  */
 inline boost::mpi::communicator
-directed_mpi_communicator(MPI_Comm parent_communicator,
+directed_graph_communicator(MPI_Comm parent_communicator,
                           const std::vector<int> &source_ranks,
                           const std::vector<int> &destination_ranks)
 {
@@ -75,10 +75,10 @@ directed_mpi_communicator(MPI_Comm parent_communicator,
  * topology.
  */
 inline boost::mpi::communicator
-undirected_mpi_communicator(MPI_Comm parent_communicator,
+undirected_graph_communicator(MPI_Comm parent_communicator,
                             const std::vector<int> &neighbor_ranks)
 {
-    return directed_mpi_communicator(parent_communicator, neighbor_ranks,
+    return directed_graph_communicator(parent_communicator, neighbor_ranks,
                                      neighbor_ranks);
 }
 
