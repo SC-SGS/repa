@@ -39,8 +39,7 @@ namespace grids {
 
 rank_type GridBasedGrid::gloidx_to_rank(global_cell_index_type idx)
 {
-    auto m = gbox.midpoint(idx);
-    return position_to_rank(m);
+    return position_to_rank(gbox.midpoint(idx));
 }
 
 std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
