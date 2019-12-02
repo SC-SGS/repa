@@ -20,6 +20,7 @@
 #pragma once
 
 #include <array>
+#include <cassert>
 #include <exception>
 #include <functional>
 #include <sstream>
@@ -56,10 +57,7 @@ private:
 };
 
 [[noreturn]] inline void
-__t_assert__fail(const char *expr,
-                 const char *file,
-                 int line,
-                 const char *func)
+__t_assert__fail(const char *expr, const char *file, int line, const char *func)
 {
     throw AssertionException{expr, file, line, func};
 }
@@ -74,10 +72,27 @@ __t_assert__fail(const char *expr,
                                    #expr, __FILE__, __LINE__, __func__))
 #endif
 
+/** Base type for Expression Templates in vec_arith.hpp
+ */
+template <typename T, size_t N, typename Expr>
+struct VecExpression {
+    constexpr T operator[](size_t i) const
+    {
+        return static_cast<const Expr &>(*this)[i];
+    }
+};
+
+namespace _impl_tt {
+template <typename T, typename...>
+struct head {
+    typedef T type;
+};
+} // namespace _impl_tt
+
 /** Behaves like a std::array.
  */
 template <typename T, size_t N>
-struct Vec {
+struct Vec : VecExpression<T, N, Vec<T, N>> {
     typedef T value_type;
     typedef T *pointer;
     typedef const T *const_pointer;
@@ -103,6 +118,14 @@ struct Vec {
     constexpr Vec(Vec &&) = default;
     constexpr Vec(const Vec &) = default;
     Vec &operator=(const Vec &) = default;
+
+    template <typename Expr>
+    constexpr Vec(const VecExpression<T, N, Expr> &e)
+    {
+        for (size_type i = 0; i < N; ++i) {
+            m_data[i] = e[i];
+        }
+    }
 
     constexpr Vec(underlying_type &&arr)
         : m_data(std::forward<underlying_type>(arr))
@@ -283,14 +306,16 @@ struct IntegralRange {
     typedef T value_type;
 
     template <typename S,
-              typename = typename std::enable_if<std::is_integral<S>::value>::type>
+              typename
+              = typename std::enable_if<std::is_integral<S>::value>::type>
     inline IntegralRange(S v) : value(static_cast<T>(v))
     {
         t_assert(in_bounds(v));
     }
 
     template <typename S,
-              typename = typename std::enable_if<std::is_integral<S>::value>::type>
+              typename
+              = typename std::enable_if<std::is_integral<S>::value>::type>
     inline IntegralRange operator=(S v)
     {
         t_assert(in_bounds(v));
@@ -304,7 +329,8 @@ struct IntegralRange {
     }
 
     template <typename S,
-              typename = typename std::enable_if<std::is_integral<S>::value>::type>
+              typename
+              = typename std::enable_if<std::is_integral<S>::value>::type>
     static inline bool in_bounds(S v)
     {
         // Evaluate range check on wide base type.
