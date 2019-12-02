@@ -116,7 +116,7 @@ private:
     std::array<Vec3d, 8> bounding_box(rank_type r);
 
     // Neighborhood communicator for load exchange during repart
-    MPI_Comm neighcomm;
+    boost::mpi::communicator neighcomm;
 
     // Global cell index to rank mapping
     rank_type gloidx_to_rank(global_cell_index_type idx);
