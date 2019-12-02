@@ -440,10 +440,6 @@ bool GridBasedGrid::repartition(CellMetric m,
 {
     // The node displacement is calculated according to
     // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
-
-    using Vec3d = Vec3d;
-    using Vec3i = Vec3i;
-
     rank_index_type nneigh = util::mpi_undirected_neighbor_count(neighcomm);
 
     auto weights = m();
