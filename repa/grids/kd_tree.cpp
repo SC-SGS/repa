@@ -32,7 +32,7 @@ namespace grids {
 
 Vec3i KDTreeGrid::grid_dimensions()
 {
-    Vec3i grid_dimensions = {1, 1, 1};
+    Vec3i grid_dimensions{1, 1, 1};
     for (int dim = 0; dim < 3; dim++) {
         if (max_range > ROUND_ERROR_PREC * box_l[dim]) {
             grid_dimensions[dim]
@@ -182,7 +182,7 @@ KDTreeGrid::intersection_domains(const Domain &localdomain,
     // In non-periodic domains only one check is necessary (=3^0).
     // In domains with one periodic dimension 3 checks are necessary (=3^1)
     // up to a maximum of 27 (=3^3) checks if alls dimensions are periodic.
-    Domain neighborhood_to_check = {{0, 0, 0}, {1, 1, 1}};
+    Domain neighborhood_to_check = {Vec3i{0, 0, 0}, Vec3i{1, 1, 1}};
     for (int dim = 0; dim < 3; dim++) {
         if (PERIODIC(dim)) {
             neighborhood_to_check.first[dim]--;
@@ -412,7 +412,7 @@ KDTreeGrid::KDTreeGrid(const boost::mpi::communicator &comm,
                        double min_cell_size)
     : ParallelLCGrid(comm, box_size, min_cell_size),
       m_global_domain_size(grid_dimensions()),
-      m_global_domain({{0, 0, 0}, m_global_domain_size}),
+      m_global_domain({Vec3i{0, 0, 0}, m_global_domain_size}),
       m_global_ghostdomain(ghostdomain_bounds(m_global_domain)),
       m_global_ghostdomain_size(domain_size(m_global_ghostdomain)),
       m_cell_dimensions(cell_dimensions(m_global_domain_size))

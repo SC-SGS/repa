@@ -125,10 +125,9 @@ static global_cell_index_type cell_morton_idx(Vec3i idx)
 static global_cell_index_type pos_morton_idx(Vec3d pos,
                                              const Vec3d &inv_cell_size)
 {
-    const Vec3i idx
-        = {static_cast<Vec3i::value_type>(pos[0] * inv_cell_size[0]),
-           static_cast<Vec3i::value_type>(pos[1] * inv_cell_size[1]),
-           static_cast<Vec3i::value_type>(pos[2] * inv_cell_size[2])};
+    const Vec3i idx{static_cast<Vec3i::value_type>(pos[0] * inv_cell_size[0]),
+                    static_cast<Vec3i::value_type>(pos[1] * inv_cell_size[1]),
+                    static_cast<Vec3i::value_type>(pos[2] * inv_cell_size[2])};
     return impl::cell_morton_idx(idx);
 }
 

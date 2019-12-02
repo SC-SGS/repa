@@ -113,9 +113,22 @@ struct Vec {
     {
     }
 
-    template <typename... Args>
-    constexpr Vec(Args... values) : m_data({{values...}})
+    // Only accept this very general template if all arguments are convertible
+    // to "T".
+    template <
+        typename... Args, typename = _impl_tt::head<
+            typename std::enable_if<
+                std::is_convertible<Args, T>::value>::type...,
+            typename std::enable_if<
+                sizeof...(Args) == N>>>
+    explicit constexpr Vec(Args... values) : m_data({{values...}})
     {
+    }
+
+    constexpr Vec(std::initializer_list<T> list)
+    {
+        assert(list.size() == size());
+        std::copy(std::begin(list), std::end(list), begin());
     }
 
     iterator begin()
