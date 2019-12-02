@@ -1,7 +1,5 @@
 /**
- * Copyright 2017-2019 Steffen Hirschmann
- * Copyright 2017-2018 Maximilian Wildbrett
- * Copyright 2019      Simon Hauser
+ * Copyright 2017-2019 The repa authors
  *
  * This file is part of Repa.
  *
@@ -33,6 +31,8 @@ struct PSDiffusion : public Diffusion {
     ~PSDiffusion();
 
 protected:
+    virtual std::vector<double> compute_send_volume(double load) override;
+
     virtual void post_init(bool firstcall) override;
 
     virtual PerNeighbor<GlobalCellIndices>
@@ -43,8 +43,13 @@ private:
     bool coords_based_allow_sending(local_cell_index_type c,
                                     rank_type neighrank);
     bool rank_based_allow_sending(local_cell_index_type c, rank_type neighrank);
+    std::vector<rank_type> neighbar_procs(rank_type r);
 
     std::vector<rank_type> neighborhood_ranks;
+
+#ifndef NDEBUG
+    std::vector<rank_type> initial_neighborhood;
+#endif
 };
 
 } // namespace grids

@@ -1,7 +1,5 @@
 /**
- * Copyright 2017-2019 Steffen Hirschmann
- * Copyright 2017-2018 Maximilian Wildbrett
- * Copyright 2019      Simon Hauser
+ * Copyright 2017-2019 The repa authors
  *
  * This file is part of Repa.
  *
@@ -31,6 +29,16 @@
 namespace repa {
 namespace grids {
 
+std::vector<double> PSDiffusion::compute_send_volume(double load)
+{
+#ifdef PSDIFFUSION_DEBUG
+    ENSURE(std::is_permutation(neighbors.begin(), neighbors.end(),
+                               initial_neighborhood.begin()));
+#endif
+
+    return Diffusion::compute_send_volume(load);
+}
+
 /*
  * Initialization
  */
@@ -56,6 +64,13 @@ void PSDiffusion::post_init(bool firstcall)
     MPI_Neighbor_allgather(send_ranks.data(), send_ranks.size(), MPI_INT,
                            neighborhood_ranks.data(), send_ranks.size(),
                            MPI_INT, neighcomm);
+
+#ifdef PSDIFFUSION_DEBUG
+    if (firstcall) {
+        initial_neighborhood
+            = std::vector<rank_type>(neighbors.begin(), neighbors.end());
+    }
+#endif
 }
 
 /*
@@ -109,11 +124,6 @@ PSDiffusion::compute_send_list(std::vector<double> &&send_loads,
 #endif
 
         for (auto neighrank : borderCellsNeighbors[cidx]) {
-            auto neighidx
-                = std::distance(std::begin(neighbors),
-                                std::find(std::begin(neighbors),
-                                          std::end(neighbors), neighrank));
-
             bool b1 = coords_based_allow_sending(cidx, neighrank);
 #ifdef PSDIFFUSION_DEBUG
             bool b2 = rank_based_allow_sending(cidx, neighrank);
@@ -128,6 +138,11 @@ PSDiffusion::compute_send_list(std::vector<double> &&send_loads,
 #endif
             if (!b1)
                 continue;
+
+            auto neighidx
+                = std::distance(std::begin(neighbors),
+                                std::find(std::begin(neighbors),
+                                          std::end(neighbors), neighrank));
 
             if (weights[cidx] <= send_loads[neighidx]) {
                 to_send[neighidx].push_back(cells[cidx]);
@@ -161,22 +176,8 @@ bool PSDiffusion::rank_based_allow_sending(local_cell_index_type c,
 #ifdef PSDIFFUSION_DEBUG
             ENSURE(neighborhood_ranks.size() != 0);
 #endif
-
-            bool found = false;
-            for (int y = 0; y < neighbors.size(); y++) {
-                for (int x = 0; x < neighbors.size() + 1; x++) {
-                    int index = x + (neighbors.size() + 1) * y;
-                    if (x == 0) {
-                        if (neighborhood_ranks[index] != r2)
-                            break;
-                    }
-                    else {
-                        if (neighborhood_ranks[index] == r1)
-                            found = true;
-                    }
-                }
-            }
-            if (!found)
+            auto npr = neighbar_procs(r2);
+            if (std::find(npr.begin(), npr.end(), r1) == npr.end())
                 return false;
         }
     }
@@ -190,21 +191,49 @@ bool PSDiffusion::coords_based_allow_sending(local_cell_index_type c,
          gbox.full_shell_neigh_without_center(cells[c])) {
         if (rank_of_cell(d1) != neighrank)
             continue;
-
         Vec3i c1;
         MPI_Cart_coords(comm_cart, rank_of_cell(d1), 3, c1.data());
         for (global_cell_index_type d2 :
              gbox.full_shell_neigh_without_center(cells[c])) {
-
+            if (rank_of_cell(d1) == rank_of_cell(d2)
+                || rank_of_cell(d2) == rank_of_cell(cells[c]))
+                continue;
             Vec3i c2;
             MPI_Cart_coords(comm_cart, rank_of_cell(d2), 3, c2.data());
-
             if (std::abs(c1[0] - c2[0]) > 2 || std::abs(c1[1] - c2[1]) > 2
                 || std::abs(c1[2] - c2[2]) > 2)
                 return false;
         }
     }
     return true;
+}
+
+std::vector<rank_type> PSDiffusion::neighbar_procs(rank_type r)
+{
+
+    int startingIndex = -1;
+    int endingIndex = -1;
+    for (int y = 0; y < neighbors.size(); y++) {
+        int index = (neighbors.size() + 1) * y;
+        if (neighborhood_ranks[index] == r) {
+            startingIndex = index + 1;
+            endingIndex = startingIndex + neighbors.size();
+        }
+    }
+
+#ifdef PSDIFFUSION_DEBUG
+    ENSURE(startingIndex != -1 && endingIndex != -1);
+#endif
+
+    auto start = neighborhood_ranks.begin() + startingIndex;
+    auto end = neighborhood_ranks.begin() + endingIndex;
+
+    auto result = std::vector<rank_type>(start, end);
+#ifdef PSDIFFUSION_DEBUG
+    ENSURE(result.size() == neighbors.size());
+#endif
+
+    return std::vector<rank_type>(start, end);
 }
 
 } // namespace grids
