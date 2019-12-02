@@ -396,7 +396,7 @@ void Diffusion::pre_init(bool firstcall)
 void Diffusion::post_init(bool firstcall)
 {
     // Create graph comm with current process structure
-    neighcomm = util::undirected_mpi_communicator(comm_cart, neighbors);
+    neighcomm = util::undirected_graph_communicator(comm_cart, neighbors);
 }
 
 void Diffusion::init_new_foreign_cell(local_cell_index_type localcell,
