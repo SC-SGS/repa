@@ -62,7 +62,6 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
     for (off[0] = 0; off[0] <= 1; ++off[0]) {
         for (off[1] = 0; off[1] <= 1; ++off[1]) {
             for (off[2] = 0; off[2] <= 1; ++off[2]) {
-                rank_type proc;
                 Vec3i nc, mirror{0, 0, 0};
 
                 for (int d = 0; d < 3; ++d) {
@@ -77,7 +76,7 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
                     }
                 }
 
-                MPI_Cart_rank(comm_cart, nc.data(), &proc);
+                rank_type proc = util::mpi_cart_rank(comm_cart, nc);
 
                 // Mirror the gridpoint back to where this subdomain is
                 // expecting it.
@@ -129,8 +128,7 @@ void GridBasedGrid::init_neighbors()
                         nc[d] = 0;
                 }
 
-                rank_type r;
-                MPI_Cart_rank(comm_cart, nc.data(), &r);
+                rank_type r = util::mpi_cart_rank(comm_cart, nc);
 
                 // Insert "r" as a new neighbor if yet unseen.
                 if (r == comm_cart.rank())
@@ -358,9 +356,7 @@ rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
             grid_coord[i] = 0;
     }
 
-    rank_type r;
-    MPI_Cart_rank(comm_cart, grid_coord.data(), &r);
-    return r;
+    return util::mpi_cart_rank(comm_cart, grid_coord);
 }
 
 rank_type GridBasedGrid::position_to_rank(Vec3d pos)
