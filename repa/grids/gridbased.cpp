@@ -119,9 +119,9 @@ void GridBasedGrid::init_neighbors()
                     nneigh++;
                 }
 
-                if (off[0] >= 0 && off[1] >= 0 && off[2] >= 0)
+                if (all(off >= 0))
                     util::push_back_unique(source_neigh, r);
-                if (off[0] <= 0 && off[1] <= 0 && off[2] <= 0)
+                if (all(off <= 0))
                     util::push_back_unique(dest_neigh, r);
             }
         }

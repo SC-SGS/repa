@@ -273,29 +273,43 @@ operator%(const VecExpression<T, N, Expr1> &v,
 
 // Comparisons
 
-/** Equality comparison
- */
-template <typename T, size_t N, typename Expr>
-struct VecEqConst : public VecExpression<bool, N, VecEqConst<T, N, Expr>> {
-    constexpr VecEqConst(const Expr &e, const T &val) : _e(e), _val(val)
-    {
+#define DEFINE_VEC_COMP(op_name, op_operator)                                  \
+    template <typename T, size_t N, typename Expr>                             \
+    struct op_name : public VecExpression<bool, N, op_name<T, N, Expr>> {      \
+        constexpr op_name(const Expr &e, const T &val) : _e(e), _val(val)      \
+        {                                                                      \
+        }                                                                      \
+                                                                               \
+        constexpr bool operator[](size_t i) const                              \
+        {                                                                      \
+            return _e[i] op_operator _val;                                     \
+        }                                                                      \
+                                                                               \
+    private:                                                                   \
+        const Expr &_e;                                                        \
+        const T &_val;                                                         \
+    };                                                                         \
+                                                                               \
+    template <typename T, size_t N, typename Expr>                             \
+    constexpr op_name<T, N, Expr> operator op_operator(                        \
+        const VecExpression<T, N, Expr> &a, const T &val)                      \
+    {                                                                          \
+        return op_name<T, N, Expr>{*static_cast<const Expr *>(&a), val};       \
     }
 
-    constexpr bool operator[](size_t i) const
-    {
-        return _e[i] == _val;
-    }
+DEFINE_VEC_COMP(VecEqualLiteral, ==)
+DEFINE_VEC_COMP(VecGreaterLiteral, >)
+DEFINE_VEC_COMP(VecGreaterEqualLiteral, >=)
+DEFINE_VEC_COMP(VecLessLiteral, <)
+DEFINE_VEC_COMP(VecLessEqualLiteral, <=)
 
-private:
-    const Expr &_e;
-    const T &_val;
-};
-
-template <typename T, size_t N, typename Expr>
-constexpr VecEqConst<T, N, Expr> operator==(const VecExpression<T, N, Expr> &a,
-                                            const T &val)
+template <size_t N, typename Expr>
+bool all(const VecExpression<bool, N, Expr> &v)
 {
-    return VecEqConst<T, N, Expr>{*static_cast<const Expr *>(&a), val};
+    for (size_t i = 0; i < N; ++i)
+        if (!v[i])
+            return false;
+    return true;
 }
 
 } // namespace vector_arithmetic

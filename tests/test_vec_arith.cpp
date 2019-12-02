@@ -23,14 +23,13 @@
 
 #define BOOST_TEST_MODULE vec_arith
 
-
 #include <boost/test/included/unit_test.hpp>
 #include <repa/common_types.hpp>
 #include <repa/grids/util/vec_arith.hpp>
 
 using namespace repa::util::vector_arithmetic;
-using repa::Vec3i;
 using repa::Vec3d;
+using repa::Vec3i;
 
 void check_binary_ops()
 {
@@ -120,10 +119,14 @@ void check_wrap()
 void check_comparison()
 {
     const Vec3i v{-2, 1, 10};
-    const repa::Vec3<bool> w{v == -2};
-    BOOST_CHECK((w == repa::Vec3<bool>{true, false, false}));
+    const repa::Vec3<bool> weq{v == -2}, wg{v > -2}, wgeq{v >= -2}, wl{v < -2},
+        wleq{v <= -2};
+    BOOST_CHECK((weq == repa::Vec3<bool>{true, false, false}));
+    BOOST_CHECK((wg == repa::Vec3<bool>{false, true, true}));
+    BOOST_CHECK((wgeq == repa::Vec3<bool>{true, true, true}));
+    BOOST_CHECK((wl == repa::Vec3<bool>{false, false, false}));
+    BOOST_CHECK((wleq == repa::Vec3<bool>{true, false, false}));
 }
-
 
 BOOST_AUTO_TEST_CASE(test_vec_arith)
 {
