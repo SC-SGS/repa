@@ -21,98 +21,197 @@
 #include "kd_tree.hpp"
 #include "util/linearize.hpp"
 #include "util/neighbor_offsets.hpp"
-#include "util/vadd.hpp"
+#include "util/vec_arith.hpp"
 
 #include <algorithm>
 #include <cassert>
 #include <numeric>
 
+static int volume(const repa::Vec3i &v)
+{
+    return v[0] * v[1] * v[2];
+}
+
+static int volume(const repa::grids::Domain &dom)
+{
+    using namespace repa::util::vector_arithmetic;
+    return volume(dom.second - dom.first);
+}
+
+static repa::Vec3i get_grid_dimensions(const repa::Vec3d &box_l,
+                                       double max_range)
+{
+    using namespace repa::util::vector_arithmetic;
+    if (max_range > ROUND_ERROR_PREC * box_l[0])
+        return static_cast_vec<repa::Vec3i>(box_l / max_range);
+    else
+        return constant_vec3(1);
+}
+
+static repa::Vec3d get_cell_size(const repa::Vec3d &box_l,
+                                 const repa::Vec3i &grid_dimensions)
+{
+    using namespace repa::util::vector_arithmetic;
+    return box_l / grid_dimensions;
+}
+
+static bool does_domain_contain_cell(const repa::grids::Domain &domain,
+                                     const repa::Vec3i &cell)
+{
+    using namespace repa::util::vector_arithmetic;
+    return all(cell >= domain.first) && all(cell < domain.second);
+}
+
+static bool is_ghost_cell(const repa::Vec3i &cell,
+                          const repa::Vec3i &ghostdomain_size)
+{
+    using namespace repa::util::vector_arithmetic;
+    return any(cell == 0) || any(cell.as_expr() == ghostdomain_size - 1);
+}
+
+static repa::grids::Domain
+to_ghost_domain_bounds(const repa::grids::Domain &domain)
+{
+    using namespace repa::util::vector_arithmetic;
+    return {domain.first - 1, domain.second + 1};
+}
+
+/**
+ * This method returns the intersecting domains between a localdomain and
+ * a ghostdomain. Multiple intersection domains are possible in case of a
+ * periodic domain.
+ *
+ * @param localdomain A subdomain which doesn't exceed the bounds of the
+ *  global domain.
+ * @param ghostdomain A ghostdomain which doesn't exceed the global
+ *  ghostdomain
+ * @param ghostdomain_coords If this parameter value is true, then the
+ *  lu-coordinate of the resulting intersection domains is relative to the
+ *  ghostdomain parameter. Otherwise if this value is false, the lu-coord
+ *  is relative to the bounds of the localdomain parameter.
+ * @param periodic_intersections_only If this parameter is true, then only
+ *  intersection domains are returned that are caused by the ghostdomain
+ *  (provided by the ghostdomain parameter) exceeding the bounds of the
+ *  domain along a periodic dimension. This parameter can be useful if e.g.
+ *  the localdomain parameter is a subset of the ghostdomain parameter and
+ *  only intersections caused by overlapping domains are of interest.
+ * @return List of intersecting domains between the subdomain and the
+ *  ghostdomain relative to the global domain.
+ */
+static std::vector<repa::grids::Domain>
+intersection_domains(const repa::grids::Domain &localdomain,
+                     const repa::grids::Domain &ghostdomain,
+                     const repa::Vec3i &global_grid_size,
+                     bool ghostdomain_coords = false,
+                     bool periodic_intersections_only = false)
+{
+    /*
+#ifndef NDEBUG
+    {
+        // Preconditions:
+        for (int dim = 0; dim < 3; dim++) {
+            // Ensure valid size and position of localdomain
+            assert(localdomain.first[dim] >= m_global_domain.first[dim]
+                   && localdomain.first[dim] <= m_global_domain.second[dim]);
+            assert(localdomain.second[dim] >= m_global_domain.first[dim]
+                   && localdomain.second[dim] <= m_global_domain.second[dim]);
+            assert(localdomain.first[dim] <= localdomain.second[dim]);
+            // Ensure valid size and position of ghostdomain
+            assert(ghostdomain.first[dim] >= m_global_ghostdomain.first[dim]
+                   && ghostdomain.first[dim]
+                          <= m_global_ghostdomain.second[dim]);
+            assert(ghostdomain.second[dim] >= m_global_ghostdomain.first[dim]
+                   && ghostdomain.second[dim]
+                          <= m_global_ghostdomain.second[dim]);
+            assert(ghostdomain.first[dim] <= ghostdomain.second[dim]);
+        }
+    }
+#endif
+    */
+    using namespace repa::util::vector_arithmetic;
+
+    // In perodic domains the local-domain must be shifted to perform
+    // intersection tests with the ghostdomain across periodic domain bounds.
+    // This is because the ghost-domain bounds can exceed the bounds of
+    // the global domain.
+    // In non-periodic domains only one check is necessary (=3^0).
+    // In domains with one periodic dimension 3 checks are necessary (=3^1)
+    // up to a maximum of 27 (=3^3) checks if alls dimensions are periodic.
+    const repa::Vec3i periodicity{PERIODIC(0), PERIODIC(1), PERIODIC(2)};
+    repa::grids::Domain neighborhood_to_check = {
+        repa::Vec3i{0, 0, 0} - periodicity, repa::Vec3i{1, 1, 1} + periodicity};
+
+    // Datastructure for gathering the results
+    std::vector<repa::grids::Domain> intersection_domains;
+
+    for (repa::grids::rank_index_type nidx = 0;
+         nidx < volume(neighborhood_to_check); nidx++) {
+        // Determine neighbor offset
+        repa::Vec3i neighbor_offset
+            = repa::util::unlinearize(nidx, neighborhood_to_check.second
+                                                - neighborhood_to_check.first)
+              + neighborhood_to_check.first;
+
+        // Check if the "default" intersection that isn't the result of shifting
+        // the localdomain across periodic domain bounds should be excluded from
+        // the result
+        if (periodic_intersections_only && all(neighbor_offset == 0))
+            continue;
+
+        const repa::Vec3i num_cells_to_shift
+            = neighbor_offset * global_grid_size;
+        repa::grids::Domain shifted_localdomain
+            = {localdomain.first + num_cells_to_shift,
+               localdomain.second + num_cells_to_shift};
+
+        if (any(shifted_localdomain.second <= ghostdomain.first)
+            || any(ghostdomain.second <= shifted_localdomain.first))
+            continue;
+
+        // Calculate the actual intersection
+        repa::grids::Domain intersection_domain;
+        for (size_t dim = 0; dim < 3; ++dim) {
+            intersection_domain.first[dim] = std::max(
+                shifted_localdomain.first[dim], ghostdomain.first[dim]);
+            intersection_domain.second[dim] = std::min(
+                shifted_localdomain.second[dim], ghostdomain.second[dim]);
+        }
+
+        // If coords should be relative to the localdomain, they must be
+        // shifted back
+        if (!ghostdomain_coords) {
+            intersection_domain.first -= num_cells_to_shift;
+            intersection_domain.second -= num_cells_to_shift;
+        }
+        intersection_domains.push_back(intersection_domain);
+    }
+    return intersection_domains;
+}
+
+/**
+ * Returns true if the given localdomain and the given ghostdomain
+ * intersect. This includes intersections that are the result of periodic
+ * domain bounds.
+ */
+static bool are_domains_intersecting(const repa::grids::Domain &localdomain,
+                                     const repa::grids::Domain &ghostdomain,
+                                     const repa::Vec3i &global_grid_size)
+{
+    return !intersection_domains(localdomain, ghostdomain, global_grid_size)
+                .empty();
+}
+
 namespace repa {
 namespace grids {
 
-Vec3i KDTreeGrid::grid_dimensions()
-{
-    Vec3i grid_dimensions{1, 1, 1};
-    for (int dim = 0; dim < 3; dim++) {
-        if (max_range > ROUND_ERROR_PREC * box_l[dim]) {
-            grid_dimensions[dim]
-                = std::max<Vec3i::value_type>(box_l[dim] / max_range, 1);
-        }
-    }
-    return grid_dimensions;
-}
-
-Vec3d KDTreeGrid::cell_dimensions(const Vec3i &grid_dimensions)
-{
-    Vec3d cell_dimensions;
-    for (int dim = 0; dim < 3; dim++) {
-        cell_dimensions[dim] = box_l[dim] / grid_dimensions[dim];
-    }
-    return cell_dimensions;
-}
-
-int KDTreeGrid::volume(Vec3i domain_size)
-{
-    return domain_size[0] * domain_size[1] * domain_size[2];
-}
-
-int KDTreeGrid::volume(Domain domain_bounds)
-{
-    return volume(domain_size(domain_bounds));
-}
-
-Domain KDTreeGrid::ghostdomain_bounds(const Domain &domain)
-{
-    Domain ghostdomain;
-    for (int dim = 0; dim < 3; dim++) {
-        if (domain.second[dim] > domain.first[dim]) {
-            ghostdomain.first[dim] = domain.first[dim] - 1;
-            ghostdomain.second[dim] = domain.second[dim] + 1;
-        }
-    }
-    return ghostdomain;
-}
-
-Vec3i KDTreeGrid::domain_size(const Domain &domain)
-{
-    Vec3i domain_size;
-    for (int dim = 0; dim < 3; dim++) {
-        domain_size[dim] = domain.second[dim] - domain.first[dim];
-    }
-    return domain_size;
-}
-
-bool KDTreeGrid::is_ghost_cell(const Vec3i &cell, const Vec3i &ghostdomain_size)
-{
-    for (auto dim = 0; dim < 3; dim++) {
-        if (cell[dim] == 0 || cell[dim] == ghostdomain_size[dim] - 1) {
-            return true;
-        }
-    }
-    return false;
-}
-
-Vec3i KDTreeGrid::absolute_position_to_cell_position(
-    const Vec3d &absolute_position)
-{
-#ifndef NDEBUG
-    for (int dim = 0; dim < 3; dim++) {
-        assert(absolute_position[dim] >= 0);
-    }
-#endif
-    Vec3i cell_position;
-    for (int dim = 0; dim < 3; dim++) {
-        cell_position[dim] = absolute_position[dim] / m_cell_dimensions[dim];
-    }
-    return cell_position;
-}
-
 void KDTreeGrid::init_local_domain_bounds()
 {
+    using namespace util::vector_arithmetic;
     m_local_subdomain = m_kdtree.subdomain_bounds(comm_cart.rank());
-    m_local_ghostdomain = ghostdomain_bounds(m_local_subdomain);
-    m_local_subdomain_size = domain_size(m_local_subdomain);
-    m_local_ghostdomain_size = domain_size(m_local_ghostdomain);
+    m_local_ghostdomain = to_ghost_domain_bounds(m_local_subdomain);
+    m_local_subdomain_size = m_local_subdomain.second - m_local_subdomain.first;
+    m_local_ghostdomain_size
+        = m_local_ghostdomain.second - m_local_ghostdomain.first;
 }
 
 void KDTreeGrid::init_nb_of_cells()
@@ -135,147 +234,27 @@ void KDTreeGrid::init_index_permutations()
     local_or_ghost_cell_index_type ghostidx = m_nb_of_local_cells;
     for (local_or_ghost_cell_index_type cellidx = 0;
          cellidx < nb_of_total_cells; cellidx++) {
-        Vec3i cell = util::unlinearize(cellidx, m_local_ghostdomain_size);
-        if (is_ghost_cell(cell, m_local_ghostdomain_size)) {
-            m_index_permutations_inverse[ghostidx] = cellidx;
-            m_index_permutations[cellidx] = ghostidx++;
-        }
-        else {
-            m_index_permutations_inverse[localidx] = cellidx;
-            m_index_permutations[cellidx] = localidx++;
-        }
+        const Vec3i cell = util::unlinearize(cellidx, m_local_ghostdomain_size);
+        local_or_ghost_cell_index_type &idx
+            = is_ghost_cell(cell, m_local_ghostdomain_size) ? ghostidx
+                                                            : localidx;
+        m_index_permutations_inverse[idx] = cellidx;
+        m_index_permutations[cellidx] = idx++;
     }
-}
-
-std::vector<Domain>
-KDTreeGrid::intersection_domains(const Domain &localdomain,
-                                 const Domain &ghostdomain,
-                                 bool ghostdomain_coords,
-                                 bool periodic_intersections_only) const
-{
-#ifndef NDEBUG
-    {
-        // Preconditions:
-        for (int dim = 0; dim < 3; dim++) {
-            // Ensure valid size and position of localdomain
-            assert(localdomain.first[dim] >= m_global_domain.first[dim]
-                   && localdomain.first[dim] <= m_global_domain.second[dim]);
-            assert(localdomain.second[dim] >= m_global_domain.first[dim]
-                   && localdomain.second[dim] <= m_global_domain.second[dim]);
-            assert(localdomain.first[dim] <= localdomain.second[dim]);
-            // Ensure valid size and position of ghostdomain
-            assert(ghostdomain.first[dim] >= m_global_ghostdomain.first[dim]
-                   && ghostdomain.first[dim]
-                          <= m_global_ghostdomain.second[dim]);
-            assert(ghostdomain.second[dim] >= m_global_ghostdomain.first[dim]
-                   && ghostdomain.second[dim]
-                          <= m_global_ghostdomain.second[dim]);
-            assert(ghostdomain.first[dim] <= ghostdomain.second[dim]);
-        }
-    }
-#endif
-
-    // In perodic domains the local-domain must be shifted to perform
-    // intersection tests with the ghostdomain across periodic domain bounds.
-    // This is because the ghost-domain bounds can exceed the bounds of
-    // the global domain.
-    // In non-periodic domains only one check is necessary (=3^0).
-    // In domains with one periodic dimension 3 checks are necessary (=3^1)
-    // up to a maximum of 27 (=3^3) checks if alls dimensions are periodic.
-    Domain neighborhood_to_check = {Vec3i{0, 0, 0}, Vec3i{1, 1, 1}};
-    for (int dim = 0; dim < 3; dim++) {
-        if (PERIODIC(dim)) {
-            neighborhood_to_check.first[dim]--;
-            neighborhood_to_check.second[dim]++;
-        }
-    }
-
-    // Datastructure for gathering the results
-    std::vector<Domain> intersection_domains;
-
-    for (rank_index_type nidx = 0; nidx < volume(neighborhood_to_check);
-         nidx++) {
-        // Determine neighbor offset
-        Vec3i neighbor_offset
-            = util::unlinearize(nidx, domain_size(neighborhood_to_check));
-        for (int dim = 0; dim < 3; dim++) {
-            neighbor_offset[dim] += neighborhood_to_check.first[dim];
-        }
-
-        // Check if the "default" intersection that isn't the result of shifting
-        // the localdomain across periodic domain bounds should be excluded from
-        // the result
-        if (periodic_intersections_only && neighbor_offset == Vec3i{0, 0, 0}) {
-            continue;
-        }
-
-        Domain intersection_domain;
-        Domain shifted_localdomain;
-        for (int dim = 0; dim < 3; dim++) {
-            // Shift local domain along current dimension
-            int num_cells_to_shift
-                = neighbor_offset[dim] * m_global_domain_size[dim];
-            shifted_localdomain.first[dim]
-                = localdomain.first[dim] + num_cells_to_shift;
-            shifted_localdomain.second[dim]
-                = localdomain.second[dim] + num_cells_to_shift;
-
-            // Check for intersection on current dimension
-            if (shifted_localdomain.second[dim] <= ghostdomain.first[dim]
-                || ghostdomain.second[dim] <= shifted_localdomain.first[dim]) {
-                goto no_intersection; // ~ continue-statement on outer loop
-            }
-
-            // Calculate bounds of the intersection domain on the
-            // current dimension.
-            intersection_domain.first[dim] = std::max(
-                shifted_localdomain.first[dim], ghostdomain.first[dim]);
-            intersection_domain.second[dim] = std::min(
-                shifted_localdomain.second[dim], ghostdomain.second[dim]);
-
-            // If coords should be relative to the localdomain, they must be
-            // shifted back
-            if (!ghostdomain_coords) {
-                intersection_domain.first[dim] -= num_cells_to_shift;
-                intersection_domain.second[dim] -= num_cells_to_shift;
-            }
-        }
-
-        intersection_domains.push_back(intersection_domain);
-    no_intersection:;
-    }
-
-    return intersection_domains;
-}
-
-bool KDTreeGrid::are_domains_intersecting(const Domain &localdomain,
-                                          const Domain &ghostdomain) const
-{
-    return intersection_domains(localdomain, ghostdomain).empty() == false;
-}
-
-bool KDTreeGrid::domain_contains_cell(const Domain &domain, const Vec3i &cell)
-{
-    for (int dim = 0; dim < 3; dim++) {
-        if (cell[dim] < domain.first[dim] || cell[dim] >= domain.second[dim]) {
-            return false;
-        }
-    }
-    return true;
 }
 
 // TODO return an iterator and not an elephant vector
 std::vector<Vec3i> KDTreeGrid::cells(const std::vector<Domain> &domains)
 {
+    using namespace util::vector_arithmetic;
     std::vector<Vec3i> result;
     for (const Domain &domain : domains) {
         for (local_or_ghost_cell_index_type cellidx = 0;
              cellidx < volume(domain); cellidx++) {
-            Vec3i cellvector = util::unlinearize(cellidx, domain_size(domain));
-            for (int dim = 0; dim < 3; dim++) {
-                cellvector[dim] += domain.first[dim];
-            }
-            result.push_back(cellvector);
+            const Vec3i cell_coords
+                = util::unlinearize(cellidx, domain.second - domain.first)
+                  + domain.first;
+            result.push_back(cell_coords);
         }
     }
     return result;
@@ -283,15 +262,18 @@ std::vector<Vec3i> KDTreeGrid::cells(const std::vector<Domain> &domains)
 
 void KDTreeGrid::init_neighborhood_information()
 {
-    m_neighbor_processes_inverse.resize(comm_cart.size(), -1);
+    m_neighbor_processes_inverse.resize(comm_cart.size());
+    std::fill(std::begin(m_neighbor_processes_inverse),
+              std::end(m_neighbor_processes_inverse), UNKNOWN_RANK);
 
     m_kdtree.walkp(
+        [this](auto node) {
+            return are_domains_intersecting({node.lu(), node.ro()},
+                                            m_local_ghostdomain,
+                                            m_global_domain_size);
+        },
         // Explicitly using "this->" here for compatibility
         // with gcc 5
-        [this](auto node) {
-            return this->are_domains_intersecting({node.lu(), node.ro()},
-                                                  m_local_ghostdomain);
-        },
         [this](auto node) {
             if (!node.inner())
                 this->init_neighborhood_information(node.rank());
@@ -305,53 +287,42 @@ void KDTreeGrid::init_neighborhood_information(rank_type neighbor_rank)
 
     // Initialize neighborhood information about ghostcells that the local
     // process is receiving from the neighbor process.
-    Domain neighbor_subdomain = m_kdtree.subdomain_bounds(neighbor_rank);
+    const Domain neighbor_subdomain = m_kdtree.subdomain_bounds(neighbor_rank);
     init_recv_cells(gexd, neighbor_subdomain);
 
     // Initialize neighborhood information about localcells that the local
     // neighbor process is sending to the neighbor process.
-    Domain neighbor_ghostdomain = ghostdomain_bounds(neighbor_subdomain);
+    const Domain neighbor_ghostdomain
+        = to_ghost_domain_bounds(neighbor_subdomain);
     init_send_cells(gexd, neighbor_ghostdomain);
 
-    if (gexd.send.empty()) { // send.empty() == recv.empty(), so test only one.
-        // This can only be the case if neighbor_rank == comm_cart.rank()
-        // and there are enough processes such that no self communication
-        // is necessary.
-        if (neighbor_rank != comm_cart.rank()) {
-            throw std::runtime_error("Empty ghost exchange detected");
-        }
-
-        // Simply do not add this descriptor to the neighbors
-        return;
+    if (!gexd.send.empty()) { // send.empty() == recv.empty(), so test only one.
+        m_neighbor_processes_inverse[neighbor_rank]
+            = m_neighbor_processes.size();
+        m_neighbor_processes.push_back(neighbor_rank);
+        m_boundary_info.emplace_back(std::move(gexd));
     }
-    // Add process to neighbor processes
-    m_neighbor_processes_inverse[neighbor_rank] = m_neighbor_processes.size();
-    m_neighbor_processes.push_back(neighbor_rank);
-    m_boundary_info.emplace_back(std::move(gexd));
+    else {
+        assert(neighbor_rank == comm_cart.rank());
+    }
 }
 
 void KDTreeGrid::init_recv_cells(GhostExchangeDesc &gexd,
                                  const Domain &neighbor_subdomain)
 {
+    using namespace util::vector_arithmetic;
     // Get overlapping cells between the neighbor subdomain and the local
     // ghostdomain.
-    std::vector<Vec3i> intersecting_cellvectors
-        = cells(intersection_domains(neighbor_subdomain, m_local_ghostdomain,
-                                     true, gexd.dest == comm_cart.rank()));
+    std::vector<Vec3i> intersecting_cellvectors = cells(intersection_domains(
+        neighbor_subdomain, m_local_ghostdomain, m_global_domain_size, true,
+        gexd.dest == comm_cart.rank()));
     gexd.recv.reserve(intersecting_cellvectors.size());
 
     for (const Vec3i &intersecting_cellvector : intersecting_cellvectors) {
-        // Convert global cellvector to local cellvector relative to
-        // ghostdomain.
-        Vec3i local_cellvector = intersecting_cellvector;
-        for (int dim = 0; dim < 3; dim++) {
-            local_cellvector[dim] -= m_local_ghostdomain.first[dim];
-        }
-
-        // Convert local cellvector to local/ghostcell-id
-        local_or_ghost_cell_index_type ghostidx
-            = m_index_permutations[util::linearize(local_cellvector,
-                                                   m_local_ghostdomain_size)];
+        const local_or_ghost_cell_index_type ghostidx
+            = m_index_permutations[util::linearize(
+                intersecting_cellvector - m_local_ghostdomain.first,
+                m_local_ghostdomain_size)];
 
         // Convert cell-id to ghostcell-id
         assert(ghostidx >= m_nb_of_local_cells
@@ -365,24 +336,18 @@ void KDTreeGrid::init_recv_cells(GhostExchangeDesc &gexd,
 void KDTreeGrid::init_send_cells(GhostExchangeDesc &gexd,
                                  const Domain &neighbor_ghostdomain)
 {
+    using namespace util::vector_arithmetic;
     // Get overlapping cells between the neighbor ghostdomain and the local
     // domain.
-    std::vector<Vec3i> intersecting_cellvectors
-        = cells(intersection_domains(m_local_subdomain, neighbor_ghostdomain,
-                                     false, gexd.dest == comm_cart.rank()));
+    std::vector<Vec3i> intersecting_cellvectors = cells(intersection_domains(
+        m_local_subdomain, neighbor_ghostdomain, m_global_domain_size, false,
+        gexd.dest == comm_cart.rank()));
     gexd.send.reserve(intersecting_cellvectors.size());
 
     for (const Vec3i &intersecting_cellvector : intersecting_cellvectors) {
-        // Convert global cellvector to local cellvector relative to
-        // ghostdomain.
-        Vec3i local_cellvector = intersecting_cellvector;
-        for (int dim = 0; dim < 3; dim++) {
-            local_cellvector[dim] -= m_local_subdomain.first[dim];
-        }
-
-        // Convert local cellvector to local cell-id
-        local_cell_index_type cellidx
-            = util::linearize(local_cellvector, m_local_subdomain_size);
+        const local_cell_index_type cellidx
+            = util::linearize(intersecting_cellvector - m_local_subdomain.first,
+                              m_local_subdomain_size);
 
         // Update datastructure
         gexd.send.push_back(cellidx);
@@ -411,21 +376,16 @@ KDTreeGrid::KDTreeGrid(const boost::mpi::communicator &comm,
                        Vec3d box_size,
                        double min_cell_size)
     : ParallelLCGrid(comm, box_size, min_cell_size),
-      m_global_domain_size(grid_dimensions()),
+      m_global_domain_size(get_grid_dimensions(box_l, max_range)),
       m_global_domain({Vec3i{0, 0, 0}, m_global_domain_size}),
-      m_global_ghostdomain(ghostdomain_bounds(m_global_domain)),
-      m_global_ghostdomain_size(domain_size(m_global_ghostdomain)),
-      m_cell_dimensions(cell_dimensions(m_global_domain_size))
+      m_global_ghostdomain(to_ghost_domain_bounds(m_global_domain)),
+      m_cell_size(get_cell_size(box_l, m_global_domain_size))
 {
-    int nb_of_subdomains = comm_cart.size();
-
     // Use constant load to make initial tree evenly distributed
     auto load_function = [](Vec3i) { return 1; };
-
-    m_kdtree = kdpart::make_parttree(nb_of_subdomains, {0, 0, 0},
+    m_kdtree = kdpart::make_parttree(comm.size(), {0, 0, 0},
                                      m_global_domain_size.as_array(),
                                      load_function, kdpart::quality_splitting);
-
     reinitialize();
 }
 
@@ -446,15 +406,13 @@ rank_index_type KDTreeGrid::n_neighbors()
 
 rank_type KDTreeGrid::neighbor_rank(rank_index_type i)
 {
-    if (i < 0 || i >= m_neighbor_processes.size()) {
-        throw std::domain_error("Invalid neighbor index.");
-    }
+    assert(i >= 0 && i < m_neighbor_processes.size());
     return m_neighbor_processes[i];
 }
 
 Vec3d KDTreeGrid::cell_size()
 {
-    return m_cell_dimensions;
+    return m_cell_size;
 }
 
 Vec3i KDTreeGrid::grid_size()
@@ -466,23 +424,19 @@ local_or_ghost_cell_index_type
 KDTreeGrid::cell_neighbor_index(local_cell_index_type cellidx,
                                 fs_neighidx neigh)
 {
-    // Preconditions
-    if (cellidx < 0 || cellidx >= m_nb_of_local_cells)
-        throw std::domain_error("Invalid cell index");
+    // Precondition
+    assert(cellidx >= 0 && cellidx < m_nb_of_local_cells);
 
+    using namespace util::vector_arithmetic;
     // Get cellvector in local ghostdomain
-    Vec3i cellvector = util::unlinearize(m_index_permutations_inverse[cellidx],
-                                         m_local_ghostdomain_size);
-
-    // Shift cellvector to the choosen neighbor
-    const Vec3i &offset = util::NeighborOffsets3D::raw[neigh];
-    for (int dim = 0; dim < 3; dim++) {
-        cellvector[dim] += offset[dim];
-    }
+    Vec3i neighbor_coord
+        = util::unlinearize(m_index_permutations_inverse[cellidx],
+                            m_local_ghostdomain_size)
+          + util::NeighborOffsets3D::raw[neigh];
 
     // Linearization of vectors in ghostdomain require index permutations
     // to retain ordering requirements of lgidx indices.
-    return m_index_permutations[util::linearize(cellvector,
+    return m_index_permutations[util::linearize(neighbor_coord,
                                                 m_local_ghostdomain_size)];
 }
 
@@ -493,51 +447,40 @@ std::vector<GhostExchangeDesc> KDTreeGrid::get_boundary_info()
 
 local_cell_index_type KDTreeGrid::position_to_cell_index(Vec3d pos)
 {
-    Vec3i cellvector = absolute_position_to_cell_position(pos);
+    using namespace util::vector_arithmetic;
+    const Vec3i cell_coords = static_cast_vec<Vec3i>(pos / m_cell_size);
 
-    // Precondition: Position must be within local subdomain
-    if (!domain_contains_cell(m_local_subdomain, cellvector)) {
+    if (!does_domain_contain_cell(m_local_subdomain, cell_coords)) {
         throw std::domain_error("Position not in local subdomain");
     }
 
-    // Make cellvector relative to subdomain
-    for (int dim = 0; dim < 3; dim++) {
-        cellvector[dim] -= m_local_subdomain.first[dim];
-    }
+    const local_cell_index_type cellidx = util::linearize(
+        cell_coords - m_local_subdomain.first, m_local_subdomain_size);
 
-    // Linearize cell vector
-    local_cell_index_type cellidx
-        = util::linearize(cellvector, m_local_subdomain_size);
-
+    assert(cellidx >= 0 && cellidx < m_nb_of_local_cells);
     return cellidx;
 }
 
 rank_type KDTreeGrid::position_to_rank(Vec3d pos)
 {
-    Vec3i cellvector = absolute_position_to_cell_position(pos);
-
-    // Precondition: Position must be within global domain
-    if (!domain_contains_cell(m_global_domain, cellvector)) {
-        throw std::domain_error("Position not within global domain");
-    }
-
-    return m_kdtree.responsible_process(cellvector.as_array());
+    using namespace util::vector_arithmetic;
+    const Vec3i cell_coords = static_cast_vec<Vec3i>(pos / m_cell_size);
+    return m_kdtree.responsible_process(cell_coords.as_array());
 }
 
 rank_index_type KDTreeGrid::position_to_neighidx(Vec3d pos)
 {
-    Vec3i cellvector = absolute_position_to_cell_position(pos);
+    using namespace util::vector_arithmetic;
+    const Vec3i cell_coords = static_cast_vec<Vec3i>(pos / m_cell_size);
+    const rank_type prank
+        = m_kdtree.responsible_process(cell_coords.as_array());
+    const rank_index_type rank_idx = m_neighbor_processes_inverse[prank];
 
-    // Precondition
-    if (!domain_contains_cell(m_global_ghostdomain, cellvector)) {
-        throw std::domain_error("Position is not in the global ghostdomain");
-    }
-
-    rank_type prank = m_kdtree.responsible_process(cellvector.as_array());
-    rank_index_type rank_idx = m_neighbor_processes_inverse[prank];
-    if (rank_idx == -1) {
+    // TODO: See github issue #28
+    if (rank_idx == UNKNOWN_RANK) {
         throw std::domain_error("Position not within neighbor a process");
     }
+
     return rank_idx;
 }
 
@@ -560,14 +503,12 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
 global_cell_index_type
 KDTreeGrid::global_hash(local_or_ghost_cell_index_type cellidx)
 {
+    using namespace util::vector_arithmetic;
     // No need to define this away. Does currently not require extra data.
-    Vec3i idx3d = util::unlinearize(m_index_permutations_inverse[cellidx],
-                                    m_local_ghostdomain_size);
-    Vec3i offset;
-    for (size_t i = 0; i < idx3d.size(); ++i)
-        offset[i] = m_local_subdomain.first[i] - 1; // -1 for ghost
-
-    auto gloidx3d = util::vadd_mod(idx3d, offset, m_global_domain_size);
+    const Vec3i idx3d = util::unlinearize(m_index_permutations_inverse[cellidx],
+                                          m_local_ghostdomain_size);
+    const Vec3i offset = m_local_ghostdomain.first - 1;
+    const Vec3i gloidx3d = (idx3d + offset) % m_global_domain_size;
     return util::linearize(gloidx3d, m_global_domain_size);
 }
 
