@@ -398,6 +398,31 @@ void Diffusion::post_init(bool firstcall)
 {
     // Create graph comm with current process structure
     neighcomm = util::undirected_graph_communicator(comm_cart, neighbors);
+
+#ifdef DIFFUSION_DEBUG
+    // Expensive check to ensure consistency of borderCellsNeighbors
+    for (local_cell_index_type c = 0; c < n_local_cells(); ++c) {
+        // Determine border cell status
+        std::vector<rank_type> neighboring_ranks;
+        neighboring_ranks.reserve(26);
+        for (global_cell_index_type neighcell: gbox.full_shell_neigh_without_center(cells[c])) {
+            assert(partition[neighcell] != UNKNOWN_RANK);
+            if (partition[neighcell] != comm_cart.rank())
+                util::push_back_unique(neighboring_ranks, partition[neighcell]);
+        }
+
+        if (neighboring_ranks.empty()) {
+            // Not a border cell, so not in borderCellsNeighbors
+            assert(borderCellsNeighbors.find(c) == borderCellsNeighbors.end());
+        } else {
+            // borderCellsNeighbors must equal neighboring_ranks
+            std::vector<rank_type> bcn = borderCellsNeighbors[c];
+            std::sort(bcn.begin(), bcn.end());
+            std::sort(neighboring_ranks.begin(), neighboring_ranks.end());
+            assert(bcn == neighboring_ranks);
+        }
+    }
+#endif
 }
 
 void Diffusion::init_new_foreign_cell(local_cell_index_type localcell,
