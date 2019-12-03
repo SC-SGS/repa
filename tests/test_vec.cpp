@@ -76,8 +76,6 @@ BOOST_AUTO_TEST_CASE(test_vec)
     BOOST_CHECK(v == v);
     BOOST_CHECK(w == w);
     BOOST_CHECK(v != w);
-    BOOST_CHECK((w > v) && (w >= v));
-    BOOST_CHECK(!(w < v) && !(w <= v));
 
     // Move constructor
     repa::Vec3d u{std::move(w)};

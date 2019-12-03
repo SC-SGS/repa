@@ -250,22 +250,6 @@ struct Vec : VecExpression<T, N, Vec<T, N>> {
     {
         return m_data != other.m_data;
     }
-    constexpr bool operator<(const Vec &other) const
-    {
-        return m_data < other.m_data;
-    }
-    constexpr bool operator<=(const Vec &other) const
-    {
-        return m_data <= other.m_data;
-    }
-    constexpr bool operator>(const Vec &other) const
-    {
-        return m_data > other.m_data;
-    }
-    constexpr bool operator>=(const Vec &other) const
-    {
-        return m_data >= other.m_data;
-    }
 
     friend class boost::serialization::access;
 
