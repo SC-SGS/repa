@@ -85,7 +85,7 @@ void CartGrid::fill_neighranks()
     for (const auto &offset : util::NeighborOffsets3D::raw) {
         // Push back unique neighbor ranks into m_neighbors
         const auto rank = proc_offset_to_rank(offset);
-        if (rank != comm.rank() || self_comm_necessary())
+        if (rank != comm_cart.rank() || self_comm_necessary())
             util::push_back_unique(m_neighranks, rank);
     }
 }
