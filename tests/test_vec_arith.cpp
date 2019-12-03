@@ -126,6 +126,17 @@ void check_comparison()
     BOOST_CHECK((wgeq == repa::Vec3<bool>{true, true, true}));
     BOOST_CHECK((wl == repa::Vec3<bool>{false, false, false}));
     BOOST_CHECK((wleq == repa::Vec3<bool>{true, false, false}));
+
+    BOOST_CHECK(
+        all(weq.as_expr() == repa::Vec3<bool>{true, false, false}.as_expr()));
+    BOOST_CHECK(
+        all(wg.as_expr() == repa::Vec3<bool>{false, true, true}.as_expr()));
+    BOOST_CHECK(
+        all(wgeq.as_expr() == repa::Vec3<bool>{true, true, true}.as_expr()));
+    BOOST_CHECK(
+        all(wl.as_expr() == repa::Vec3<bool>{false, false, false}.as_expr()));
+    BOOST_CHECK(
+        all(wleq.as_expr() == repa::Vec3<bool>{true, false, false}.as_expr()));
 }
 
 BOOST_AUTO_TEST_CASE(test_vec_arith)

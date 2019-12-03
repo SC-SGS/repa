@@ -138,12 +138,11 @@ struct Vec : VecExpression<T, N, Vec<T, N>> {
 
     // Only accept this very general template if all arguments are convertible
     // to "T".
-    template <
-        typename... Args, typename = _impl_tt::head<
-            typename std::enable_if<
-                std::is_convertible<Args, T>::value>::type...,
-            typename std::enable_if<
-                sizeof...(Args) == N>>>
+    template <typename... Args,
+              typename = _impl_tt::head<
+                  typename std::enable_if<
+                      std::is_convertible<Args, T>::value>::type...,
+                  typename std::enable_if<sizeof...(Args) == N>>>
     explicit constexpr Vec(Args... values) : m_data({{values...}})
     {
     }
@@ -152,6 +151,11 @@ struct Vec : VecExpression<T, N, Vec<T, N>> {
     {
         assert(list.size() == size());
         std::copy(std::begin(list), std::end(list), begin());
+    }
+
+    constexpr const VecExpression<T, N, Vec<T, N>> &as_expr() const
+    {
+        return *this;
     }
 
     iterator begin()

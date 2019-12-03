@@ -23,9 +23,11 @@
 
 #include "cart.hpp"
 #include "util/linearize.hpp"
+#include "util/mpi_cart.hpp"
 #include "util/neighbor_offsets.hpp"
 #include "util/push_back_unique.hpp"
 #include "util/vadd.hpp"
+#include "util/vec_arith.hpp"
 
 #include "_compat.hpp"
 
@@ -59,22 +61,21 @@ static std::pair<Vec3i, Vec3i> determine_send_receive_bounds(
 
 bool CartGrid::is_ghost_cell(const Vec3i &c)
 {
-    return c[0] == 0 || c[0] == m_ghost_grid_size[0] - 1 || c[1] == 0
-           || c[1] == m_ghost_grid_size[1] - 1 || c[2] == 0
-           || c[2] == m_ghost_grid_size[2] - 1;
+    using namespace util::vector_arithmetic;
+    return any(c == 0) || any(c.as_expr() == m_ghost_grid_size - 1);
 }
 
 rank_type CartGrid::proc_offset_to_rank(const Vec3i &offset)
 {
-    auto neighpos = util::vadd_mod(m_procgrid_pos, offset, m_procgrid);
-    int rank;
-    MPI_Cart_rank(comm_cart, neighpos.data(), &rank);
-    return rank;
+    using namespace util::vector_arithmetic;
+    const Vec3i neighpos = (m_procgrid_pos + offset) % m_procgrid;
+    return util::mpi_cart_rank(comm_cart, neighpos);
 }
 
 bool CartGrid::self_comm_necessary()
 {
-    return m_procgrid[0] < 2 || m_procgrid[1] < 2 || m_procgrid[2] < 2;
+    using namespace util::vector_arithmetic;
+    return any(m_procgrid < 2);
 }
 
 void CartGrid::fill_neighranks()
@@ -83,7 +84,7 @@ void CartGrid::fill_neighranks()
 
     for (const auto &offset : util::NeighborOffsets3D::raw) {
         // Push back unique neighbor ranks into m_neighbors
-        auto rank = proc_offset_to_rank(offset);
+        const auto rank = proc_offset_to_rank(offset);
         if (rank != comm.rank() || self_comm_necessary())
             util::push_back_unique(m_neighranks, rank);
     }
@@ -98,39 +99,33 @@ void CartGrid::create_index_permutations()
     local_cell_index_type localidx = 0;
     local_or_ghost_cell_index_type ghostidx = n_local_cells();
     for (local_or_ghost_cell_index_type i = 0; i < ncells; ++i) {
-        auto c = util::unlinearize(i, m_ghost_grid_size);
-        if (is_ghost_cell(c)) {
-            m_from_pargrid_order[ghostidx] = i;
-            m_to_pargrid_order[i] = ghostidx++;
-        }
-        else {
-            m_from_pargrid_order[localidx] = i;
-            m_to_pargrid_order[i] = localidx++;
-        }
+        const auto c = util::unlinearize(i, m_ghost_grid_size);
+        local_or_ghost_cell_index_type &idx
+            = is_ghost_cell(c) ? ghostidx : localidx;
+        m_from_pargrid_order[idx] = i;
+        m_to_pargrid_order[i] = idx++;
     }
 }
 
 void CartGrid::create_grid()
 {
-    for (int i = 0; i < 3; ++i) {
-        // Copy infos from deprecated pargrid variables
-        m_procgrid[i] = node_grid[i];
-        m_procgrid_pos[i] = node_pos[i];
+    using namespace util::vector_arithmetic;
+    // Copy infos from deprecated pargrid variables
+    m_procgrid = node_grid;
+    m_procgrid_pos = node_pos;
 
-        // Local box info
-        m_localbox[i] = box_l[i] / m_procgrid[i];
-        m_lowerleft[i] = m_localbox[i] * m_procgrid_pos[i];
+    // Local box info
+    m_localbox = box_l / m_procgrid;
+    m_lowerleft = m_localbox * node_pos;
 
-        // Grid and cell size
-        if (max_range > ROUND_ERROR_PREC * box_l[0])
-            m_grid_size[i] = static_cast<int>(m_localbox[i] / max_range);
-        else
-            m_grid_size[i] = 1;
-        m_ghost_grid_size[i] = m_grid_size[i] + 2;
+    if (max_range > ROUND_ERROR_PREC * box_l[0])
+        m_grid_size = static_cast_vec<Vec3i>(m_localbox / max_range);
+    else
+        m_grid_size = constant_vec3(1);
+    m_ghost_grid_size = m_grid_size + 2;
 
-        m_cell_size[i] = m_localbox[i] / m_grid_size[i];
-        m_inv_cell_size[i] = 1.0 / m_cell_size[i];
-    }
+    m_cell_size = m_localbox / m_grid_size;
+    m_inv_cell_size = 1.0 / m_cell_size;
 }
 
 void CartGrid::fill_comm_cell_lists(
@@ -158,15 +153,15 @@ void CartGrid::prepare_communication()
              std::next(std::begin(util::NeighborOffsets3D::raw)),
              std::end(util::NeighborOffsets3D::raw))) {
         Vec3i lc, hc;
-        auto rank = proc_offset_to_rank(offset);
+        const auto rank = proc_offset_to_rank(offset);
 
         // Skip self communication if it is unnecessary
-        if (!self_comm_necessary() && rank == comm.rank())
+        if (rank == comm_cart.rank() && !self_comm_necessary())
             continue;
 
         // Send
         {
-            auto i = neighbor_idx(rank);
+            const auto i = neighbor_idx(rank);
             m_exdescs[i].dest = rank;
             std::tie(lc, hc)
                 = impl::determine_send_receive_bounds(offset, 0, m_grid_size);
@@ -177,8 +172,8 @@ void CartGrid::prepare_communication()
         // the processes won't match.
         {
             Vec3i opposite{-offset[0], -offset[1], -offset[2]};
-            auto neigh = proc_offset_to_rank(opposite);
-            auto i = neighbor_idx(neigh);
+            const auto neigh = proc_offset_to_rank(opposite);
+            const auto i = neighbor_idx(neigh);
             m_exdescs[i].dest = neigh;
             std::tie(lc, hc)
                 = impl::determine_send_receive_bounds(opposite, 1, m_grid_size);
@@ -205,7 +200,7 @@ local_cell_index_type CartGrid::n_local_cells()
 
 ghost_cell_index_type CartGrid::n_ghost_cells()
 {
-    int ggs
+    const int ggs
         = m_ghost_grid_size[0] * m_ghost_grid_size[1] * m_ghost_grid_size[2];
     return ggs - n_local_cells();
 }
@@ -223,21 +218,22 @@ rank_type CartGrid::neighbor_rank(rank_index_type i)
 local_or_ghost_cell_index_type
 CartGrid::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
 {
-    auto c = unlinearize(cellidx);
-    auto nc = util::vadd_mod(c, util::NeighborOffsets3D::raw[neigh],
-                             m_ghost_grid_size);
-    return linearize(nc);
+    using namespace util::vector_arithmetic;
+    const auto coord = unlinearize(cellidx);
+    const Vec3i neighbor_coord
+        = (coord + util::NeighborOffsets3D::raw[neigh]) % m_ghost_grid_size;
+    return linearize(neighbor_coord);
 }
 
 local_or_ghost_cell_index_type CartGrid::linearize(Vec3i c)
 {
-    auto idx = util::linearize(c, m_ghost_grid_size);
+    const auto idx = util::linearize(c, m_ghost_grid_size);
     return m_to_pargrid_order[idx];
 }
 
 Vec3i CartGrid::unlinearize(local_or_ghost_cell_index_type cidx)
 {
-    auto idx = m_from_pargrid_order[cidx];
+    const auto idx = m_from_pargrid_order[cidx];
     return util::unlinearize(idx, m_ghost_grid_size);
 }
 
@@ -248,29 +244,22 @@ std::vector<GhostExchangeDesc> CartGrid::get_boundary_info()
 
 local_cell_index_type CartGrid::position_to_cell_index(Vec3d pos)
 {
-    Vec3i c;
+    using namespace util::vector_arithmetic;
+    const Vec3d relative_pos = pos - m_lowerleft;
 
-    for (int i = 0; i < 3; ++i) {
-        // Transform to process local coordinates
-        double tpos = pos[i] - m_lowerleft[i];
-        if (tpos < 0.0 || tpos >= m_localbox[i])
-            throw std::domain_error("Particle not in local box");
+    if (any(relative_pos < 0.0)
+        || any(relative_pos.as_expr() >= m_localbox.as_expr()))
+        throw std::domain_error("Particle not in local box");
 
-        c[i] = tpos * m_inv_cell_size[i] + 1; // +1 to skip the ghost cells
-    }
-    return linearize(c);
+    return linearize(static_cast_vec<Vec3i>(relative_pos * m_inv_cell_size)
+                     + 1); // +1 to skip the ghost cells
 }
 
 rank_type CartGrid::position_to_rank(Vec3d pos)
 {
-    Vec3i proc;
-    for (int i = 0; i < 3; ++i)
-        proc[i]
-            = static_cast<int>(pos[i] * m_inv_cell_size[i]) / m_grid_size[i];
-
-    int rank;
-    MPI_Cart_rank(comm_cart, proc.data(), &rank);
-    return rank;
+    using namespace util::vector_arithmetic;
+    return util::mpi_cart_rank(
+        comm_cart, static_cast_vec<Vec3i>(pos * m_inv_cell_size) / m_grid_size);
 }
 
 rank_index_type CartGrid::neighbor_idx(rank_type r)
@@ -278,7 +267,8 @@ rank_index_type CartGrid::neighbor_idx(rank_type r)
     // Search this rank in the local neighbor list and return its index
     // Use std::find here as 1) m_neighranks might not be sorted and 2) it has
     // at most 26 entries, so sequential search might not hurt that much.
-    auto it = std::find(std::begin(m_neighranks), std::end(m_neighranks), r);
+    const auto it
+        = std::find(std::begin(m_neighranks), std::end(m_neighranks), r);
     if (*it != r)
         throw std::domain_error("Rank not a neighbor.");
 
@@ -290,7 +280,7 @@ rank_index_type CartGrid::position_to_neighidx(Vec3d pos)
     // Determine the neighbor rank for locally known cell
     // Using position_to_rank here as it is the simpler code. Could also
     // search the neighboring cells of the cell where pos lies in.
-    auto rank = position_to_rank(pos);
+    const auto rank = position_to_rank(pos);
     return neighbor_idx(rank);
 }
 
@@ -301,13 +291,10 @@ Vec3d CartGrid::cell_size()
 
 Vec3i CartGrid::grid_size()
 {
-    Vec3i gs;
     // "m_grid_size" is the local number of cells.
     // Each process, however, has the same number of local cells per dimension.
-    for (size_t i = 0; i < gs.size(); ++i) {
-        gs[i] = m_grid_size[i] * node_grid[i];
-    }
-    return gs;
+    using namespace util::vector_arithmetic;
+    return m_grid_size * node_grid;
 }
 
 bool CartGrid::repartition(CellMetric m,
@@ -324,15 +311,14 @@ global_cell_index_type
 CartGrid::global_hash(local_or_ghost_cell_index_type cellidx)
 {
     // No need to define this away. Does currently not require extra data.
-    Vec3i idx3d = unlinearize(cellidx);
-    Vec3i dom = grid_size();
-    Vec3i offset;
+    using namespace util::vector_arithmetic;
 
-    for (size_t i = 0; i < idx3d.size(); ++i)
-        offset[i] = m_procgrid_pos[i] * m_grid_size[i] - 1; // -1 for ghosts
+    const Vec3i idx3d = unlinearize(cellidx);
+    const Vec3i whole_domain = grid_size();
+    const Vec3i prefix = m_procgrid_pos * m_grid_size - 1; // -1 for ghosts
+    const Vec3i glo3didx = (idx3d + prefix) % whole_domain;
 
-    auto glo3didx = util::vadd_mod(idx3d, offset, dom);
-    return util::linearize(glo3didx, dom);
+    return util::linearize(glo3didx, whole_domain);
 }
 
 } // namespace grids
