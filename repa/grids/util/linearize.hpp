@@ -25,44 +25,30 @@
 namespace repa {
 namespace util {
 
+namespace __impl {
 template <typename Ret, typename T1, typename T2>
-constexpr Ret linearize(const T1 *c, const T2 *grid) noexcept
+constexpr Ret linearize(const T1 &c, const T2 &grid) noexcept
 {
     // Cast in case "Ret" is a type capable of holding larger values than "T1"
     // or "T2".
     return (static_cast<Ret>(c[0]) * grid[1] + c[1]) * grid[2] + c[2];
 }
+} // namespace __impl
 
-template <typename Ret, typename T1, typename T2>
-constexpr Ret linearize(const Vec3<T1> &c, const Vec3<T2> &grid) noexcept
+template <typename T1, typename T2, size_t N, typename Expr1, typename Expr2>
+constexpr typename std::common_type<T1, T2>::type
+linearize(const VecExpression<T1, N, Expr1> &c,
+          const VecExpression<T2, N, Expr2> &grid) noexcept
 {
-    return linearize<Ret>(c.data(), grid.data());
+    return __impl::linearize<typename std::common_type<T1, T2>::type>(c, grid);
 }
 
-template <typename T>
-constexpr T linearize(const T *c, const T *grid) noexcept
-{
-    return ((c[0]) * grid[1] + c[1]) * grid[2] + c[2];
-}
-
-template <typename T>
-constexpr T linearize(const Vec3<T> &c, const Vec3<T> &grid) noexcept
-{
-    return linearize<T>(c.data(), grid.data());
-}
-
-template <typename Idx3d, typename Idx1d>
-constexpr Vec3<Idx3d> unlinearize(Idx1d cidx, const Vec3<Idx3d> &grid)
+template <typename Idx1d, typename Idx3d, size_t N, typename Expr>
+constexpr Vec3<Idx3d> unlinearize(Idx1d cidx, const VecExpression<Idx3d, N, Expr> &grid)
 {
     return Vec3<Idx3d>{static_cast<Idx3d>((cidx / grid[2]) / grid[1]),
                        static_cast<Idx3d>((cidx / grid[2]) % grid[1]),
                        static_cast<Idx3d>(cidx % grid[2])};
-}
-
-template <typename T>
-constexpr Vec3<T> unlinearize(T cidx, const Vec3<T> &grid)
-{
-    return unlinearize<T, T>(cidx, grid);
 }
 
 } // namespace util
