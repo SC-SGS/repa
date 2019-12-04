@@ -102,13 +102,9 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         break;
     }
 
-    if (r) {
-        r->after_construction();
-        return r;
-    }
-    else {
-        throw std::runtime_error("Did not construct a grid?");
-    }
+    assert(r);
+    r->after_construction();
+    return r;
 }
 } // namespace
 } // namespace grids

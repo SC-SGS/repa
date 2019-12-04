@@ -400,12 +400,8 @@ bool GridBasedGrid::repartition(CellMetric m,
     // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
     rank_index_type nneigh = util::mpi_undirected_neighbor_count(neighcomm);
 
-    auto weights = m();
-    if (weights.size() != n_local_cells()) {
-        throw std::runtime_error(
-            "Metric only supplied " + std::to_string(weights.size())
-            + "weights. Necessary: " + std::to_string(n_local_cells()));
-    }
+    const auto weights = m();
+    assert(weights.size() == n_local_cells());
     double lambda_p
         = std::accumulate(std::begin(weights), std::end(weights), 0.0);
     auto r_p = this->subdomain_midpoint();

@@ -487,12 +487,8 @@ rank_index_type KDTreeGrid::position_to_neighidx(Vec3d pos)
 bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
 {
     UNUSED(ccm);
-    auto weights = m();
-    if (weights.size() != n_local_cells()) {
-        throw std::runtime_error(
-            "Metric only supplied " + std::to_string(weights.size())
-            + "weights. Necessary: " + std::to_string(n_local_cells()));
-    }
+    const auto weights = m();
+    assert(weights.size() == n_local_cells());
 
     m_kdtree = repart_parttree_par(m_kdtree, comm_cart, m());
     cb();

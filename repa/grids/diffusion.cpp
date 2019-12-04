@@ -118,12 +118,8 @@ void Diffusion::clear_unknown_cell_ownership()
 
 bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 {
-    auto cellweights = m();
-    if (cellweights.size() != n_local_cells()) {
-        throw std::runtime_error(
-            "Metric only supplied " + std::to_string(cellweights.size())
-            + "weights. Necessary: " + std::to_string(n_local_cells()));
-    }
+    const auto cellweights = m();
+    assert(cellweights.size() == n_local_cells());
 
     clear_unknown_cell_ownership();
 

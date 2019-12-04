@@ -72,12 +72,8 @@ Graph::~Graph()
 bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 {
     static constexpr idx_t w_fac = 100;
-    auto vertex_weights = m();
-    if (vertex_weights.size() != n_local_cells()) {
-        throw std::runtime_error(
-            "Metric only supplied " + std::to_string(vertex_weights.size())
-            + "weights. Necessary: " + std::to_string(n_local_cells()));
-    }
+    const auto vertex_weights = m();
+    assert(vertex_weights.size() == n_local_cells());
 
     idx_t nglocells = static_cast<idx_t>(gbox.ncells());
     idx_t ncells_per_proc = static_cast<idx_t>(

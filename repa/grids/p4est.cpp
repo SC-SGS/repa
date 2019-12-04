@@ -282,8 +282,7 @@ void P4estGrid::create_grid()
                                      p8est_mesh.get(), i, n, NULL, NULL,
                                      ni.get());
             // Fully periodic, regular grid.
-            if (ni->elem_count != 1)
-                throw std::runtime_error("Error in neighborhood search.");
+            assert(ni->elem_count == 1);
 
             int neighrank = *(int *)sc_array_index_int(ni.get(), 0);
             m_p8est_shell[i].neighbor[n] = neighrank;
@@ -359,11 +358,10 @@ void P4estGrid::prepare_communication()
     rank_index_type num_comm_proc = 0;
     std::vector<rank_index_type> comm_proc(comm_cart.size(), -1);
     for (rank_type i = 0; i < comm_cart.size(); ++i) {
-        if (send_idx[i].size() != 0 && recv_idx[i].size() != 0)
+        if (!send_idx[i].empty()&& !recv_idx[i].empty())
             comm_proc[i] = num_comm_proc++;
-        else if (!(send_idx[i].size() == 0 && recv_idx[i].size() == 0))
-            throw std::runtime_error(
-                "Unexpected mismatch in send and receive lists.\n");
+        else
+            assert(send_idx[i].empty() && recv_idx[i].empty());
     }
 
     // Assemble ghost exchange descriptors
@@ -411,8 +409,7 @@ rank_index_type P4estGrid::n_neighbors()
 
 rank_type P4estGrid::neighbor_rank(rank_index_type i)
 {
-    if (i < 0 || i > n_neighbors())
-        throw std::domain_error("Neighbor rank out of bounds.");
+    assert(i >= 0 && i < n_neighbors());
     return m_neighranks[i];
 }
 
@@ -513,12 +510,8 @@ bool P4estGrid::repartition(CellMetric m,
     // partition the grid uniformly.
     m_repartstate.reset();
 
-    const std::vector<double> weights = m();
-    if (weights.size() != n_local_cells()) {
-        throw std::runtime_error(
-            "Metric only supplied " + std::to_string(weights.size())
-            + "weights. Necessary: " + std::to_string(n_local_cells()));
-    }
+    const auto weights = m();
+    assert(weights.size() == n_local_cells());
 
     // Determine prefix and target load
     const double localsum
