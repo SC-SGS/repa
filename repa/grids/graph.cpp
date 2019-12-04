@@ -29,9 +29,9 @@
 #include <parmetis.h>
 
 #include "util/all_gatherv.hpp"
+#include "util/initial_partitioning.hpp"
 #include "util/push_back_unique.hpp"
 #include "util/vector_coerce.hpp"
-#include "util/initial_partitioning.hpp"
 
 #define MPI_IDX_T boost::mpi::get_mpi_datatype(static_cast<idx_t>(0))
 
@@ -157,18 +157,9 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
         // Catch total weight sum overlow
         wsum += std::accumulate(std::begin(w), std::end(w),
                                 static_cast<idx_t>(0));
-        if (wsum > std::numeric_limits<idx_t>::max() / comm_cart.size()) {
-            std::fprintf(stderr,
-                         "Warning: Graph weights are too large for chosen "
-                         "index type width.\n");
-            if (w_fac > 1)
-                std::fprintf(stderr,
-                             "- Try to reduce the weight factor in graph.cpp.");
-            if (IDXTYPEWIDTH == 32)
-                std::fprintf(stderr, "- Recompile a 64bit ParMETIS as this "
-                                     "version only uses 32bit.");
-            errexit();
-        }
+        production_assert(
+            wsum < std::numeric_limits<idx_t>::max() / comm_cart.size(),
+            "Graph weights too large for chosen Metis IDX_TYPE_WIDTH");
     }
 
     for (rank_type i = 0; i < comm_cart.size(); ++i) {
@@ -274,18 +265,12 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     idx_t edgecut;
     std::vector<idx_t> part(nvtx, static_cast<idx_t>(UNKNOWN_RANK));
 
-    if (ParMETIS_V3_PartKway(vtxdist.data(), xadj.data(), adjncy.data(),
-                             vwgt.data(), adjwgt.data(), &wgtflag, &numflag,
-                             &ncon, &nparts, tpwgts.data(), &ubvec, options,
-                             &edgecut, part.data(), &communicator)
-        != METIS_OK) {
-        if (comm_cart.rank() == 0) {
-            std::fprintf(
-                stderr,
-                "Error when graph partitioning: ParMETIS returned error.\n");
-            errexit();
-        }
-    }
+    auto metis_ret = ParMETIS_V3_PartKway(
+        vtxdist.data(), xadj.data(), adjncy.data(), vwgt.data(), adjwgt.data(),
+        &wgtflag, &numflag, &ncon, &nparts, tpwgts.data(), &ubvec, options,
+        &edgecut, part.data(), &communicator);
+    production_assert(metis_ret == METIS_OK,
+                      "ParMETIS_V3_PartKway returned error.");
 
     // Copy idx_t to rank. Avoid copying if idx_t and rank are the same types.
     auto parti = util::coerce_vector_to<rank_type>(part);
@@ -299,8 +284,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 #endif
 
 #ifdef GRAPH_DEBUG
-    std::fill(std::begin(partition), std::end(partition),
-              UNKNOWN_RANK);
+    std::fill(std::begin(partition), std::end(partition), UNKNOWN_RANK);
 #endif
 
     util::all_gatherv_displ(comm_cart, parti.cref(), vtxdist, partition);

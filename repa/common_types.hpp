@@ -23,10 +23,10 @@
 #include <cassert>
 #include <exception>
 #include <functional>
+#include <numeric>
 #include <sstream>
 #include <type_traits>
 #include <vector>
-#include <numeric>
 
 #include <boost/serialization/array.hpp>
 
@@ -72,6 +72,27 @@ __t_assert__fail(const char *expr, const char *file, int line, const char *func)
                              : repa::tassert::__t_assert__fail(                \
                                    #expr, __FILE__, __LINE__, __func__))
 #endif
+
+namespace __production_assert_impl {
+[[noreturn]] inline void __production_assert_fail(const char *expr,
+                                                  const char *file,
+                                                  int line,
+                                                  const char *func,
+                                                  const char *msg)
+{
+    std::printf("Production code assertion error: `%s' in %s:%d "
+                "(%s): %s",
+                expr, file, line, func, msg);
+    std::abort();
+}
+} // namespace __production_assert_impl
+
+// Production code assert (*not* compiled in case NDEBUG is set)
+#define production_assert(expr, msg)                                           \
+    (static_cast<bool>(expr)                                                   \
+         ? (void)0                                                             \
+         : __production_assert_impl::__production_assert_fail(                 \
+               #expr, __FILE__, __LINE__, __func__, msg))
 
 /** Base type for Expression Templates in vec_arith.hpp
  */
