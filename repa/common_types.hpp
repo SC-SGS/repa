@@ -26,6 +26,7 @@
 #include <sstream>
 #include <type_traits>
 #include <vector>
+#include <numeric>
 
 #include <boost/serialization/array.hpp>
 
@@ -126,7 +127,7 @@ struct Vec : VecExpression<T, N, Vec<T, N>> {
     }
 
     template <typename Expr>
-    constexpr Vec& operator=(const VecExpression<T, N, Expr> &e)
+    constexpr Vec &operator=(const VecExpression<T, N, Expr> &e)
     {
         for (size_type i = 0; i < N; ++i) {
             m_data[i] = e[i];
@@ -247,6 +248,14 @@ struct Vec : VecExpression<T, N, Vec<T, N>> {
     {
         assert(i >= 0 && i < N);
         return m_data[i];
+    }
+
+    template <typename BinaryOp>
+    T foldl(BinaryOp &&f)
+    {
+        static_assert(N > 0, "Vec::fold() requires actual elements");
+        return std::accumulate(std::next(cbegin()), cend(), *cbegin(),
+                               std::forward<BinaryOp>(f));
     }
 
     constexpr bool operator==(const Vec &other) const

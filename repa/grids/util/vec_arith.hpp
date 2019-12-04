@@ -112,6 +112,7 @@ DEFINE_VEC_OP(VecMult, VecMultLiteral, *)
 DEFINE_VEC_OP(VecDiv, VecDivLiteral, /)
 DEFINE_VEC_OP(VecLAnd, VecLAndLiteral, &&)
 DEFINE_VEC_OP(VecLOr, VecLOrLiteral, ||)
+DEFINE_VEC_OP(VecRightShift, VecRightShiftLiteral, >>)
 
 // Division with literal first (1.0 / x)
 template <typename T, size_t N, typename Expr1>
@@ -130,7 +131,6 @@ private:
     const Expr1 &_e1;
 };
 
-/* Vec OP constant */
 template <typename T1,
           typename T2,
           size_t N,
@@ -141,6 +141,36 @@ constexpr LiteralDivVec<typename std::common_type<T1, T2>::type, N, Expr1>
 operator/(const T2 &b, const VecExpression<T1, N, Expr1> &a)
 {
     return LiteralDivVec<typename std::common_type<T1, T2>::type, N, Expr1>{
+        b, *static_cast<const Expr1 *>(&a)};
+}
+
+// Shift 1 << vec
+template <typename T, size_t N, typename Expr1>
+struct LiteralLeftShiftVec : public VecExpression<T, N, LiteralLeftShiftVec<T, N, Expr1>> {
+    constexpr LiteralLeftShiftVec(const T &val, const Expr1 &e1) : _val(val), _e1(e1)
+    {
+    }
+
+    constexpr T operator[](size_t i) const
+    {
+        return _val << _e1[i];
+    }
+
+private:
+    T _val;
+    const Expr1 &_e1;
+};
+
+template <typename T1,
+          typename T2,
+          size_t N,
+          typename Expr1,
+          typename
+          = typename std::enable_if<std::is_arithmetic<T2>::value>::type>
+constexpr LiteralLeftShiftVec<typename std::common_type<T1, T2>::type, N, Expr1>
+operator<<(const T2 &b, const VecExpression<T1, N, Expr1> &a)
+{
+    return LiteralLeftShiftVec<typename std::common_type<T1, T2>::type, N, Expr1>{
         b, *static_cast<const Expr1 *>(&a)};
 }
 

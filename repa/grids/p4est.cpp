@@ -21,6 +21,7 @@
 
 #include <numeric>
 
+#include <functional>
 #include <p8est_algorithms.h>
 #include <p8est_bits.h>
 #include <p8est_extended.h>
@@ -29,6 +30,7 @@
 
 #include "_compat.hpp"
 #include "util/neighbor_offsets.hpp"
+#include "util/vec_arith.hpp"
 
 #ifdef __BMI2__
 #include <x86intrin.h>
@@ -79,7 +81,7 @@ static inline int count_trailing_zeros(int x)
  * X left / X right / Y left / Y right / Z left / Z right
  * Ordering: LSB ... MSB
  */
-static int local_boundary_bitset(Vec3i idx, const Vec3i &grid_size)
+static int local_boundary_bitset(const Vec3i &idx, const Vec3i &grid_size)
 {
     int ret = 0;
     for (int i = 0; i < 3; ++i) {
@@ -125,19 +127,15 @@ static global_cell_index_type cell_morton_idx(Vec3i idx)
 static global_cell_index_type pos_morton_idx(Vec3d pos,
                                              const Vec3d &inv_cell_size)
 {
-    const Vec3i idx{static_cast<Vec3i::value_type>(pos[0] * inv_cell_size[0]),
-                    static_cast<Vec3i::value_type>(pos[1] * inv_cell_size[1]),
-                    static_cast<Vec3i::value_type>(pos[2] * inv_cell_size[2])};
-    return impl::cell_morton_idx(idx);
+    using namespace util::vector_arithmetic;
+    return impl::cell_morton_idx(static_cast_vec<Vec3i>(pos * inv_cell_size));
 }
 
 static inline Vec3i coord_to_cellindex(Vec3d coord, int tree_level)
 {
-    int scaling = 1 << tree_level;
-    Vec3i idx;
-    for (size_t i = 0; i < 3; ++i)
-        idx[i] = coord[i] * scaling;
-    return idx;
+    using namespace util::vector_arithmetic;
+    const int scaling = 1 << tree_level;
+    return static_cast_vec<Vec3i>(coord * static_cast<double>(scaling));
 }
 
 /** Scale coordinate coord, where 0.0 <= coord[i] < 1.0
@@ -146,10 +144,37 @@ static inline Vec3i coord_to_cellindex(Vec3d coord, int tree_level)
  */
 static inline Vec3i coord_to_cellindex(Vec3d coord, const Vec3i &tree_level)
 {
-    Vec3i idx;
-    for (size_t i = 0; i < 3; ++i)
-        idx[i] = coord[i] * (1 << tree_level[i]);
-    return idx;
+    using namespace util::vector_arithmetic;
+    return static_cast_vec<Vec3i>(coord * (1 << tree_level));
+}
+
+template <typename T>
+T virtual_regular_grid_end(T grid_level, const Vec3<T> &grid_size)
+{
+    // Next largest power of 2
+    using namespace repa::util::vector_arithmetic;
+    T gs = 1 << grid_level;
+    while (any(grid_size > gs))
+        gs <<= 1;
+    return gs * gs * gs;
+}
+
+static Vec3d quadrant_to_coords(const p8est_quadrant_t *q,
+                                p8est_connectivity_t *p8est_conn)
+{
+    Vec3d xyz;
+    p8est_qcoord_to_vertex(p8est_conn, q->p.which_tree, q->x, q->y, q->z,
+                           xyz.data());
+    return xyz;
+}
+
+static Vec3d quadrant_to_coords(const p8est_quadrant_t *q,
+                                p8est_connectivity_t *p8est_conn,
+                                p4est_topidx_t tree_id)
+{
+    Vec3d xyz;
+    p8est_qcoord_to_vertex(p8est_conn, tree_id, q->x, q->y, q->z, xyz.data());
+    return xyz;
 }
 
 } // namespace impl
@@ -157,23 +182,20 @@ static inline Vec3i coord_to_cellindex(Vec3d coord, const Vec3i &tree_level)
 // Compute the grid- and bricksize according to box_l and maxrange
 void P4estGrid::set_optimal_cellsize()
 {
+    using namespace util::vector_arithmetic;
     // Compute number of cells and the cell size
-    for (size_t i = 0; i < 3; ++i) {
-        if (max_range > ROUND_ERROR_PREC * box_l[i])
-            m_grid_size[i]
-                = std::max<Vec3i::value_type>(box_l[i] / max_range, 1);
-        else
-            m_grid_size[i] = 1;
+    if (max_range > ROUND_ERROR_PREC * box_l[0])
+        m_grid_size = static_cast_vec<Vec3i>(box_l / max_range);
+    else
+        m_grid_size = constant_vec3(1);
 
-        m_cell_size[i] = box_l[i] / m_grid_size[i];
-        m_inv_cell_size[i] = 1.0 / m_cell_size[i];
-    }
+    m_cell_size = box_l / m_grid_size;
+    m_inv_cell_size = 1.0 / m_cell_size;
 
     // Set number of trees to biggest common power of 2 of all dimensions
-    m_grid_level = impl::count_trailing_zeros(m_grid_size[0] | m_grid_size[1]
-                                              | m_grid_size[2]);
-    for (size_t i = 0; i < 3; ++i)
-        m_brick_size[i] = m_grid_size[i] >> m_grid_level;
+    m_grid_level
+        = impl::count_trailing_zeros(m_grid_size.foldl(std::bit_or<>{}));
+    m_brick_size = m_grid_size >> m_grid_level;
 }
 
 void P4estGrid::create_grid()
@@ -197,21 +219,18 @@ void P4estGrid::create_grid()
     // Assemble this as early as possible as it is necessary for
     // position_to_rank. As soon as this information is ready, we can start
     // migrating particles.
-    m_node_first_cell_idx.resize(comm_cart.size() + 1);
+    m_node_first_cell_idx.clear();
+    m_node_first_cell_idx.reserve(comm_cart.size() + 1);
     for (int i = 0; i < comm_cart.size(); ++i) {
-        p8est_quadrant_t *q = &m_p8est->global_first_position[i];
-        Vec3d xyz;
-        p8est_qcoord_to_vertex(m_p8est_conn.get(), q->p.which_tree, q->x, q->y,
-                               q->z, xyz.data());
-        m_node_first_cell_idx[i] = impl::cell_morton_idx(
-            impl::coord_to_cellindex(xyz, m_grid_level));
+        m_node_first_cell_idx.push_back(
+            impl::cell_morton_idx(impl::coord_to_cellindex(
+                impl::quadrant_to_coords(&m_p8est->global_first_position[i],
+                                         m_p8est_conn.get()),
+                m_grid_level)));
     }
-
-    // Total number of quads
-    int tmp = 1 << m_grid_level;
-    while (tmp < m_grid_size[0] || tmp < m_grid_size[1] || tmp < m_grid_size[2])
-        tmp <<= 1;
-    m_node_first_cell_idx[comm_cart.size()] = tmp * tmp * tmp;
+    // Total number of quads of the virtual regular grid
+    m_node_first_cell_idx.push_back(
+        impl::virtual_regular_grid_end(m_grid_level, m_grid_size));
 
     if (m_repartstate.after_repart)
         m_repartstate.exchange_start_callback();
@@ -223,7 +242,7 @@ void P4estGrid::create_grid()
 
     m_num_local_cells = m_p8est->local_num_quadrants;
     m_num_ghost_cells = p8est_ghost->ghosts.elem_count;
-    local_or_ghost_cell_index_type num_cells
+    const local_or_ghost_cell_index_type num_cells
         = m_num_local_cells + m_num_ghost_cells;
 
     std::unique_ptr<sc_array_t> ni
@@ -235,19 +254,18 @@ void P4estGrid::create_grid()
 #endif
     m_p8est_shell.reserve(num_cells);
     for (local_cell_index_type i = 0; i < m_num_local_cells; ++i) {
-        p8est_quadrant_t *q = p8est_mesh_get_quadrant(
-            m_p8est.get(), p8est_mesh.get(), static_cast<p4est_locidx_t>(i));
-        Vec3d xyz;
-        p8est_qcoord_to_vertex(m_p8est_conn.get(), p8est_mesh->quad_to_tree[i],
-                               q->x, q->y, q->z, xyz.data());
+        const Vec3d xyz = impl::quadrant_to_coords(
+            p8est_mesh_get_quadrant(m_p8est.get(), p8est_mesh.get(),
+                                    static_cast<p4est_locidx_t>(i)),
+            m_p8est_conn.get(), p8est_mesh->quad_to_tree[i]);
 
-        Vec3i idx = impl::coord_to_cellindex(
+        const Vec3i idx = impl::coord_to_cellindex(
             xyz,
             p8est_tree_array_index(m_p8est->trees, p8est_mesh->quad_to_tree[i])
                 ->maxlevel);
 
         // Cell on domain boundaries?
-        int bndry = impl::local_boundary_bitset(idx, m_grid_size);
+        const int bndry = impl::local_boundary_bitset(idx, m_grid_size);
         m_p8est_shell.emplace_back(i, comm_cart.rank(),
                                    bndry ? impl::CellType::boundary
                                          : impl::CellType::inner,
@@ -280,13 +298,10 @@ void P4estGrid::create_grid()
 
     // Collect info about ghost cells
     for (ghost_cell_index_type g = 0; g < m_num_ghost_cells; ++g) {
-        p8est_quadrant_t *q
+        const p8est_quadrant_t *q
             = p8est_quadrant_array_index(&p8est_ghost->ghosts, g);
-        Vec3d xyz;
-        p8est_qcoord_to_vertex(m_p8est_conn.get(), q->p.piggy3.which_tree, q->x,
-                               q->y, q->z, xyz.data());
-
-        Vec3i idx = impl::coord_to_cellindex(
+        const Vec3d xyz = impl::quadrant_to_coords(q, m_p8est_conn.get(), q->p.piggy3.which_tree);
+        const Vec3i idx = impl::coord_to_cellindex(
             xyz, p8est_tree_array_index(m_p8est->trees, q->p.piggy3.which_tree)
                      ->maxlevel);
 
@@ -302,7 +317,7 @@ void P4estGrid::create_grid()
 
 void P4estGrid::prepare_communication()
 {
-    local_or_ghost_cell_index_type num_cells
+    const local_or_ghost_cell_index_type num_cells
         = n_local_cells() + n_ghost_cells();
     // List of cell indices for each process for send/recv
     std::vector<std::vector<local_cell_index_type>> send_idx(comm_cart.size());
@@ -412,8 +427,7 @@ P4estGrid::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
             // Rest (Full-shell \ Half-shell)
             0, 2, 4, 6, 7, 10, 11, 14, 15, 18, 19, 20, 21}};
 
-    if (cellidx < 0 || cellidx >= n_local_cells())
-        throw std::domain_error("Cell index outside of local subdomain");
+    assert(cellidx >= 0 && cellidx < n_local_cells());
 
     if (util::neighbor_type(neigh) == util::NeighborCellType::SELF)
         return cellidx;
@@ -499,7 +513,7 @@ bool P4estGrid::repartition(CellMetric m,
     // partition the grid uniformly.
     m_repartstate.reset();
 
-    std::vector<double> weights = m();
+    const std::vector<double> weights = m();
     if (weights.size() != n_local_cells()) {
         throw std::runtime_error(
             "Metric only supplied " + std::to_string(weights.size())
@@ -507,12 +521,12 @@ bool P4estGrid::repartition(CellMetric m,
     }
 
     // Determine prefix and target load
-    double localsum
+    const double localsum
         = std::accumulate(std::begin(weights), std::end(weights), 0.0);
     double sum, prefix = 0; // Initialization is necessary on rank 0!
     MPI_Allreduce(&localsum, &sum, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
     MPI_Exscan(&localsum, &prefix, 1, MPI_DOUBLE, MPI_SUM, comm_cart);
-    double target = sum / comm_cart.size();
+    const double target = sum / comm_cart.size();
 
     // Determine new process boundaries in local subdomain
     // Evaluated for its side effect of setting part_nquads.
@@ -530,17 +544,7 @@ bool P4estGrid::repartition(CellMetric m,
     //       Global reshifting (i.e. stealing from someone else than the direct
     //       neighbors) is not a good idea since it globally changes the metric.
     //       Anyways, this is most likely due to a bad quad/proc quotient.
-    if (m_repartstate.nquads_per_proc[comm_cart.rank()] == 0) {
-        fprintf(
-            stderr,
-            "[%i] No quads assigned to me. Cannot guarantee to work. Exiting\n",
-            comm_cart.rank());
-        fprintf(stderr,
-                "[%i] Try changing the metric or reducing the number of "
-                "processes\n",
-                comm_cart.rank());
-        errexit();
-    }
+    assert(m_repartstate.nquads_per_proc[comm_cart.rank()] > 0);
 
     // Reinitialize the grid and prepare its internal datastructures for
     // querying by generic_dd.

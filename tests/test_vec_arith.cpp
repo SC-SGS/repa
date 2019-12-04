@@ -77,6 +77,14 @@ void check_binary_assignment_ops_literal()
     BOOST_CHECK((v == Vec3i{7, 9, -21}));
 }
 
+void check_shift()
+{
+    Vec3i v{7, 9, 12}, x{1, 2, 3};
+    Vec3i w = v >> 1, y = 1 << x;
+    BOOST_CHECK((w == Vec3i{3, 4, 6}));
+    BOOST_CHECK((y == Vec3i{2, 4, 8}));
+}
+
 void check_unary()
 {
     const Vec3i v{7, 9, -21};
@@ -145,6 +153,7 @@ BOOST_AUTO_TEST_CASE(test_vec_arith)
     check_binary_ops_literal();
     check_binary_assignment_ops();
     check_binary_assignment_ops_literal();
+    check_shift();
     check_unary();
     check_expression_capture();
     check_cast();
