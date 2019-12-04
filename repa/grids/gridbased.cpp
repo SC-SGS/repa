@@ -24,7 +24,6 @@
 #include <boost/mpi/collectives.hpp>
 #include <regex>
 
-#include "util/ensure.hpp"
 #include "util/mpi_cart.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/push_back_unique.hpp"
@@ -182,7 +181,7 @@ void GridBasedGrid::reinit()
 #ifdef GRID_DEBUG
     printf("[%i] nlocalcells: %i\n", comm_cart.rank(), nlocalcells);
 #endif
-    ENSURE(nlocalcells > 0);
+    assert(nlocalcells > 0);
 
     exchange_vec.resize(neighbor_ranks.size());
     // Determine ghost cells and communication volume
@@ -216,7 +215,7 @@ void GridBasedGrid::reinit()
 
 #ifdef GRID_DEBUG
     printf("[%i] nghostcells: %i\n", comm_cart.rank(), nghostcells);
-    ENSURE(comm_cart.size() == 1 || nghostcells > 0);
+    assert(comm_cart.size() == 1 || nghostcells > 0);
 #endif
 
     // All neighbors must be communicated with, otherwise something went wrong.
@@ -239,7 +238,7 @@ void GridBasedGrid::reinit()
         std::end(exchange_vec));
 
     for (auto &v : exchange_vec) {
-        ENSURE(v.dest != -1);
+        assert(v.dest != -1);
 
         std::sort(std::begin(v.recv), std::end(v.recv));
         std::transform(std::begin(v.recv), std::end(v.recv), std::begin(v.recv),
@@ -474,7 +473,7 @@ bool GridBasedGrid::repartition(CellMetric m,
     auto old_gridpoints = gridpoints;
     gridpoints.clear();
     boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
-    ENSURE(gridpoints.size() == comm_cart.size());
+    assert(gridpoints.size() == comm_cart.size());
 
     // Check for admissibility of new grid.
     // We do not constrain the grid cells to be convex.
@@ -498,7 +497,7 @@ bool GridBasedGrid::repartition(CellMetric m,
     if (nconflicts > 0) {
         std::cout << "Gridpoint update rejected because of node conflicts."
                   << std::endl;
-        ENSURE(0);
+        assert(0);
         gridpoints = old_gridpoints;
         gridpoint = gridpoints[comm_cart.rank()];
         return false;

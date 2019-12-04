@@ -24,7 +24,6 @@
 #include <boost/serialization/vector.hpp>
 #include <numeric>
 
-#include "util/ensure.hpp"
 #include "util/fill.hpp"
 #include "util/initial_partitioning.hpp"
 #include "util/mpi_graph.hpp"
@@ -135,7 +134,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     std::vector<double> send_volume
         = compute_send_volume(local_load);
 #ifdef DIFFUSION_DEBUG
-    ENSURE(send_volume.size() == neighbors.size());
+    assert(send_volume.size() == neighbors.size());
 #endif
 
     PerNeighbor<GlobalCellIndices> toSend(neighbors.size());
@@ -215,7 +214,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     MPI_Allreduce(MPI_IN_PLACE, p2.data(), p2.size(), MPI_INT, MPI_MAX,
                   comm_cart);
     for (auto el : p2)
-        ENSURE(el != UNKNOWN_RANK);
+        assert(el != UNKNOWN_RANK);
 #endif
 
     // Remove ranks from "toSend", again.
@@ -254,7 +253,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 
         for (int j = 0; j < 27; ++j) {
             global_cell_index_type n = gbox.neighbor(i, j);
-            ENSURE(partition[n] != UNKNOWN_RANK);
+            assert(partition[n] != UNKNOWN_RANK);
         }
     }
 #endif
@@ -308,7 +307,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
             }
         }
 #ifdef DIFFUSION_DEBUG
-        ENSURE(nadditional_comm < 27);
+        assert(nadditional_comm < 27);
 #endif
 
         if (profit > 0)
