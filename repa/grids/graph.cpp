@@ -69,7 +69,6 @@ Graph::~Graph()
  * that corresponds to the cell.
  * Partitioning is performed in parallel via ParMETIS.
  */
-
 bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 {
     static constexpr idx_t w_fac = 100;
