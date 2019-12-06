@@ -34,35 +34,22 @@ namespace grids {
 namespace impl {
 
 enum class CellType { inner = 0, boundary = 1, ghost = 2 };
-struct LocalShell {
-    global_cell_index_type
-        idx; // a unique index within all cells (as used by p8est for locals)
-    rank_type which_proc; // the rank of this cell (equals this_node for locals)
-    CellType shell; // shell information (0: inner local cell, 1: boundary local
-                    // cell, 2: ghost cell)
-    int boundary;   // Bit mask storing boundary info. MSB ...
-                    // z_r,z_l,y_r,y_l,x_r,x_l LSB Cells with shell-type 0 or
-                    // those located within the domain are always 0 Cells with
-                    // shell-type 1 store information about which face is a
-    // boundary Cells with shell-type 2 are set if the are in the
-    // periodic halo
+struct CellInfo {
+    const rank_type
+        owner_rank;     // the rank of this cell (equals this_node for locals)
+    CellType cell_type; // shell information (0: inner local cell, 1: boundary
+                        // local cell, 2: ghost cell)
+                        // boundary Cells with shell-type 2 are set if the are
+                        // in the periodic halo
     std::array<int, 26>
         neighbor; // unique index of the fullshell neighborhood cells (as in
                   // p8est); only 26 because cell itself is not included.
-    Vec3i coord;  // cartesian coordinates of the cell
+    const Vec3i coord; // cartesian coordinates of the cell
+                       // For a globally unique index (on a virtual regular
+                       // grid) call impl::cell_morton_index(coord).
 
-    LocalShell(global_cell_index_type idx,
-               rank_type rank,
-               CellType shell,
-               int boundary,
-               int x,
-               int y,
-               int z)
-        : idx(idx),
-          which_proc(rank),
-          shell(shell),
-          boundary(boundary),
-          coord(x, y, z)
+    CellInfo(rank_type rank, CellType shell, const Vec3i &coord)
+        : owner_rank(rank), cell_type(shell), coord(coord)
     {
         neighbor.fill(-1);
     }
@@ -121,13 +108,15 @@ private:
     ghost_cell_index_type m_num_ghost_cells;
 
     // helper data structures
-    std::vector<global_cell_index_type> m_node_first_cell_idx;
-    std::vector<impl::LocalShell> m_p8est_shell;
+    std::vector<global_cell_index_type>
+        m_node_first_cell_idx; // First morton index on a virtual regular grid
+                               // spanning all processes.
 #ifdef GLOBAL_HASH_NEEDED
     std::vector<global_cell_index_type>
         m_global_idx; //< Global virtual morton index of cells (for
                       // global_hash()) could be removed in non-test builds.
 #endif
+    std::vector<impl::CellInfo> m_p8est_cell_info; //< Raw cell info from p4est
 
     // comm data structures
     std::vector<GhostExchangeDesc> m_exdescs;
