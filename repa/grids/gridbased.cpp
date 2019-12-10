@@ -24,11 +24,11 @@
 #include <boost/mpi/collectives.hpp>
 #include <regex>
 
-#include "util/ensure.hpp"
 #include "util/mpi_cart.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/push_back_unique.hpp"
 #include "util/vdist.hpp"
+#include "util/vec_arith.hpp"
 
 #ifndef NDEBUG
 #define GRID_DEBUG
@@ -62,26 +62,15 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
     for (off[0] = 0; off[0] <= 1; ++off[0]) {
         for (off[1] = 0; off[1] <= 1; ++off[1]) {
             for (off[2] = 0; off[2] <= 1; ++off[2]) {
-                Vec3i nc, mirror{0, 0, 0};
-
-                for (int d = 0; d < 3; ++d) {
-                    nc[d] = coord[d] - off[d];
-
-                    // Periodically wrap to the correct processor
-                    // and save the wrapping to correct the grid point later.
-                    // Can only happen in negative direction.
-                    if (nc[d] < 0) {
-                        nc[d] = dims[d] - 1;
-                        mirror[d] = -1;
-                    }
-                }
-
+                using namespace util::vector_arithmetic;
+                Vec3i nc = (coord - off) % dims;
                 rank_type proc = util::mpi_cart_rank(comm_cart, nc);
 
                 // Mirror the gridpoint back to where this subdomain is
                 // expecting it.
-                for (int d = 0; d < 3; ++d)
-                    result[i][d] = gridpoints[proc][d] + mirror[d] * box_l[d];
+                const Vec3i mirror
+                    = -static_cast_vec<Vec3i>((coord == 0) && (off == 1));
+                result[i] = gridpoints[proc] + mirror * box_l;
                 i++;
             }
         }
@@ -93,9 +82,8 @@ void GridBasedGrid::init_partitioning()
 {
     is_regular_grid = true;
 
-    // Copy data from grid.hpp
-    for (int d = 0; d < 3; ++d)
-        gridpoint[d] = (node_pos[d] + 1) * (box_l[d] / node_grid[d]);
+    using namespace util::vector_arithmetic;
+    gridpoint = (node_pos + 1) * (box_l / node_grid);
 
     init_neighbors();
     init_octagons();
@@ -116,18 +104,8 @@ void GridBasedGrid::init_neighbors()
     for (off[0] = -1; off[0] <= 1; ++off[0]) {
         for (off[1] = -1; off[1] <= 1; ++off[1]) {
             for (off[2] = -1; off[2] <= 1; ++off[2]) {
-                Vec3i nc;
-
-                for (int d = 0; d < 3; ++d) {
-                    nc[d] = coord[d] + off[d];
-
-                    // Periodic wrap
-                    if (nc[d] < 0)
-                        nc[d] = dims[d] - 1;
-                    else if (nc[d] == dims[d])
-                        nc[d] = 0;
-                }
-
+                using namespace util::vector_arithmetic;
+                const Vec3i nc = (coord + off) % dims;
                 rank_type r = util::mpi_cart_rank(comm_cart, nc);
 
                 // Insert "r" as a new neighbor if yet unseen.
@@ -140,9 +118,9 @@ void GridBasedGrid::init_neighbors()
                     nneigh++;
                 }
 
-                if (off[0] >= 0 && off[1] >= 0 && off[2] >= 0)
+                if (all(off >= 0))
                     util::push_back_unique(source_neigh, r);
-                if (off[0] <= 0 && off[1] <= 0 && off[2] <= 0)
+                if (all(off <= 0))
                     util::push_back_unique(dest_neigh, r);
             }
         }
@@ -155,8 +133,8 @@ void GridBasedGrid::init_neighbors()
 
     source_neigh.push_back(comm_cart.rank());
     dest_neigh.push_back(comm_cart.rank());
-    neighcomm
-        = util::directed_graph_communicator(comm_cart, source_neigh, dest_neigh);
+    neighcomm = util::directed_graph_communicator(comm_cart, source_neigh,
+                                                  dest_neigh);
 }
 
 void GridBasedGrid::init_octagons()
@@ -167,11 +145,10 @@ void GridBasedGrid::init_octagons()
 
     neighbor_doms.clear();
     neighbor_doms.reserve(neighbor_ranks.size());
-
-    for (size_t i = 0; i < neighbor_ranks.size(); ++i) {
-        neighbor_doms.push_back(
-            util::tetra::Octagon(bounding_box(neighbor_ranks[i])));
-    }
+    std::transform(std::begin(neighbor_ranks), std::end(neighbor_ranks),
+                   std::back_inserter(neighbor_doms), [this](rank_type r) {
+                       return util::tetra::Octagon(bounding_box(r));
+                   });
 }
 
 void GridBasedGrid::reinit()
@@ -204,14 +181,9 @@ void GridBasedGrid::reinit()
 #ifdef GRID_DEBUG
     printf("[%i] nlocalcells: %i\n", comm_cart.rank(), nlocalcells);
 #endif
-    ENSURE(nlocalcells > 0);
+    assert(nlocalcells > 0);
 
-    // Temporary storage for exchange descriptors.
-    // Will be filled only for neighbors
-    // and moved from later.
-    exchange_vec.clear();
     exchange_vec.resize(neighbor_ranks.size());
-
     // Determine ghost cells and communication volume
     for (local_cell_index_type i = 0; i < nlocalcells; i++) {
         for (global_cell_index_type neighidx :
@@ -243,7 +215,7 @@ void GridBasedGrid::reinit()
 
 #ifdef GRID_DEBUG
     printf("[%i] nghostcells: %i\n", comm_cart.rank(), nghostcells);
-    ENSURE(comm_cart.size() == 1 || nghostcells > 0);
+    assert(comm_cart.size() == 1 || nghostcells > 0);
 #endif
 
     // All neighbors must be communicated with, otherwise something went wrong.
@@ -266,7 +238,7 @@ void GridBasedGrid::reinit()
         std::end(exchange_vec));
 
     for (auto &v : exchange_vec) {
-        ENSURE(v.dest != -1);
+        assert(v.dest != -1);
 
         std::sort(std::begin(v.recv), std::end(v.recv));
         std::transform(std::begin(v.recv), std::end(v.recv), std::begin(v.recv),
@@ -347,15 +319,10 @@ local_cell_index_type GridBasedGrid::position_to_cell_index(Vec3d pos)
 
 rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
 {
-    Vec3i grid_coord;
-    for (size_t i = 0; i < 3; ++i) {
-        grid_coord[i] = pos[i] / (box_l[i] / node_grid[i]);
-        if (grid_coord[i] >= node_grid[i])
-            grid_coord[i] = node_grid[i] - 1;
-        else if (grid_coord[i] < 0)
-            grid_coord[i] = 0;
-    }
-
+    using namespace util::vector_arithmetic;
+    Vec3i grid_coord
+        = vec_clamp(static_cast_vec<Vec3i>(pos / (box_l / node_grid)),
+                    constant_vec3(0), node_grid - 1);
     return util::mpi_cart_rank(comm_cart, grid_coord);
 }
 
@@ -417,21 +384,12 @@ Vec3i GridBasedGrid::grid_size()
 
 Vec3d GridBasedGrid::get_subdomain_center()
 {
+    using namespace util::vector_arithmetic;
     Vec3d c{0., 0., 0.};
 
-    // If no particles: Use subdomain midpoint.
-    // (Calculated as mispoint of all cells).
-    for (local_cell_index_type i = 0; i < n_local_cells(); ++i) {
-        auto mp = gbox.midpoint(cells[i]);
-        for (int d = 0; d < 3; ++d)
-            c[d] += mp[d];
-    }
-
-    const local_cell_index_type n = n_local_cells();
-    for (int d = 0; d < 3; ++d)
-        c[d] /= n;
-
-    return c;
+    for (local_cell_index_type i = 0; i < n_local_cells(); ++i)
+        c += gbox.midpoint(cells[i]);
+    return c / static_cast<double>(n_local_cells());
 }
 
 bool GridBasedGrid::repartition(CellMetric m,
@@ -442,12 +400,8 @@ bool GridBasedGrid::repartition(CellMetric m,
     // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
     rank_index_type nneigh = util::mpi_undirected_neighbor_count(neighcomm);
 
-    auto weights = m();
-    if (weights.size() != n_local_cells()) {
-        throw std::runtime_error(
-            "Metric only supplied " + std::to_string(weights.size())
-            + "weights. Necessary: " + std::to_string(n_local_cells()));
-    }
+    const auto weights = m();
+    assert(weights.size() == n_local_cells());
     double lambda_p
         = std::accumulate(std::begin(weights), std::end(weights), 0.0);
     auto r_p = this->subdomain_midpoint();
@@ -515,7 +469,7 @@ bool GridBasedGrid::repartition(CellMetric m,
     auto old_gridpoints = gridpoints;
     gridpoints.clear();
     boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
-    ENSURE(gridpoints.size() == comm_cart.size());
+    assert(gridpoints.size() == comm_cart.size());
 
     // Check for admissibility of new grid.
     // We do not constrain the grid cells to be convex.
@@ -539,7 +493,7 @@ bool GridBasedGrid::repartition(CellMetric m,
     if (nconflicts > 0) {
         std::cout << "Gridpoint update rejected because of node conflicts."
                   << std::endl;
-        ENSURE(0);
+        assert(0);
         gridpoints = old_gridpoints;
         gridpoint = gridpoints[comm_cart.rank()];
         return false;

@@ -149,8 +149,9 @@ struct ParallelLCGrid {
     virtual rank_index_type n_neighbors() = 0;
 
     /** Returns the rank of a neighbor process.
+     * Is specified only for 0 > i or i >= n_neighbors().
+     * Might throw a std::domain_error otherwise.
      * @param i index of neighbor process. 0 <= i < n_neighbors()
-     * @throws std::domain_error if 0 > i or i >= n_neighbors().
      */
     virtual rank_type neighbor_rank(rank_index_type i) = 0;
 
@@ -170,15 +171,15 @@ struct ParallelLCGrid {
      *  ghost cell no. (N - n_local_cells()).
      * Other values for N cannot occur.
      *
+     * Might throw a std::domain_error if 0 > cellidx or cellidx >=
+     * get_n_local_cells().
+     *
      * Neighbor 0 is the cells itself, i.e. "cell_neighbor_index(c, 0) == c"
      * Neighbors 1-13: Half shell neighborhood
      * Neighbors 14-26: Rest of full shell neighborhood
      *
      * @param cellidx Base cell
      * @param neigh Neighbor
-     *
-     * @throws std::domain_error if 0 > cellidx or cellidx >=
-     * get_n_local_cells().
      */
     virtual local_or_ghost_cell_index_type
     cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
