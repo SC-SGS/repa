@@ -342,28 +342,19 @@ void P4estGrid::prepare_communication()
         }
     }
 
-    // Count the number of communications and assign indices for the
-    // communication
-    rank_index_type num_comm_proc = 0;
-    std::vector<rank_index_type> comm_proc(comm_cart.size(), -1);
-    for (rank_type i = 0; i < comm_cart.size(); ++i) {
-        if (!send_idx[i].empty() && !recv_idx[i].empty())
-            comm_proc[i] = num_comm_proc++;
-        else
-            assert(send_idx[i].empty() && recv_idx[i].empty());
-    }
+    // Assemble ghost exchange information and neighbors
+    m_exdescs.clear();
+    m_neighranks.clear();
+    for (rank_type neighrank = 0; neighrank < comm_cart.size(); ++neighrank) {
 
-    // Assemble ghost exchange descriptors
-    m_exdescs.resize(num_comm_proc);
-    m_neighranks.resize(num_comm_proc);
-    for (rank_type n = 0; n < comm_cart.size(); ++n) {
-        if (comm_proc[n] == -1)
+        if (send_idx[neighrank].empty() || recv_idx[neighrank].empty()) {
+            assert(send_idx[neighrank].empty() && recv_idx[neighrank].empty());
             continue;
-        rank_index_type index = comm_proc[n];
-        m_neighranks[index] = n;
-        m_exdescs[index].dest = n;
-        m_exdescs[index].recv = std::move(recv_idx[n]);
-        m_exdescs[index].send = std::move(send_idx[n]);
+        }
+
+        m_neighranks.push_back(neighrank);
+        m_exdescs.emplace_back(neighrank, std::move(recv_idx[neighrank]),
+                               std::move(send_idx[neighrank]));
     }
 }
 
