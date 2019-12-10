@@ -180,7 +180,7 @@ __REPA__DEFINE_VEC_OP(<=, bool, LessEqual)
 __REPA__DEFINE_VEC_OP(<, bool, Less)
 
 // Define Vec +=/-=/... assignment operators.
-#define __REPA__DEFINE_VEC_LITERAL_ASSIGNMENT_OP(op_operator)                  \
+#define __REPA__DEFINE_VEC_ASSIGNMENT_OP(op_operator)                          \
     template <typename T1, typename T2, size_t N, typename Expr>               \
     constexpr Vec<T1, N> &operator op_operator(                                \
         Vec<T1, N> &a, const VecExpression<T2, N, Expr> &b)                    \
@@ -200,10 +200,10 @@ __REPA__DEFINE_VEC_OP(<, bool, Less)
         return a;                                                              \
     }
 
-__REPA__DEFINE_VEC_LITERAL_ASSIGNMENT_OP(+=)
-__REPA__DEFINE_VEC_LITERAL_ASSIGNMENT_OP(-=)
-__REPA__DEFINE_VEC_LITERAL_ASSIGNMENT_OP(*=)
-__REPA__DEFINE_VEC_LITERAL_ASSIGNMENT_OP(/=)
+__REPA__DEFINE_VEC_ASSIGNMENT_OP(+=)
+__REPA__DEFINE_VEC_ASSIGNMENT_OP(-=)
+__REPA__DEFINE_VEC_ASSIGNMENT_OP(*=)
+__REPA__DEFINE_VEC_ASSIGNMENT_OP(/=)
 
 /** Casting expression template operator
  */
