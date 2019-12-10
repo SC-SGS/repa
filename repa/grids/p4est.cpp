@@ -170,6 +170,31 @@ static Vec3d quadrant_to_coords(const p8est_quadrant_t *q,
     return xyz;
 }
 
+/** Fills "first_morton_index_per_proc" with indices of quadrants
+ * along the SFC on a regular grid of size "grid_size" and level "grid_level".
+ */
+static void assemble_virtual_regular_grid_partitioning(
+    std::vector<int> &first_morton_index_per_proc,
+    int grid_level,
+    repa::Vec3i grid_size,
+    rank_type nproc,
+    p8est_t *p8est,
+    p8est_connectivity_t *p8est_conn)
+{
+    first_morton_index_per_proc.clear();
+    first_morton_index_per_proc.reserve(nproc + 1);
+    for (int i = 0; i < nproc; ++i) {
+        first_morton_index_per_proc.push_back(
+            impl::cell_morton_idx(impl::coord_to_cellindex(
+                impl::quadrant_to_coords(&p8est->global_first_position[i],
+                                         p8est_conn),
+                grid_level)));
+    }
+    // Total number of quads of the virtual regular grid
+    first_morton_index_per_proc.push_back(
+        impl::virtual_regular_grid_end(grid_level, grid_size));
+}
+
 } // namespace impl
 
 // Compute the grid- and bricksize according to box_l and maxrange
@@ -212,18 +237,9 @@ void P4estGrid::create_grid()
     // Assemble this as early as possible as it is necessary for
     // position_to_rank. As soon as this information is ready, we can start
     // migrating particles.
-    m_node_first_cell_idx.clear();
-    m_node_first_cell_idx.reserve(comm_cart.size() + 1);
-    for (int i = 0; i < comm_cart.size(); ++i) {
-        m_node_first_cell_idx.push_back(
-            impl::cell_morton_idx(impl::coord_to_cellindex(
-                impl::quadrant_to_coords(&m_p8est->global_first_position[i],
-                                         m_p8est_conn.get()),
-                m_grid_level)));
-    }
-    // Total number of quads of the virtual regular grid
-    m_node_first_cell_idx.push_back(
-        impl::virtual_regular_grid_end(m_grid_level, m_grid_size));
+    impl::assemble_virtual_regular_grid_partitioning(
+        m_node_first_cell_idx, m_grid_level, m_grid_size, comm_cart.size(),
+        m_p8est.get(), m_p8est_conn.get());
 
     if (m_repartstate.after_repart)
         m_repartstate.exchange_start_callback();
@@ -298,7 +314,7 @@ void P4estGrid::create_grid()
                      ->maxlevel);
 
         assert(p8est_mesh->ghost_to_proc[g] >= 0
-                && p8est_mesh->ghost_to_proc[g] < comm.size());
+               && p8est_mesh->ghost_to_proc[g] < comm.size());
 
         m_p8est_cell_info.emplace_back(p8est_mesh->ghost_to_proc[g],
                                        impl::CellType::ghost, idx);
