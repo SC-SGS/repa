@@ -276,6 +276,7 @@ void P4estGrid::create_grid()
             assert(ni->elem_count == 1);
 
             const int neighidx = *(int *)sc_array_index_int(ni.get(), 0);
+            assert(neighidx >= 0 && neighidx < num_cells);
             m_p8est_cell_info[i].neighbor[n] = neighidx;
 
             if (neighidx >= m_p8est->local_num_quadrants) {
@@ -295,6 +296,9 @@ void P4estGrid::create_grid()
         const Vec3i idx = impl::coord_to_cellindex(
             xyz, p8est_tree_array_index(m_p8est->trees, q->p.piggy3.which_tree)
                      ->maxlevel);
+
+        assert(p8est_mesh->ghost_to_proc[g] >= 0
+                && p8est_mesh->ghost_to_proc[g] < comm.size());
 
         m_p8est_cell_info.emplace_back(p8est_mesh->ghost_to_proc[g],
                                        impl::CellType::ghost, idx);
@@ -320,8 +324,6 @@ void P4estGrid::prepare_communication()
         switch (cell_info.cell_type) {
         case impl::CellType::ghost:
             // Collect receive information of ghost cells
-            assert(cell_info.owner_rank >= 0
-                   && cell_info.owner_rank < comm.size());
             recv_idx[cell_info.owner_rank].push_back(i);
             break;
         case impl::CellType::boundary:
@@ -329,14 +331,9 @@ void P4estGrid::prepare_communication()
             // cells for neighboring processes)
             for (local_or_ghost_cell_index_type neighcell :
                  cell_info.neighbor) {
-                assert(neighcell >= 0 && neighcell < num_cells);
                 const auto &neigh_info = m_p8est_cell_info[neighcell];
-
                 if (neigh_info.cell_type != impl::CellType::ghost)
                     continue;
-
-                assert(neigh_info.owner_rank >= 0
-                       && neigh_info.owner_rank < comm.size());
 
                 // Several neighbor cells can be on the same process.
                 // We must only add it once. If "i" several neighbor cells with
