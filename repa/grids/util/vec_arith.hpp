@@ -24,6 +24,8 @@ namespace repa {
 namespace util {
 namespace vector_arithmetic {
 
+/** Expression template functor returning a constant.
+ */
 template <typename T, size_t N>
 struct Constant : public VecExpression<T, N, Constant<T, N>> {
     constexpr Constant(const T &v) : _v(v)
@@ -40,20 +42,31 @@ private:
     const T _v;
 };
 
+/** Returns a constant expression of dimension 3.
+ */
 template <typename T>
 Constant<T, 3> constant_vec3(const T &v)
 {
     return Constant<T, 3>{v};
 }
 
-#define DEFINE_VEC_OP(op_name, op_literal_name, op_operator)                   \
+// Internal definition of Vector-Vector, Literal-Vector and Vector-Literal
+// operators. Defines expression template functors and corresponding operators.
+// "op_operator" is the operator to define (e.g. `+')
+// "op_return_type" is the return type of the operator (either `T' in case of
+// arithmetics or `bool' in case of comparisons) "op_name", "op_literal_name",
+// "op_literal_first_name" are names for the espression template classes.
+#define __REPA__DEFINE_VEC_OP_IMPL(op_operator, op_return_type, op_name,       \
+                                   op_literal_name, op_literal_first_name)     \
+    /* Vec OP vec */                                                           \
     template <typename T, size_t N, typename Expr1, typename Expr2>            \
-    struct op_name : public VecExpression<T, N, op_name<T, N, Expr1, Expr2>> { \
+    struct op_name : public VecExpression<op_return_type, N,                   \
+                                          op_name<T, N, Expr1, Expr2>> {       \
         constexpr op_name(const Expr1 &e1, const Expr2 &e2) : _e1(e1), _e2(e2) \
         {                                                                      \
         }                                                                      \
                                                                                \
-        constexpr T operator[](size_t i) const                                 \
+        constexpr op_return_type operator[](size_t i) const                    \
         {                                                                      \
             return _e1[i] op_operator _e2[i];                                  \
         }                                                                      \
@@ -63,7 +76,6 @@ Constant<T, 3> constant_vec3(const T &v)
         const Expr2 &_e2;                                                      \
     };                                                                         \
                                                                                \
-    /* Vec OP vec */                                                           \
     template <typename T1, typename T2, size_t N, typename Expr1,              \
               typename Expr2>                                                  \
     constexpr op_name<typename std::common_type<T1, T2>::type, N, Expr1,       \
@@ -76,15 +88,49 @@ Constant<T, 3> constant_vec3(const T &v)
                               *static_cast<const Expr2 *>(&b)};                \
     }                                                                          \
                                                                                \
+    /* Literal OP vec */                                                       \
+    template <typename T, size_t N, typename Expr1>                            \
+    struct op_literal_first_name                                               \
+        : public VecExpression<op_return_type, N,                              \
+                               op_literal_first_name<T, N, Expr1>> {           \
+        constexpr op_literal_first_name(const T &val, const Expr1 &e1)         \
+            : _val(val), _e1(e1)                                               \
+        {                                                                      \
+        }                                                                      \
+                                                                               \
+        constexpr op_return_type operator[](size_t i) const                    \
+        {                                                                      \
+            return _val op_operator _e1[i];                                    \
+        }                                                                      \
+                                                                               \
+    private:                                                                   \
+        T _val;                                                                \
+        const Expr1 &_e1;                                                      \
+    };                                                                         \
+                                                                               \
+    template <typename T1, typename T2, size_t N, typename Expr1,              \
+              typename                                                         \
+              = typename std::enable_if<std::is_arithmetic<T2>::value>::type>  \
+    constexpr op_literal_first_name<typename std::common_type<T1, T2>::type,   \
+                                    N, Expr1>                                  \
+    operator op_operator(const T2 &a, const VecExpression<T1, N, Expr1> &b)    \
+    {                                                                          \
+        return op_literal_first_name<typename std::common_type<T1, T2>::type,  \
+                                     N, Expr1>{                                \
+            a, *static_cast<const Expr1 *>(&b)};                               \
+    }                                                                          \
+                                                                               \
+    /* Vec OP literal */                                                       \
     template <typename T, size_t N, typename Expr1>                            \
     struct op_literal_name                                                     \
-        : public VecExpression<T, N, op_literal_name<T, N, Expr1>> {           \
+        : public VecExpression<op_return_type, N,                              \
+                               op_literal_name<T, N, Expr1>> {                 \
         constexpr op_literal_name(const Expr1 &e1, const T &val)               \
             : _e1(e1), _val(val)                                               \
         {                                                                      \
         }                                                                      \
                                                                                \
-        constexpr T operator[](size_t i) const                                 \
+        constexpr op_return_type operator[](size_t i) const                    \
         {                                                                      \
             return _e1[i] op_operator _val;                                    \
         }                                                                      \
@@ -94,7 +140,6 @@ Constant<T, 3> constant_vec3(const T &v)
         T _val;                                                                \
     };                                                                         \
                                                                                \
-    /* Vec OP constant */                                                      \
     template <typename T1, typename T2, size_t N, typename Expr1,              \
               typename                                                         \
               = typename std::enable_if<std::is_arithmetic<T2>::value>::type>  \
@@ -106,75 +151,36 @@ Constant<T, 3> constant_vec3(const T &v)
                                Expr1>{*static_cast<const Expr1 *>(&a), b};     \
     }
 
-DEFINE_VEC_OP(VecSum, VecSumLiteral, +)
-DEFINE_VEC_OP(VecSub, VecSubLiteral, -)
-DEFINE_VEC_OP(VecMult, VecMultLiteral, *)
-DEFINE_VEC_OP(VecDiv, VecDivLiteral, /)
-DEFINE_VEC_OP(VecLAnd, VecLAndLiteral, &&)
-DEFINE_VEC_OP(VecLOr, VecLOrLiteral, ||)
-DEFINE_VEC_OP(VecRightShift, VecRightShiftLiteral, >>)
+// Token concatenation
+#define __REPA__CONCAT_IMPL3(a, b, c) a##b##c
+#define __REPA__CONCAT3(a, b, c) __REPA__CONCAT_IMPL3(a, b, c)
 
-// Division with literal first (1.0 / x)
-template <typename T, size_t N, typename Expr1>
-struct LiteralDivVec : public VecExpression<T, N, LiteralDivVec<T, N, Expr1>> {
-    constexpr LiteralDivVec(const T &val, const Expr1 &e1) : _val(val), _e1(e1)
-    {
-    }
+// For vector operator definition use. Automatically provides the required class
+// names
+#define __REPA__DEFINE_VEC_OP(op_operator, op_return_type, op_name)            \
+    __REPA__DEFINE_VEC_OP_IMPL(op_operator, op_return_type,                    \
+                               __REPA__CONCAT3(Vec, op_name, Vec),             \
+                               __REPA__CONCAT3(Vec, op_name, Literal),         \
+                               __REPA__CONCAT3(Literal, op_name, Vec))
 
-    constexpr T operator[](size_t i) const
-    {
-        return _val / _e1[i];
-    }
+// Define all standard operations
+__REPA__DEFINE_VEC_OP(+, T, Plus)
+__REPA__DEFINE_VEC_OP(-, T, Minus)
+__REPA__DEFINE_VEC_OP(*, T, Times)
+__REPA__DEFINE_VEC_OP(/, T, Divide)
+__REPA__DEFINE_VEC_OP(&&, T, LogiAnd)
+__REPA__DEFINE_VEC_OP(||, T, LogiOr)
+__REPA__DEFINE_VEC_OP(>>, T, RightShift)
+__REPA__DEFINE_VEC_OP(<<, T, LeftShift)
+__REPA__DEFINE_VEC_OP(==, bool, Equal)
+__REPA__DEFINE_VEC_OP(!=, bool, Inequal)
+__REPA__DEFINE_VEC_OP(>=, bool, GreaterEqual)
+__REPA__DEFINE_VEC_OP(>, bool, Greater)
+__REPA__DEFINE_VEC_OP(<=, bool, LessEqual)
+__REPA__DEFINE_VEC_OP(<, bool, Less)
 
-private:
-    T _val;
-    const Expr1 &_e1;
-};
-
-template <typename T1,
-          typename T2,
-          size_t N,
-          typename Expr1,
-          typename
-          = typename std::enable_if<std::is_arithmetic<T2>::value>::type>
-constexpr LiteralDivVec<typename std::common_type<T1, T2>::type, N, Expr1>
-operator/(const T2 &b, const VecExpression<T1, N, Expr1> &a)
-{
-    return LiteralDivVec<typename std::common_type<T1, T2>::type, N, Expr1>{
-        b, *static_cast<const Expr1 *>(&a)};
-}
-
-// Shift 1 << vec
-template <typename T, size_t N, typename Expr1>
-struct LiteralLeftShiftVec : public VecExpression<T, N, LiteralLeftShiftVec<T, N, Expr1>> {
-    constexpr LiteralLeftShiftVec(const T &val, const Expr1 &e1) : _val(val), _e1(e1)
-    {
-    }
-
-    constexpr T operator[](size_t i) const
-    {
-        return _val << _e1[i];
-    }
-
-private:
-    T _val;
-    const Expr1 &_e1;
-};
-
-template <typename T1,
-          typename T2,
-          size_t N,
-          typename Expr1,
-          typename
-          = typename std::enable_if<std::is_arithmetic<T2>::value>::type>
-constexpr LiteralLeftShiftVec<typename std::common_type<T1, T2>::type, N, Expr1>
-operator<<(const T2 &b, const VecExpression<T1, N, Expr1> &a)
-{
-    return LiteralLeftShiftVec<typename std::common_type<T1, T2>::type, N, Expr1>{
-        b, *static_cast<const Expr1 *>(&a)};
-}
-
-#define DEFINE_ASSIGNMENT_OP(op_operator)                                      \
+// Define Vec +=/-=/... assignment operators.
+#define __REPA__DEFINE_VEC_LITERAL_ASSIGNMENT_OP(op_operator)                  \
     template <typename T1, typename T2, size_t N, typename Expr>               \
     constexpr Vec<T1, N> &operator op_operator(                                \
         Vec<T1, N> &a, const VecExpression<T2, N, Expr> &b)                    \
@@ -194,12 +200,12 @@ operator<<(const T2 &b, const VecExpression<T1, N, Expr1> &a)
         return a;                                                              \
     }
 
-DEFINE_ASSIGNMENT_OP(+=)
-DEFINE_ASSIGNMENT_OP(-=)
-DEFINE_ASSIGNMENT_OP(*=)
-DEFINE_ASSIGNMENT_OP(/=)
+__REPA__DEFINE_VEC_LITERAL_ASSIGNMENT_OP(+=)
+__REPA__DEFINE_VEC_LITERAL_ASSIGNMENT_OP(-=)
+__REPA__DEFINE_VEC_LITERAL_ASSIGNMENT_OP(*=)
+__REPA__DEFINE_VEC_LITERAL_ASSIGNMENT_OP(/=)
 
-/** Casting
+/** Casting expression template operator
  */
 template <typename ToType, size_t N, typename Expr>
 struct VecCast : public VecExpression<ToType, N, VecCast<ToType, N, Expr>> {
@@ -216,6 +222,9 @@ private:
     const Expr &_e;
 };
 
+/** Casts all elements of the VecExpression at evaluation time using a
+ * static_cast to type "ToType".
+ */
 template <typename ToType, typename FromType, size_t N, typename Expr>
 constexpr VecCast<typename ToType::value_type, N, Expr>
 static_cast_vec(const VecExpression<FromType, N, Expr> &e)
@@ -241,6 +250,8 @@ private:
     const Expr &_e;
 };
 
+/** Negates all elements of "e" at evaluation time.
+ */
 template <typename T, size_t N, typename Expr>
 constexpr VecNeg<T, N, Expr> operator-(const VecExpression<T, N, Expr> &e)
 {
@@ -270,6 +281,9 @@ private:
     const ExprUB &_upper_bound;
 };
 
+/** Clampls all elements of "v" at evaluation time between "lower_bound" and
+ * "upper_bound". I.e. vec_clamp(a, b, c)[i] == min(max(a[i], b[i]), c[i])
+ */
 template <typename T, size_t N, typename Expr1, typename Expr2, typename Expr3>
 constexpr VecClamp<T, N, Expr1, Expr2, Expr3>
 vec_clamp(const VecExpression<T, N, Expr1> &v,
@@ -311,6 +325,9 @@ private:
     const ExprUB &_upper_bound;
 };
 
+/** Wraps elements of "v" periodically at evaluation time.
+ * @see VecWrap::operator[] 
+ */
 template <typename T, size_t N, typename Expr1, typename Expr3>
 constexpr VecWrap<T, N, Expr1, Expr3>
 vec_wrap(const VecExpression<T, N, Expr1> &v,
@@ -321,8 +338,9 @@ vec_wrap(const VecExpression<T, N, Expr1> &v,
         *static_cast<const Expr3 *>(&upper_bound)};
 }
 
-/** Implements a wrap operation.
+/** Alias for vec_wrap()
  * BE CAREFUL: Result is defined as always positive! (In contrast to modulo.)
+ * @see vec_wrap()
  */
 template <typename T, size_t N, typename Expr1, typename Expr3>
 constexpr VecWrap<T, N, Expr1, Expr3>
@@ -332,38 +350,8 @@ operator%(const VecExpression<T, N, Expr1> &v,
     return vec_wrap(v, upper_bound);
 }
 
-// Comparisons
-
-#define DEFINE_VEC_COMP(op_name, op_operator)                                  \
-    template <typename T, size_t N, typename Expr>                             \
-    struct op_name : public VecExpression<bool, N, op_name<T, N, Expr>> {      \
-        constexpr op_name(const Expr &e, const T &val) : _e(e), _val(val)      \
-        {                                                                      \
-        }                                                                      \
-                                                                               \
-        constexpr bool operator[](size_t i) const                              \
-        {                                                                      \
-            return _e[i] op_operator _val;                                     \
-        }                                                                      \
-                                                                               \
-    private:                                                                   \
-        const Expr &_e;                                                        \
-        const T &_val;                                                         \
-    };                                                                         \
-                                                                               \
-    template <typename T, size_t N, typename Expr>                             \
-    constexpr op_name<T, N, Expr> operator op_operator(                        \
-        const VecExpression<T, N, Expr> &a, const T &val)                      \
-    {                                                                          \
-        return op_name<T, N, Expr>{*static_cast<const Expr *>(&a), val};       \
-    }
-
-DEFINE_VEC_COMP(VecEqualLiteral, ==)
-DEFINE_VEC_COMP(VecGreaterLiteral, >)
-DEFINE_VEC_COMP(VecGreaterEqualLiteral, >=)
-DEFINE_VEC_COMP(VecLessLiteral, <)
-DEFINE_VEC_COMP(VecLessEqualLiteral, <=)
-
+/** Returns true if all elements of "v" are true.
+ */
 template <size_t N, typename Expr>
 bool all(const VecExpression<bool, N, Expr> &v)
 {
@@ -373,6 +361,8 @@ bool all(const VecExpression<bool, N, Expr> &v)
     return true;
 }
 
+/** Returns true if any element of "v" is true.
+ */
 template <size_t N, typename Expr>
 bool any(const VecExpression<bool, N, Expr> &v)
 {
@@ -381,39 +371,6 @@ bool any(const VecExpression<bool, N, Expr> &v)
             return true;
     return false;
 }
-
-#define DEFINE_VEC_COMP2(op_name, op_operator)                                 \
-    template <size_t N, typename Expr1, typename Expr2>                        \
-    struct op_name : public VecExpression<bool, N, op_name<N, Expr1, Expr2>> { \
-        constexpr op_name(const Expr1 &e1, const Expr2 &e2) : _e1(e1), _e2(e2) \
-        {                                                                      \
-        }                                                                      \
-                                                                               \
-        constexpr bool operator[](size_t i) const                              \
-        {                                                                      \
-            return _e1[i] op_operator _e2[i];                                  \
-        }                                                                      \
-                                                                               \
-    private:                                                                   \
-        const Expr1 &_e1;                                                      \
-        const Expr2 &_e2;                                                      \
-    };                                                                         \
-                                                                               \
-    /* Vec OP vec */                                                           \
-    template <typename T, size_t N, typename Expr1, typename Expr2>            \
-    constexpr op_name<N, Expr1, Expr2> operator op_operator(                   \
-        const VecExpression<T, N, Expr1> &a,                                   \
-        const VecExpression<T, N, Expr2> &b)                                   \
-    {                                                                          \
-        return op_name<N, Expr1, Expr2>{*static_cast<const Expr1 *>(&a),       \
-                                        *static_cast<const Expr2 *>(&b)};      \
-    }
-
-DEFINE_VEC_COMP2(VecEqualVec, ==)
-DEFINE_VEC_COMP2(VecGreaterEqualVec, >=)
-DEFINE_VEC_COMP2(VecGreaterVec, >)
-DEFINE_VEC_COMP2(VecLessEqualVec, <=)
-DEFINE_VEC_COMP2(VecLessVec, <)
 
 } // namespace vector_arithmetic
 } // namespace util
