@@ -396,40 +396,40 @@ bool GridBasedGrid::repartition(CellMetric m,
                                 CellCellMetric ccm,
                                 Thunk exchange_start_callback)
 {
+    using namespace util::vector_arithmetic;
+
     // The node displacement is calculated according to
     // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
-    rank_index_type nneigh = util::mpi_undirected_neighbor_count(neighcomm);
-
+    const rank_index_type nneigh
+        = util::mpi_undirected_neighbor_count(neighcomm);
     const auto weights = m();
     assert(weights.size() == n_local_cells());
-    double lambda_p
+
+    const double lambda_p
         = std::accumulate(std::begin(weights), std::end(weights), 0.0);
-    auto r_p = this->subdomain_midpoint();
+    const auto r_p = this->subdomain_midpoint();
 
     std::vector<double> lambda(nneigh);
     MPI_Neighbor_allgather(&lambda_p, 1, MPI_DOUBLE, lambda.data(), 1,
                            MPI_DOUBLE, neighcomm);
 
-    double lnormalizer
+    const double lnormalizer
         = std::accumulate(lambda.begin(), lambda.end(), 0.0) / nneigh;
 
     std::vector<double> lambda_hat(nneigh);
     for (int i = 0; i < nneigh; ++i)
         lambda_hat[i] = lambda[i] / lnormalizer;
 
-    std::vector<double> r(3 * nneigh);
-    MPI_Neighbor_allgather(r_p.data(), 3, MPI_DOUBLE, r.data(), 3, MPI_DOUBLE,
-                           neighcomm);
+    std::vector<Vec3d> r(nneigh);
+    MPI_Neighbor_allgather(r_p.data(), sizeof(Vec3d), MPI_BYTE, r.data(),
+                           sizeof(Vec3d), MPI_BYTE, neighcomm);
 
     for (rank_index_type i = 0; i < nneigh; ++i) {
         // Form "u"
-        for (int d = 0; d < 3; ++d)
-            r[3 * i + d] -= gridpoint[d];
-        double len = util::norm2(&r[3 * i]);
-
+        r[i] -= gridpoint;
+        const double len = util::norm2(r[i]);
         // Form "f"
-        for (int d = 0; d < 3; ++d)
-            r[3 * i + d] = (lambda_hat[i] - 1) * r[3 * i + d] / len;
+        r[i] *= (lambda_hat[i] - 1) / len;
     }
 
     const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
@@ -441,7 +441,7 @@ bool GridBasedGrid::repartition(CellMetric m,
         if (coords[d] == dims[d] - 1)
             continue;
         for (rank_index_type i = 0; i < nneigh; ++i)
-            new_c[d] += mu * r[3 * i + d];
+            new_c[d] += mu * r[i][d];
     }
 
     // Note: Since we do not shift gridpoints over periodic boundaries,
