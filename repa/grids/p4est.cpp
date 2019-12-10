@@ -545,14 +545,9 @@ bool P4estGrid::repartition(CellMetric m,
                         m_repartstate.inc_nquads(proc);
                         return cellpref + weight;
                     });
-
     m_repartstate.allreduce();
-
-    // TODO: Could try to steal quads from neighbors.
-    //       Global reshifting (i.e. stealing from someone else than the direct
-    //       neighbors) is not a good idea since it globally changes the metric.
-    //       Anyways, this is most likely due to a bad quad/proc quotient.
-    assert(m_repartstate.nquads_per_proc[comm_cart.rank()] > 0);
+    production_assert(m_repartstate.nquads_per_proc[comm_cart.rank()] > 0,
+                      "Detected a process with no quads assigned.");
 
     // Reinitialize the grid and prepare its internal datastructures for
     // querying by generic_dd.
