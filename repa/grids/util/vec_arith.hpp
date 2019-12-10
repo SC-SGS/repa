@@ -45,7 +45,7 @@ private:
 /** Returns a constant expression of dimension 3.
  */
 template <typename T>
-Constant<T, 3> constant_vec3(const T &v)
+constexpr Constant<T, 3> constant_vec3(const T &v)
 {
     return Constant<T, 3>{v};
 }
@@ -326,7 +326,7 @@ private:
 };
 
 /** Wraps elements of "v" periodically at evaluation time.
- * @see VecWrap::operator[] 
+ * @see VecWrap::operator[]
  */
 template <typename T, size_t N, typename Expr1, typename Expr3>
 constexpr VecWrap<T, N, Expr1, Expr3>
