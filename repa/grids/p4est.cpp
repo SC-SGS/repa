@@ -251,6 +251,13 @@ void P4estGrid::create_grid()
 
     m_num_local_cells = m_p8est->local_num_quadrants;
     m_num_ghost_cells = p8est_ghost->ghosts.elem_count;
+
+    init_grid_cells(p8est_ghost.get(), p8est_mesh.get());
+}
+
+void P4estGrid::init_grid_cells(p8est_ghost_t *p8est_ghost,
+                                p8est_mesh_t *p8est_mesh)
+{
     const local_or_ghost_cell_index_type num_cells
         = m_num_local_cells + m_num_ghost_cells;
 
@@ -264,7 +271,7 @@ void P4estGrid::create_grid()
     m_p8est_cell_info.reserve(num_cells);
     for (local_cell_index_type i = 0; i < m_num_local_cells; ++i) {
         const Vec3d xyz = impl::quadrant_to_coords(
-            p8est_mesh_get_quadrant(m_p8est.get(), p8est_mesh.get(),
+            p8est_mesh_get_quadrant(m_p8est.get(), p8est_mesh,
                                     static_cast<p4est_locidx_t>(i)),
             m_p8est_conn.get(), p8est_mesh->quad_to_tree[i]);
 
@@ -285,9 +292,8 @@ void P4estGrid::create_grid()
 
         // Neighborhood
         for (int n = 0; n < 26; ++n) {
-            p8est_mesh_get_neighbors(m_p8est.get(), p8est_ghost.get(),
-                                     p8est_mesh.get(), i, n, NULL, NULL,
-                                     ni.get());
+            p8est_mesh_get_neighbors(m_p8est.get(), p8est_ghost, p8est_mesh, i,
+                                     n, NULL, NULL, ni.get());
             // Fully periodic, regular grid.
             assert(ni->elem_count == 1);
 

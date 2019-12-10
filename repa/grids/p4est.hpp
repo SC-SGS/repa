@@ -124,6 +124,7 @@ private:
 
     void set_optimal_cellsize();
     void create_grid();
+    void init_grid_cells(p8est_ghost_t *p8est_ghost, p8est_mesh_t *p8est_mesh);
     void prepare_communication();
     // Reinitialized the grid (instantiation or after repartitioning)
     void reinitialize();
