@@ -244,6 +244,8 @@ void P4estGrid::create_grid()
     if (m_repartstate.after_repart)
         m_repartstate.exchange_start_callback();
 
+    // Ghost and mesh are only necessary for init_grid_cells and can be
+    // deleted afterwards.
     auto p8est_ghost = std::unique_ptr<p8est_ghost_t>(
         p8est_ghost_new(m_p8est.get(), P8EST_CONNECT_CORNER));
     auto p8est_mesh = std::unique_ptr<p8est_mesh_t>(p8est_mesh_new_ext(
@@ -261,13 +263,15 @@ void P4estGrid::init_grid_cells(p8est_ghost_t *p8est_ghost,
     const local_or_ghost_cell_index_type num_cells
         = m_num_local_cells + m_num_ghost_cells;
 
+    // "ni" is defined outside of all loops to avoid calling "sc_array_new" and
+    // the corresponding destroy function on every loop iteration.
     std::unique_ptr<sc_array_t> ni
         = std::unique_ptr<sc_array_t>(sc_array_new(sizeof(int)));
-    // Collect info about local cells
+
 #ifdef GLOBAL_HASH_NEEDED
     m_global_idx.clear();
 #endif
-    m_p8est_cell_info.clear(); // Need to clear because we push_back
+    m_p8est_cell_info.clear();
     m_p8est_cell_info.reserve(num_cells);
     for (local_cell_index_type i = 0; i < m_num_local_cells; ++i) {
         const Vec3d xyz = impl::quadrant_to_coords(
@@ -290,7 +294,7 @@ void P4estGrid::init_grid_cells(p8est_ghost_t *p8est_ghost,
             impl::cell_morton_idx(impl::coord_to_cellindex(xyz, m_grid_level)));
 #endif
 
-        // Neighborhood
+        // Collect neighborhood information
         for (int n = 0; n < 26; ++n) {
             p8est_mesh_get_neighbors(m_p8est.get(), p8est_ghost, p8est_mesh, i,
                                      n, NULL, NULL, ni.get());
