@@ -20,19 +20,29 @@
 #include "common_types.hpp"
 #include <type_traits>
 
+/** Expression templates for efficient arithmetics based on "Vec".
+ *
+ * Do *NOT* include them in any header. Also, only once per translation unit.
+ */
+
 namespace repa {
 namespace util {
 namespace vector_arithmetic {
+
+// Specifiers for all operator or function templates returning
+// expression template structs as well as methods of expression template
+// structs.
+#define __REPA__EX_TMPL_EXPORT constexpr inline
 
 /** Expression template functor returning a constant.
  */
 template <typename T, size_t N>
 struct Constant : public VecExpression<T, N, Constant<T, N>> {
-    constexpr Constant(const T &v) : _v(v)
+    __REPA__EX_TMPL_EXPORT Constant(const T &v) : _v(v)
     {
     }
 
-    constexpr T operator[](size_t i) const
+    __REPA__EX_TMPL_EXPORT T operator[](size_t i) const
     {
         (void)i;
         return _v;
@@ -45,7 +55,7 @@ private:
 /** Returns a constant expression of dimension 3.
  */
 template <typename T>
-constexpr Constant<T, 3> constant_vec3(const T &v)
+__REPA__EX_TMPL_EXPORT Constant<T, 3> constant_vec3(const T &v)
 {
     return Constant<T, 3>{v};
 }
@@ -62,11 +72,12 @@ constexpr Constant<T, 3> constant_vec3(const T &v)
     template <typename T, size_t N, typename Expr1, typename Expr2>            \
     struct op_name : public VecExpression<op_return_type, N,                   \
                                           op_name<T, N, Expr1, Expr2>> {       \
-        constexpr op_name(const Expr1 &e1, const Expr2 &e2) : _e1(e1), _e2(e2) \
+        __REPA__EX_TMPL_EXPORT op_name(const Expr1 &e1, const Expr2 &e2)       \
+            : _e1(e1), _e2(e2)                                                 \
         {                                                                      \
         }                                                                      \
                                                                                \
-        constexpr op_return_type operator[](size_t i) const                    \
+        __REPA__EX_TMPL_EXPORT op_return_type operator[](size_t i) const       \
         {                                                                      \
             return _e1[i] op_operator _e2[i];                                  \
         }                                                                      \
@@ -78,10 +89,10 @@ constexpr Constant<T, 3> constant_vec3(const T &v)
                                                                                \
     template <typename T1, typename T2, size_t N, typename Expr1,              \
               typename Expr2>                                                  \
-    constexpr op_name<typename std::common_type<T1, T2>::type, N, Expr1,       \
-                      Expr2>                                                   \
-    operator op_operator(const VecExpression<T1, N, Expr1> &a,                 \
-                         const VecExpression<T2, N, Expr2> &b)                 \
+    __REPA__EX_TMPL_EXPORT                                                     \
+        op_name<typename std::common_type<T1, T2>::type, N, Expr1, Expr2>      \
+        operator op_operator(const VecExpression<T1, N, Expr1> &a,             \
+                             const VecExpression<T2, N, Expr2> &b)             \
     {                                                                          \
         return op_name<typename std::common_type<T1, T2>::type, N, Expr1,      \
                        Expr2>{*static_cast<const Expr1 *>(&a),                 \
@@ -93,12 +104,13 @@ constexpr Constant<T, 3> constant_vec3(const T &v)
     struct op_literal_first_name                                               \
         : public VecExpression<op_return_type, N,                              \
                                op_literal_first_name<T, N, Expr1>> {           \
-        constexpr op_literal_first_name(const T &val, const Expr1 &e1)         \
+        __REPA__EX_TMPL_EXPORT op_literal_first_name(const T &val,             \
+                                                     const Expr1 &e1)          \
             : _val(val), _e1(e1)                                               \
         {                                                                      \
         }                                                                      \
                                                                                \
-        constexpr op_return_type operator[](size_t i) const                    \
+        __REPA__EX_TMPL_EXPORT op_return_type operator[](size_t i) const       \
         {                                                                      \
             return _val op_operator _e1[i];                                    \
         }                                                                      \
@@ -111,8 +123,8 @@ constexpr Constant<T, 3> constant_vec3(const T &v)
     template <typename T1, typename T2, size_t N, typename Expr1,              \
               typename                                                         \
               = typename std::enable_if<std::is_arithmetic<T2>::value>::type>  \
-    constexpr op_literal_first_name<typename std::common_type<T1, T2>::type,   \
-                                    N, Expr1>                                  \
+    __REPA__EX_TMPL_EXPORT op_literal_first_name<                              \
+        typename std::common_type<T1, T2>::type, N, Expr1>                     \
     operator op_operator(const T2 &a, const VecExpression<T1, N, Expr1> &b)    \
     {                                                                          \
         return op_literal_first_name<typename std::common_type<T1, T2>::type,  \
@@ -125,12 +137,12 @@ constexpr Constant<T, 3> constant_vec3(const T &v)
     struct op_literal_name                                                     \
         : public VecExpression<op_return_type, N,                              \
                                op_literal_name<T, N, Expr1>> {                 \
-        constexpr op_literal_name(const Expr1 &e1, const T &val)               \
+        __REPA__EX_TMPL_EXPORT op_literal_name(const Expr1 &e1, const T &val)  \
             : _e1(e1), _val(val)                                               \
         {                                                                      \
         }                                                                      \
                                                                                \
-        constexpr op_return_type operator[](size_t i) const                    \
+        __REPA__EX_TMPL_EXPORT op_return_type operator[](size_t i) const       \
         {                                                                      \
             return _e1[i] op_operator _val;                                    \
         }                                                                      \
@@ -143,9 +155,10 @@ constexpr Constant<T, 3> constant_vec3(const T &v)
     template <typename T1, typename T2, size_t N, typename Expr1,              \
               typename                                                         \
               = typename std::enable_if<std::is_arithmetic<T2>::value>::type>  \
-    constexpr op_literal_name<typename std::common_type<T1, T2>::type, N,      \
-                              Expr1>                                           \
-    operator op_operator(const VecExpression<T1, N, Expr1> &a, const T2 &b)    \
+    __REPA__EX_TMPL_EXPORT                                                     \
+        op_literal_name<typename std::common_type<T1, T2>::type, N, Expr1>     \
+        operator op_operator(const VecExpression<T1, N, Expr1> &a,             \
+                             const T2 &b)                                      \
     {                                                                          \
         return op_literal_name<typename std::common_type<T1, T2>::type, N,     \
                                Expr1>{*static_cast<const Expr1 *>(&a), b};     \
@@ -182,7 +195,7 @@ __REPA__DEFINE_VEC_OP(<, bool, Less)
 // Define Vec +=/-=/... assignment operators.
 #define __REPA__DEFINE_VEC_ASSIGNMENT_OP(op_operator)                          \
     template <typename T1, typename T2, size_t N, typename Expr>               \
-    constexpr Vec<T1, N> &operator op_operator(                                \
+    __REPA__EX_TMPL_EXPORT Vec<T1, N> &operator op_operator(                   \
         Vec<T1, N> &a, const VecExpression<T2, N, Expr> &b)                    \
     {                                                                          \
         for (size_t i = 0; i < N; ++i)                                         \
@@ -193,7 +206,8 @@ __REPA__DEFINE_VEC_OP(<, bool, Less)
     template <typename T1, size_t N, typename T2,                              \
               typename                                                         \
               = typename std::enable_if<std::is_arithmetic<T2>::value>::type>  \
-    constexpr Vec<T1, N> &operator op_operator(Vec<T1, N> &a, const T2 &b)     \
+    __REPA__EX_TMPL_EXPORT Vec<T1, N> &operator op_operator(Vec<T1, N> &a,     \
+                                                            const T2 &b)       \
     {                                                                          \
         for (size_t i = 0; i < N; ++i)                                         \
             a[i] op_operator b;                                                \
@@ -209,11 +223,11 @@ __REPA__DEFINE_VEC_ASSIGNMENT_OP(/=)
  */
 template <typename ToType, size_t N, typename Expr>
 struct VecCast : public VecExpression<ToType, N, VecCast<ToType, N, Expr>> {
-    constexpr VecCast(const Expr &e) : _e(e)
+    __REPA__EX_TMPL_EXPORT VecCast(const Expr &e) : _e(e)
     {
     }
 
-    constexpr ToType operator[](size_t i) const
+    __REPA__EX_TMPL_EXPORT ToType operator[](size_t i) const
     {
         return static_cast<ToType>(_e[i]);
     }
@@ -226,7 +240,7 @@ private:
  * static_cast to type "ToType".
  */
 template <typename ToType, typename FromType, size_t N, typename Expr>
-constexpr VecCast<typename ToType::value_type, N, Expr>
+__REPA__EX_TMPL_EXPORT VecCast<typename ToType::value_type, N, Expr>
 static_cast_vec(const VecExpression<FromType, N, Expr> &e)
 {
     return VecCast<typename ToType::value_type, N, Expr>{
@@ -237,11 +251,11 @@ static_cast_vec(const VecExpression<FromType, N, Expr> &e)
  */
 template <typename T, size_t N, typename Expr>
 struct VecNeg : public VecExpression<T, N, VecNeg<T, N, Expr>> {
-    constexpr VecNeg(const Expr &e) : _e(e)
+    __REPA__EX_TMPL_EXPORT VecNeg(const Expr &e) : _e(e)
     {
     }
 
-    constexpr T operator[](size_t i) const
+    __REPA__EX_TMPL_EXPORT T operator[](size_t i) const
     {
         return -_e[i];
     }
@@ -253,7 +267,8 @@ private:
 /** Negates all elements of "e" at evaluation time.
  */
 template <typename T, size_t N, typename Expr>
-constexpr VecNeg<T, N, Expr> operator-(const VecExpression<T, N, Expr> &e)
+__REPA__EX_TMPL_EXPORT VecNeg<T, N, Expr>
+operator-(const VecExpression<T, N, Expr> &e)
 {
     return VecNeg<T, N, Expr>{*static_cast<const Expr *>(&e)};
 }
@@ -263,14 +278,14 @@ constexpr VecNeg<T, N, Expr> operator-(const VecExpression<T, N, Expr> &e)
 template <typename T, size_t N, typename Expr, typename ExprLB, typename ExprUB>
 struct VecClamp
     : public VecExpression<T, N, VecClamp<T, N, Expr, ExprLB, ExprUB>> {
-    constexpr VecClamp(const Expr &e,
-                       const ExprLB &lower_bound,
-                       const ExprUB &upper_bound)
+    __REPA__EX_TMPL_EXPORT VecClamp(const Expr &e,
+                                    const ExprLB &lower_bound,
+                                    const ExprUB &upper_bound)
         : _e(e), _lower_bound(lower_bound), _upper_bound(upper_bound)
     {
     }
 
-    constexpr T operator[](size_t i) const
+    __REPA__EX_TMPL_EXPORT T operator[](size_t i) const
     {
         return std::min(std::max(_e[i], _lower_bound[i]), _upper_bound[i]);
     }
@@ -285,7 +300,7 @@ private:
  * "upper_bound". I.e. vec_clamp(a, b, c)[i] == min(max(a[i], b[i]), c[i])
  */
 template <typename T, size_t N, typename Expr1, typename Expr2, typename Expr3>
-constexpr VecClamp<T, N, Expr1, Expr2, Expr3>
+__REPA__EX_TMPL_EXPORT VecClamp<T, N, Expr1, Expr2, Expr3>
 vec_clamp(const VecExpression<T, N, Expr1> &v,
           const VecExpression<T, N, Expr2> &lower_bound,
           const VecExpression<T, N, Expr3> &upper_bound)
@@ -300,12 +315,12 @@ vec_clamp(const VecExpression<T, N, Expr1> &v,
  */
 template <typename T, size_t N, typename Expr, typename ExprUB>
 struct VecWrap : public VecExpression<T, N, VecWrap<T, N, Expr, ExprUB>> {
-    constexpr VecWrap(const Expr &e, const ExprUB &upper_bound)
+    __REPA__EX_TMPL_EXPORT VecWrap(const Expr &e, const ExprUB &upper_bound)
         : _e(e), _upper_bound(upper_bound)
     {
     }
 
-    constexpr T operator[](size_t i) const
+    __REPA__EX_TMPL_EXPORT T operator[](size_t i) const
     {
         T val = _e[i];
         const T ub = _upper_bound[i];
@@ -329,7 +344,7 @@ private:
  * @see VecWrap::operator[]
  */
 template <typename T, size_t N, typename Expr1, typename Expr3>
-constexpr VecWrap<T, N, Expr1, Expr3>
+__REPA__EX_TMPL_EXPORT VecWrap<T, N, Expr1, Expr3>
 vec_wrap(const VecExpression<T, N, Expr1> &v,
          const VecExpression<T, N, Expr3> &upper_bound)
 {
@@ -343,7 +358,7 @@ vec_wrap(const VecExpression<T, N, Expr1> &v,
  * @see vec_wrap()
  */
 template <typename T, size_t N, typename Expr1, typename Expr3>
-constexpr VecWrap<T, N, Expr1, Expr3>
+__REPA__EX_TMPL_EXPORT VecWrap<T, N, Expr1, Expr3>
 operator%(const VecExpression<T, N, Expr1> &v,
           const VecExpression<T, N, Expr3> &upper_bound)
 {
