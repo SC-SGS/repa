@@ -316,29 +316,41 @@ void P4estGrid::prepare_communication()
     // Find all cells to be sent or received
     for (local_or_ghost_cell_index_type i = 0; i < num_cells; ++i) {
         const auto &cell_info = m_p8est_cell_info[i];
-        // Ghost cell? -> add to recv lists
-        if (cell_info.cell_type == impl::CellType::ghost) {
-            const rank_type nrank = m_p8est_cell_info[i].owner_rank;
-            assert(nrank >= 0 && nrank < comm.size());
-            recv_idx[nrank].push_back(i);
-        }
-        // Boundary cell? -> add to send lists
-        else if (cell_info.cell_type == impl::CellType::boundary) {
-            // Add to all possible neighbors
-            for (local_or_ghost_cell_index_type nidx : cell_info.neighbor) {
-                assert(nidx >= 0 && nidx < num_cells);
-                // Only ghost cells hold possible neighboring processes
-                if (m_p8est_cell_info[nidx].cell_type != impl::CellType::ghost)
+
+        switch (cell_info.cell_type) {
+        case impl::CellType::ghost:
+            // Collect receive information of ghost cells
+            assert(cell_info.owner_rank >= 0
+                   && cell_info.owner_rank < comm.size());
+            recv_idx[cell_info.owner_rank].push_back(i);
+            break;
+        case impl::CellType::boundary:
+            // Collect send information of boundary cells (check all neighboring
+            // cells for neighboring processes)
+            for (local_or_ghost_cell_index_type neighcell :
+                 cell_info.neighbor) {
+                assert(neighcell >= 0 && neighcell < num_cells);
+                const auto &neigh_info = m_p8est_cell_info[neighcell];
+
+                if (neigh_info.cell_type != impl::CellType::ghost)
                     continue;
 
-                const rank_type nrank = m_p8est_cell_info[nidx].owner_rank;
-                assert(nrank >= 0 && nrank < comm.size());
+                assert(neigh_info.owner_rank >= 0
+                       && neigh_info.owner_rank < comm.size());
 
-                // Several neighbor cells nidx can be on the same process.
-                // We must only add it once.
-                if (send_idx[nrank].empty() || send_idx[nrank].back() != i)
-                    send_idx[nrank].push_back(i);
+                // Several neighbor cells can be on the same process.
+                // We must only add it once. If "i" several neighbor cells with
+                // the same owner, "i" must have been added in the
+                // current iteration of the outer loop, and, thus, last in the
+                // vector.
+                if (send_idx[neigh_info.owner_rank].empty()
+                    || send_idx[neigh_info.owner_rank].back() != i)
+                    send_idx[neigh_info.owner_rank].push_back(i);
             }
+            break;
+        default:
+            // Nothing. Only interested in boundary and ghost cells.
+            break;
         }
     }
 
