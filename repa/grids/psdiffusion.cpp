@@ -153,8 +153,9 @@ PSDiffusion::compute_send_list(std::vector<double> &&send_loads,
         }
     }
 #ifdef PSDIFFUSION_DEBUG
-    std::cout << "Dropped: " << droppedCells << "/" << maxCells << " Cells"
-              << std::endl;
+    if (droppedCells > 0)
+        std::cout << "Dropped: " << droppedCells << "/" << maxCells << " Cells"
+                  << std::endl;
 #endif
 
     return to_send;
@@ -163,11 +164,11 @@ PSDiffusion::compute_send_list(std::vector<double> &&send_loads,
 bool PSDiffusion::rank_based_allow_sending(local_cell_index_type c,
                                            rank_type neighrank)
 {
-    for (global_cell_index_type d1 :
+    for (const global_cell_index_type &d1 :
          gbox.full_shell_neigh_without_center(cells[c])) {
         if (rank_of_cell(d1) != neighrank)
             continue;
-        for (global_cell_index_type d2 :
+        for (const global_cell_index_type &d2 :
              gbox.full_shell_neigh_without_center(cells[c])) {
             rank_type r1 = rank_of_cell(d1);
             rank_type r2 = rank_of_cell(d2);
@@ -187,23 +188,17 @@ bool PSDiffusion::rank_based_allow_sending(local_cell_index_type c,
 bool PSDiffusion::coords_based_allow_sending(local_cell_index_type c,
                                              rank_type neighrank)
 {
-    for (global_cell_index_type d1 :
+    for (const global_cell_index_type &d :
          gbox.full_shell_neigh_without_center(cells[c])) {
-        if (rank_of_cell(d1) != neighrank)
+        rank_type rank_d = rank_of_cell(d);
+        if (rank_d == rank_of_cell(cells[c]) || rank_d == neighrank)
             continue;
-        Vec3i c1;
-        MPI_Cart_coords(comm_cart, rank_of_cell(d1), 3, c1.data());
-        for (global_cell_index_type d2 :
-             gbox.full_shell_neigh_without_center(cells[c])) {
-            if (rank_of_cell(d1) == rank_of_cell(d2)
-                || rank_of_cell(d2) == rank_of_cell(cells[c]))
-                continue;
-            Vec3i c2;
-            MPI_Cart_coords(comm_cart, rank_of_cell(d2), 3, c2.data());
-            if (std::abs(c1[0] - c2[0]) > 2 || std::abs(c1[1] - c2[1]) > 2
-                || std::abs(c1[2] - c2[2]) > 2)
-                return false;
-        }
+        Vec3i c1, c2;
+        MPI_Cart_coords(comm_cart, rank_d, 3, c1.data());
+        MPI_Cart_coords(comm_cart, neighrank, 3, c2.data());
+        if (std::abs(c1[0] - c2[0]) > 2 || std::abs(c1[1] - c2[1]) > 2
+            || std::abs(c1[2] - c2[2]) > 2)
+            return false;
     }
     return true;
 }
