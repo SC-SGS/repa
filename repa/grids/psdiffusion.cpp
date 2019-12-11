@@ -20,7 +20,6 @@
 #include "psdiffusion.hpp"
 
 #include "grids/util/mpi_graph.hpp"
-#include "util/ensure.hpp"
 
 #ifndef NDEBUG
 #define PSDIFFUSION_DEBUG
@@ -32,7 +31,7 @@ namespace grids {
 std::vector<double> PSDiffusion::compute_send_volume(double load)
 {
 #ifdef PSDIFFUSION_DEBUG
-    ENSURE(std::is_permutation(neighbors.begin(), neighbors.end(),
+    assert(std::is_permutation(neighbors.begin(), neighbors.end(),
                                initial_neighborhood.begin()));
 #endif
 
@@ -98,7 +97,7 @@ PSDiffusion::compute_send_list(std::vector<double> &&send_loads,
             }
         }
 #ifdef DIFFUSION_DEBUG
-        ENSURE(nadditional_comm < 27);
+        assert(nadditional_comm < 27);
 #endif
 
         if (profit > 0)
@@ -175,7 +174,7 @@ bool PSDiffusion::rank_based_allow_sending(local_cell_index_type c,
             if (r1 == r2 || r2 == rank_of_cell(cells[c]))
                 continue;
 #ifdef PSDIFFUSION_DEBUG
-            ENSURE(neighborhood_ranks.size() != 0);
+            assert(neighborhood_ranks.size() != 0);
 #endif
             auto npr = neighbar_procs(r2);
             if (std::find(npr.begin(), npr.end(), r1) == npr.end())
@@ -217,7 +216,7 @@ std::vector<rank_type> PSDiffusion::neighbar_procs(rank_type r)
     }
 
 #ifdef PSDIFFUSION_DEBUG
-    ENSURE(startingIndex != -1 && endingIndex != -1);
+    assert(startingIndex != -1 && endingIndex != -1);
 #endif
 
     auto start = neighborhood_ranks.begin() + startingIndex;
@@ -225,7 +224,7 @@ std::vector<rank_type> PSDiffusion::neighbar_procs(rank_type r)
 
     auto result = std::vector<rank_type>(start, end);
 #ifdef PSDIFFUSION_DEBUG
-    ENSURE(result.size() == neighbors.size());
+    assert(result.size() == neighbors.size());
 #endif
 
     return std::vector<rank_type>(start, end);
