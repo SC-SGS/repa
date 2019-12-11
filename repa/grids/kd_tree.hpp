@@ -50,8 +50,7 @@ private:
     const Domain m_global_domain;
 
     const Domain m_global_ghostdomain;
-    const Vec3i m_global_ghostdomain_size;
-    const Vec3d m_cell_dimensions;
+    const Vec3d m_cell_size;
 
     /** Internal k-d tree datastructure. */
     kdpart::PartTreeStorage m_kdtree;
@@ -73,85 +72,9 @@ private:
 
     std::vector<GhostExchangeDesc> m_boundary_info;
 
-private:
-    /** Returns the grid dimensions of the global simulation box in cells. */
-    Vec3i grid_dimensions();
-
-    /** Returns the cell size within the global simulation box. */
-    Vec3d cell_dimensions(const Vec3i &grid_dimensions);
-
-    /** Returns the number of cells from the size of a domain. */
-    static Vec3i::value_type volume(Vec3i domain_size);
-
-    /** Returns the number of cells from a given domain*/
-    static Vec3i::value_type volume(Domain domain_bounds);
-
-    /** Returns the ghostdomain from a given domain. */
-    static Domain ghostdomain_bounds(const Domain &domain);
-
-    /** Returns the size of a given domain */
-    static Vec3i domain_size(const Domain &domain);
-
-    /**
-     * Returns true if the given cell is a ghostcell respective to the given
-     * ghostdomain
-     *
-     * @param cell A cell vector relative to the given ghostdomain
-     * @param ghostdomain A ghostdomain
-     * @return True if cell is within the ghostlayer of the given ghostdomain
-     */
-    static bool is_ghost_cell(const Vec3i &cell, const Vec3i &ghostdomain_size);
-
-    /** Returns true if the given domain contains the given cell vector. */
-    static bool domain_contains_cell(const Domain &domain, const Vec3i &cell);
-
-    /**
-     * Transforms a global position within the the simulation box to a global
-     * cell vector.
-     */
-    Vec3i absolute_position_to_cell_position(const Vec3d &absolute_position);
-
     void init_local_domain_bounds();
-
     void init_nb_of_cells();
-
     void init_index_permutations();
-
-    /**
-     * This method returns the intersecting domains between a localdomain and
-     * a ghostdomain. Multiple intersection domains are possible in case of a
-     * periodic domain.
-     *
-     * @param localdomain A subdomain which doesn't exceed the bounds of the
-     *  global domain.
-     * @param ghostdomain A ghostdomain which doesn't exceed the global
-     *  ghostdomain
-     * @param ghostdomain_coords If this parameter value is true, then the
-     *  lu-coordinate of the resulting intersection domains is relative to the
-     *  ghostdomain parameter. Otherwise if this value is false, the lu-coord
-     *  is relative to the bounds of the localdomain parameter.
-     * @param periodic_intersections_only If this parameter is true, then only
-     *  intersection domains are returned that are caused by the ghostdomain
-     *  (provided by the ghostdomain parameter) exceeding the bounds of the
-     *  domain along a periodic dimension. This parameter can be useful if e.g.
-     *  the localdomain parameter is a subset of the ghostdomain parameter and
-     *  only intersections caused by overlapping domains are of interest.
-     * @return List of intersecting domains between the subdomain and the
-     *  ghostdomain relative to the global domain.
-     */
-    std::vector<Domain> intersection_domains(const Domain &localdomain,
-                                             const Domain &ghostdomain,
-                                             bool ghostdomain_coords = false,
-                                             bool periodic_intersections_only
-                                             = false) const;
-
-    /**
-     * Returns true if the given localdomain and the given ghostdomain
-     * intersect. This includes intersections that are the result of periodic
-     * domain bounds.
-     */
-    bool are_domains_intersecting(const Domain &localdomain,
-                                  const Domain &ghostdomain) const;
 
     /** Transforms domain vector to cellvector. */
     std::vector<Vec3i> cells(const std::vector<Domain> &domains);

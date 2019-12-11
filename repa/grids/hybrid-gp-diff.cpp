@@ -18,7 +18,6 @@
  */
 
 #include "hybrid-gp-diff.hpp"
-#include "util/ensure.hpp"
 #include <boost/mpi/datatype.hpp>
 #include <mpi.h>
 
@@ -141,7 +140,7 @@ void HybridGPDiff::switch_implementation()
                       comm_cart);
 #ifndef NDEBUG
         for (const auto &el : graph_impl.partition)
-            ENSURE(el >= 0 && el < comm.size());
+            assert(el >= 0 && el < comm.size());
 #endif
         graph_impl.init();
         break;
@@ -152,7 +151,7 @@ void HybridGPDiff::switch_implementation()
                   std::begin(diff_impl.partition));
 #ifndef NDEBUG
         for (const auto &el : graph_impl.partition)
-            ENSURE(el >= 0 && el < comm.size());
+            assert(el >= 0 && el < comm.size());
 #endif
         diff_impl.init();
         break;
