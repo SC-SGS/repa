@@ -29,10 +29,9 @@
 #include <parmetis.h>
 
 #include "util/all_gatherv.hpp"
-#include "util/ensure.hpp"
+#include "util/initial_partitioning.hpp"
 #include "util/push_back_unique.hpp"
 #include "util/vector_coerce.hpp"
-#include "util/initial_partitioning.hpp"
 
 #define MPI_IDX_T boost::mpi::get_mpi_datatype(static_cast<idx_t>(0))
 
@@ -70,16 +69,11 @@ Graph::~Graph()
  * that corresponds to the cell.
  * Partitioning is performed in parallel via ParMETIS.
  */
-
 bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 {
     static constexpr idx_t w_fac = 100;
-    auto vertex_weights = m();
-    if (vertex_weights.size() != n_local_cells()) {
-        throw std::runtime_error(
-            "Metric only supplied " + std::to_string(vertex_weights.size())
-            + "weights. Necessary: " + std::to_string(n_local_cells()));
-    }
+    const auto vertex_weights = m();
+    assert(vertex_weights.size() == n_local_cells());
 
     idx_t nglocells = static_cast<idx_t>(gbox.ncells());
     idx_t ncells_per_proc = static_cast<idx_t>(
@@ -92,11 +86,11 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     vtxdist[comm_cart.size()] = nglocells;
 
 #ifdef GRAPH_DEBUG
-    ENSURE(vtxdist.size() == comm_cart.size() + 1);
+    assert(vtxdist.size() == comm_cart.size() + 1);
     for (int i = 0; i < comm_cart.size(); ++i) {
-        ENSURE(0 <= vtxdist[i] && vtxdist[i] < nglocells);
+        assert(0 <= vtxdist[i] && vtxdist[i] < nglocells);
     }
-    ENSURE(vtxdist[comm_cart.size()] == nglocells);
+    assert(vtxdist[comm_cart.size()] == nglocells);
 #endif
 
     // Receive vertex and edge weights
@@ -110,10 +104,10 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
 #ifdef GRAPH_DEBUG
     for (int r : recvranks) {
-        ENSURE(0 <= r && r < comm_cart.size());
-        ENSURE(std::count(std::begin(recvranks), std::end(recvranks), r) == 1);
+        assert(0 <= r && r < comm_cart.size());
+        assert(std::count(std::begin(recvranks), std::end(recvranks), r) == 1);
     }
-    ENSURE(recvranks.size() <= comm_cart.size());
+    assert(recvranks.size() <= comm_cart.size());
 #endif
 
     // [0]: vertex weight
@@ -144,11 +138,11 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
             auto neigh = cell_neighbor_index(i, n);
             w[n] = static_cast<idx_t>(ccm(i, neigh)) * w_fac + 1;
 #ifdef GRAPH_DEBUG
-            ENSURE(w[n] > 0);
+            assert(w[n] > 0);
             if (neigh < n_local_cells()) {
                 // Local symmetry -- only ensures local symmetry, however,
                 // symmetry is also required for cross-boundary edges.
-                ENSURE(w[n] == ccm(neigh, i) * w_fac + 1);
+                assert(w[n] == ccm(neigh, i) * w_fac + 1);
             }
 #endif
         }
@@ -158,18 +152,9 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
         // Catch total weight sum overlow
         wsum += std::accumulate(std::begin(w), std::end(w),
                                 static_cast<idx_t>(0));
-        if (wsum > std::numeric_limits<idx_t>::max() / comm_cart.size()) {
-            std::fprintf(stderr,
-                         "Warning: Graph weights are too large for chosen "
-                         "index type width.\n");
-            if (w_fac > 1)
-                std::fprintf(stderr,
-                             "- Try to reduce the weight factor in graph.cpp.");
-            if (IDXTYPEWIDTH == 32)
-                std::fprintf(stderr, "- Recompile a 64bit ParMETIS as this "
-                                     "version only uses 32bit.");
-            errexit();
-        }
+        production_assert(
+            wsum < std::numeric_limits<idx_t>::max() / comm_cart.size(),
+            "Graph weights too large for chosen Metis IDX_TYPE_WIDTH");
     }
 
     for (rank_type i = 0; i < comm_cart.size(); ++i) {
@@ -193,16 +178,16 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     xadj[nvtx] = 26 * nvtx;
 
 #ifdef GRAPH_DEBUG
-    ENSURE(nvtx == vtxdist[comm_cart.rank() + 1] - vtxdist[comm_cart.rank()]);
-    ENSURE(nvtx <= nglocells);
-    ENSURE(xadj.size() == nvtx + 1);
+    assert(nvtx == vtxdist[comm_cart.rank() + 1] - vtxdist[comm_cart.rank()]);
+    assert(nvtx <= nglocells);
+    assert(xadj.size() == nvtx + 1);
     for (int i = 0; i < nvtx; ++i) {
-        ENSURE(xadj[i] < xadj[i + 1]);
-        ENSURE(xadj[i + 1] - xadj[i] == 26);
+        assert(xadj[i] < xadj[i + 1]);
+        assert(xadj[i + 1] - xadj[i] == 26);
     }
 
     for (int i = 0; i < adjncy.size(); ++i) {
-        ENSURE(adjncy[i] >= 0 && adjncy[i] < nglocells);
+        assert(adjncy[i] >= 0 && adjncy[i] < nglocells);
     }
 #endif
 
@@ -229,19 +214,19 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
 #ifdef GRAPH_DEBUG
     for (int i = 0; i < comm_cart.size(); ++i) {
-        ENSURE(ii[i] == their_weights[i].size());
+        assert(ii[i] == their_weights[i].size());
     }
-    ENSURE(li == nvtx);
+    assert(li == nvtx);
 
     for (idx_t w : vwgt) {
-        ENSURE(w != -1);
-        ENSURE(w >= 0 && w < 10000000);
+        assert(w != -1);
+        assert(w >= 0 && w < 10000000);
     }
     for (idx_t w : adjwgt) {
-        ENSURE(w != -1);
-        ENSURE(w >= 0 && w < 10000000);
+        assert(w != -1);
+        assert(w >= 0 && w < 10000000);
         // if (!m.has_cell_cell_metric())
-        //    ENSURE(w == 1.0 * w_fac + 1);
+        //    assert(w == 1.0 * w_fac + 1);
     }
 #endif
 
@@ -275,42 +260,35 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     idx_t edgecut;
     std::vector<idx_t> part(nvtx, static_cast<idx_t>(UNKNOWN_RANK));
 
-    if (ParMETIS_V3_PartKway(vtxdist.data(), xadj.data(), adjncy.data(),
-                             vwgt.data(), adjwgt.data(), &wgtflag, &numflag,
-                             &ncon, &nparts, tpwgts.data(), &ubvec, options,
-                             &edgecut, part.data(), &communicator)
-        != METIS_OK) {
-        if (comm_cart.rank() == 0) {
-            std::fprintf(
-                stderr,
-                "Error when graph partitioning: ParMETIS returned error.\n");
-            errexit();
-        }
-    }
+    auto metis_ret = ParMETIS_V3_PartKway(
+        vtxdist.data(), xadj.data(), adjncy.data(), vwgt.data(), adjwgt.data(),
+        &wgtflag, &numflag, &ncon, &nparts, tpwgts.data(), &ubvec, options,
+        &edgecut, part.data(), &communicator);
+    production_assert(metis_ret == METIS_OK,
+                      "ParMETIS_V3_PartKway returned error.");
 
     // Copy idx_t to rank. Avoid copying if idx_t and rank are the same types.
     auto parti = util::coerce_vector_to<rank_type>(part);
 
 #ifdef GRAPH_DEBUG
-    ENSURE(parti.size() == nvtx);
+    assert(parti.size() == nvtx);
     for (auto r : parti) {
-        ENSURE(r != static_cast<idx_t>(UNKNOWN_RANK));
-        ENSURE(0 <= r && r < comm_cart.size());
+        assert(r != static_cast<idx_t>(UNKNOWN_RANK));
+        assert(0 <= r && r < comm_cart.size());
     }
 #endif
 
 #ifdef GRAPH_DEBUG
-    std::fill(std::begin(partition), std::end(partition),
-              UNKNOWN_RANK);
+    std::fill(std::begin(partition), std::end(partition), UNKNOWN_RANK);
 #endif
 
     util::all_gatherv_displ(comm_cart, parti.cref(), vtxdist, partition);
 
 #ifdef GRAPH_DEBUG
-    ENSURE(partition.size() == nglocells);
+    assert(partition.size() == nglocells);
     for (int r : partition) {
-        ENSURE(r != UNKNOWN_RANK);
-        ENSURE(0 <= r && r < comm_cart.size());
+        assert(r != UNKNOWN_RANK);
+        assert(0 <= r && r < comm_cart.size());
     }
 #endif
 
@@ -327,7 +305,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
         std::cout << std::endl;
     }
 
-    ENSURE(std::accumulate(std::begin(nlcs), std::end(nlcs), 0) == nglocells);
+    assert(std::accumulate(std::begin(nlcs), std::end(nlcs), 0) == nglocells);
 #endif
 
     return true;

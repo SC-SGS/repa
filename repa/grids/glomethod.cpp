@@ -22,7 +22,6 @@
 #include <algorithm>
 #include <boost/mpi.hpp>
 
-#include "util/ensure.hpp"
 #include "util/push_back_unique.hpp"
 
 #ifndef NDEBUG
@@ -65,6 +64,7 @@ Vec3i GloMethod::grid_size()
 local_or_ghost_cell_index_type
 GloMethod::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
 {
+    assert(cellidx >= 0 && cellidx < n_local_cells());
     return global_to_local[gbox.neighbor(cells[cellidx], neigh)];
 }
 
@@ -85,7 +85,7 @@ rank_type GloMethod::position_to_rank(Vec3d pos)
 {
     auto r = rank_of_cell(gbox.cell_at_pos(pos));
 
-    if (r < 0)
+    if (r == UNKNOWN_RANK)
         throw std::runtime_error("Cell not in scope of process");
     else
         return r;
@@ -177,7 +177,7 @@ void GloMethod::init(bool firstcall)
     for (local_cell_index_type i = 0; i < localCells; i++) {
         for (global_cell_index_type neighborIndex :
              gbox.full_shell_neigh_without_center(cells[i])) {
-            rank_type owner = rank_of_cell(neighborIndex);
+            const rank_type owner = rank_of_cell(neighborIndex);
             if (owner == comm_cart.rank())
                 continue;
 
@@ -234,7 +234,7 @@ void GloMethod::init(bool firstcall)
 #ifdef GLOMETHOD_DEBUG
     for (rank i = 0; i < comm_cart.size(); ++i) {
         if (tmp_ex_descs[i].dest != -1)
-            ENSURE(tmp_ex_descs[i].recv.size() == 0
+            assert(tmp_ex_descs[i].recv.size() == 0
                    && tmp_ex_descs[i].send.size() == 0);
     }
 #endif

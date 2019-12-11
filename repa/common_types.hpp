@@ -20,8 +20,10 @@
 #pragma once
 
 #include <array>
+#include <cassert>
 #include <exception>
 #include <functional>
+#include <numeric>
 #include <sstream>
 #include <type_traits>
 #include <vector>
@@ -56,10 +58,7 @@ private:
 };
 
 [[noreturn]] inline void
-__t_assert__fail(const char *expr,
-                 const char *file,
-                 int line,
-                 const char *func)
+__t_assert__fail(const char *expr, const char *file, int line, const char *func)
 {
     throw AssertionException{expr, file, line, func};
 }
@@ -74,10 +73,48 @@ __t_assert__fail(const char *expr,
                                    #expr, __FILE__, __LINE__, __func__))
 #endif
 
+namespace __production_assert_impl {
+[[noreturn]] inline void __production_assert_fail(const char *expr,
+                                                  const char *file,
+                                                  int line,
+                                                  const char *func,
+                                                  const char *msg)
+{
+    std::printf("Production code assertion error: `%s' in %s:%d "
+                "(%s): %s",
+                expr, file, line, func, msg);
+    std::abort();
+}
+} // namespace __production_assert_impl
+
+// Production code assert (*not* compiled in case NDEBUG is set)
+#define production_assert(expr, msg)                                           \
+    (static_cast<bool>(expr)                                                   \
+         ? (void)0                                                             \
+         : __production_assert_impl::__production_assert_fail(                 \
+               #expr, __FILE__, __LINE__, __func__, msg))
+
+/** Base type for Expression Templates in vec_arith.hpp
+ */
+template <typename T, size_t N, typename Expr>
+struct VecExpression {
+    constexpr T operator[](size_t i) const
+    {
+        return static_cast<const Expr &>(*this)[i];
+    }
+};
+
+namespace _impl_tt {
+template <typename T, typename...>
+struct head {
+    typedef T type;
+};
+} // namespace _impl_tt
+
 /** Behaves like a std::array.
  */
 template <typename T, size_t N>
-struct Vec {
+struct Vec : VecExpression<T, N, Vec<T, N>> {
     typedef T value_type;
     typedef T *pointer;
     typedef const T *const_pointer;
@@ -104,6 +141,21 @@ struct Vec {
     constexpr Vec(const Vec &) = default;
     Vec &operator=(const Vec &) = default;
 
+    template <typename Expr>
+    constexpr Vec(const VecExpression<T, N, Expr> &e)
+    {
+        *this = e;
+    }
+
+    template <typename Expr>
+    constexpr Vec &operator=(const VecExpression<T, N, Expr> &e)
+    {
+        for (size_type i = 0; i < N; ++i) {
+            m_data[i] = e[i];
+        }
+        return *this;
+    }
+
     constexpr Vec(underlying_type &&arr)
         : m_data(std::forward<underlying_type>(arr))
     {
@@ -113,9 +165,26 @@ struct Vec {
     {
     }
 
-    template <typename... Args>
-    constexpr Vec(Args... values) : m_data({{values...}})
+    // Only accept this very general template if all arguments are convertible
+    // to "T".
+    template <typename... Args,
+              typename = _impl_tt::head<
+                  typename std::enable_if<
+                      std::is_convertible<Args, T>::value>::type...,
+                  typename std::enable_if<sizeof...(Args) == N>>>
+    explicit constexpr Vec(Args... values) : m_data({{values...}})
     {
+    }
+
+    constexpr Vec(std::initializer_list<T> list)
+    {
+        assert(list.size() == size());
+        std::copy(std::begin(list), std::end(list), begin());
+    }
+
+    constexpr const VecExpression<T, N, Vec<T, N>> &as_expr() const
+    {
+        return *this;
     }
 
     iterator begin()
@@ -202,6 +271,14 @@ struct Vec {
         return m_data[i];
     }
 
+    template <typename BinaryOp>
+    T foldl(BinaryOp &&f)
+    {
+        static_assert(N > 0, "Vec::fold() requires actual elements");
+        return std::accumulate(std::next(cbegin()), cend(), *cbegin(),
+                               std::forward<BinaryOp>(f));
+    }
+
     constexpr bool operator==(const Vec &other) const
     {
         return m_data == other.m_data;
@@ -209,22 +286,6 @@ struct Vec {
     constexpr bool operator!=(const Vec &other) const
     {
         return m_data != other.m_data;
-    }
-    constexpr bool operator<(const Vec &other) const
-    {
-        return m_data < other.m_data;
-    }
-    constexpr bool operator<=(const Vec &other) const
-    {
-        return m_data <= other.m_data;
-    }
-    constexpr bool operator>(const Vec &other) const
-    {
-        return m_data > other.m_data;
-    }
-    constexpr bool operator>=(const Vec &other) const
-    {
-        return m_data >= other.m_data;
     }
 
     friend class boost::serialization::access;
@@ -270,14 +331,16 @@ struct IntegralRange {
     typedef T value_type;
 
     template <typename S,
-              typename = typename std::enable_if<std::is_integral<S>::value>::type>
+              typename
+              = typename std::enable_if<std::is_integral<S>::value>::type>
     inline IntegralRange(S v) : value(static_cast<T>(v))
     {
         t_assert(in_bounds(v));
     }
 
     template <typename S,
-              typename = typename std::enable_if<std::is_integral<S>::value>::type>
+              typename
+              = typename std::enable_if<std::is_integral<S>::value>::type>
     inline IntegralRange operator=(S v)
     {
         t_assert(in_bounds(v));
@@ -291,7 +354,8 @@ struct IntegralRange {
     }
 
     template <typename S,
-              typename = typename std::enable_if<std::is_integral<S>::value>::type>
+              typename
+              = typename std::enable_if<std::is_integral<S>::value>::type>
     static inline bool in_bounds(S v)
     {
         // Evaluate range check on wide base type.

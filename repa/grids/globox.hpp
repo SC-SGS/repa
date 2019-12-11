@@ -229,7 +229,7 @@ private:
     template <typename T>
     inline index_type_1d linearize(const Vec3<T> &cell) const noexcept
     {
-        return util::linearize<index_type_1d>(cell, m_cell_grid);
+        return util::linearize(cell, m_cell_grid);
     }
 
     inline cell_index_type unlinearize(index_type_1d pos) const
