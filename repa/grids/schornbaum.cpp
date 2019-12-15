@@ -46,6 +46,16 @@ std::vector<double> Schornbaum::compute_send_volume(double load)
     for (int i = 0; i < nneigh; i++)
         alpha[i] = 1.0 / (std::max(nneigh, dneigh[i]) + 1.0);
 
+#ifdef SCHORNBAUM_DEBUG
+    int world_size;
+    MPI_Comm_size(comm, &world_size);
+    std::vector<double> globalLoadListBefore(world_size);
+    MPI_Allgather(&load, 1, MPI_DOUBLE, globalLoadListBefore.data(), 1,
+                  MPI_DOUBLE, comm);
+    double globalLoadSumBefore = std::accumulate(
+        std::begin(globalLoadListBefore), std::end(globalLoadListBefore), 0.0);
+#endif
+
     for (int i = 0; i < flow_count; i++) {
         // Exchange load in local neighborhood
         std::vector<double> neighloads(nneigh);
@@ -59,6 +69,17 @@ std::vector<double> Schornbaum::compute_send_volume(double load)
             load -= new_f;
         }
     }
+
+#ifdef SCHORNBAUM_DEBUG
+    std::vector<double> globalLoadListAfter(world_size);
+    MPI_Allgather(&load, 1, MPI_DOUBLE, globalLoadListAfter.data(), 1,
+                  MPI_DOUBLE, comm);
+
+    double globalLoadSumAfter = std::accumulate(
+        std::begin(globalLoadListAfter), std::end(globalLoadListAfter), 0.0);
+
+    assert(std::abs(globalLoadSumBefore - globalLoadSumAfter) <= 0.001);
+#endif
 
     return deficiency;
 }
