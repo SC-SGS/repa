@@ -147,15 +147,6 @@ struct Vec : VecExpression<T, N, Vec<T, N>> {
         *this = e;
     }
 
-    template <typename Expr>
-    constexpr Vec &operator=(const VecExpression<T, N, Expr> &e)
-    {
-        for (size_type i = 0; i < N; ++i) {
-            m_data[i] = e[i];
-        }
-        return *this;
-    }
-
     constexpr Vec(underlying_type &&arr)
         : m_data(std::forward<underlying_type>(arr))
     {
