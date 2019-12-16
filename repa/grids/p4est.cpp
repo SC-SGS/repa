@@ -211,8 +211,11 @@ void P4estGrid::set_optimal_cellsize()
     m_inv_cell_size = 1.0 / m_cell_size;
 
     // Set number of trees to biggest common power of 2 of all dimensions
-    m_grid_level
-        = impl::count_trailing_zeros(m_grid_size.foldl(std::bit_or<>{}));
+    using bit_or = std::bit_or<decltype(
+        m_grid_size)::value_type>; // For compatibility with old
+                                   // standard libraries, that do not
+                                   // support std::bit_or<T = void>
+    m_grid_level = impl::count_trailing_zeros(m_grid_size.foldl(bit_or()));
     m_brick_size = m_grid_size >> m_grid_level;
 }
 
