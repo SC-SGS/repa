@@ -164,7 +164,7 @@ struct Vec : VecExpression<T, N, Vec<T, N>> {
               typename = _impl_tt::head<
                   typename std::enable_if<
                       std::is_convertible<Args, T>::value>::type...,
-                  typename std::enable_if<sizeof...(Args) == N>>>
+                  typename std::enable_if<sizeof...(Args) == N>::type>>
     explicit constexpr Vec(Args... values) : m_data({{values...}})
     {
     }
