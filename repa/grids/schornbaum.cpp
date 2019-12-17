@@ -49,11 +49,12 @@ std::vector<double> Schornbaum::compute_send_volume(double load)
 #ifdef SCHORNBAUM_DEBUG
     int world_size;
     MPI_Comm_size(comm, &world_size);
-    std::vector<double> globalLoadListBefore(world_size);
-    MPI_Allgather(&load, 1, MPI_DOUBLE, globalLoadListBefore.data(), 1,
-                  MPI_DOUBLE, comm);
-    double globalLoadSumBefore = std::accumulate(
-        std::begin(globalLoadListBefore), std::end(globalLoadListBefore), 0.0);
+    std::vector<double> prevGlobalLoads(world_size);
+    MPI_Allgather(&load, 1, MPI_DOUBLE, prevGlobalLoads.data(), 1, MPI_DOUBLE,
+                  comm);
+    auto prevMax
+        = std::max_element(prevGlobalLoads.begin(), prevGlobalLoads.end());
+    int prevIndex = std::distance(prevGlobalLoads.begin(), prevMax);
 #endif
 
     for (int i = 0; i < flow_count; i++) {
@@ -71,14 +72,19 @@ std::vector<double> Schornbaum::compute_send_volume(double load)
     }
 
 #ifdef SCHORNBAUM_DEBUG
-    std::vector<double> globalLoadListAfter(world_size);
-    MPI_Allgather(&load, 1, MPI_DOUBLE, globalLoadListAfter.data(), 1,
-                  MPI_DOUBLE, comm);
+    std::vector<double> currGlobalLoads(world_size);
+    MPI_Allgather(&load, 1, MPI_DOUBLE, currGlobalLoads.data(), 1, MPI_DOUBLE,
+                  comm);
+    auto currMax
+        = std::max_element(currGlobalLoads.begin(), currGlobalLoads.end());
+    int currIndex = std::distance(currGlobalLoads.begin(), currMax);
 
-    double globalLoadSumAfter = std::accumulate(
-        std::begin(globalLoadListAfter), std::end(globalLoadListAfter), 0.0);
-
-    assert(std::abs(globalLoadSumBefore - globalLoadSumAfter) <= 0.001);
+    if (prevMax < currMax) {
+        std::cout << "prevMax: " << *prevMax << " currMax: " << *currMax
+                  << " prevIndex: " << prevIndex << " currIndex: " << currIndex
+                  << std::endl;
+        assert(true);
+    }
 #endif
 
     return deficiency;
