@@ -23,7 +23,6 @@
 #include "globox.hpp"
 #include "pargrid.hpp"
 #include <array>
-#include <parmetis.h>
 #include <unordered_map>
 
 namespace repa {
