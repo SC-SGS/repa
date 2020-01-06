@@ -210,7 +210,13 @@ Vec3i PSDiffusion::fix_periodic_edge(const Vec3i &c0, const Vec3i &c2)
         ts[i] = c0[i] - c2[i] > 1;
     }
 
-    return c2 + ts * 4 - te * 4;
+    int gsize;
+    if (neighbors.size() == 2)
+        gsize = comm.size();
+    else
+        gsize = std::cbrt(comm.size());
+
+    return c2 + ts * gsize - te * gsize;
 }
 
 #ifdef PSDIFFUSION_DEBUG
