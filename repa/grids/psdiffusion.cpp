@@ -94,13 +94,10 @@ void PSDiffusion::post_init(bool firstcall)
     Diffusion::post_init(firstcall);
 
 #ifdef PSDIFFUSION_DEBUG
-    std::vector<rank_type> send_ranks(neighbors.begin(), neighbors.end());
-    send_ranks.insert(send_ranks.begin(), comm_cart.rank());
-
-    neighborhood_ranks.resize(neighbors.size() * send_ranks.size());
-    MPI_Neighbor_allgather(send_ranks.data(), send_ranks.size(), MPI_INT,
-                           neighborhood_ranks.data(), send_ranks.size(),
-                           MPI_INT, neighcomm);
+    neighborhood_ranks.resize(neighbors.size() * neighbors.size());
+    MPI_Neighbor_allgather(neighbors.data(), neighbors.size(), MPI_INT,
+                           neighborhood_ranks.data(), neighbors.size(), MPI_INT,
+                           neighcomm);
 
     if (firstcall) {
         initial_neighborhood
@@ -159,7 +156,7 @@ PSDiffusion::compute_send_list(std::vector<double> &&send_loads,
 
             if (b1 != b2)
                 std::cout << "B1: " << b1 << "; B2: " << b2 << std::endl;
-            /* assert(b1 == b2); */
+                /* assert(b1 == b2); */
 #endif
             if (!b1)
                 continue;
@@ -229,7 +226,7 @@ bool PSDiffusion::rank_based_allow_sending(local_cell_index_type c,
         for (const global_cell_index_type &d2 :
              gbox.full_shell_neigh(cells[c])) {
             rank_type r2 = rank_of_cell(d2);
-            if (r1 == r2)
+            if (r1 == r2 || r2 == rank_of_cell(cells[c]))
                 continue;
             if (std::find(npr.begin(), npr.end(), r2) == npr.end())
                 return false;
@@ -240,15 +237,11 @@ bool PSDiffusion::rank_based_allow_sending(local_cell_index_type c,
 
 std::vector<rank_type> PSDiffusion::neighbar_procs(rank_type r)
 {
-    int startingIndex = -1;
-    int endingIndex = -1;
-    for (int y = 0; y < neighbors.size(); y++) {
-        int index = (neighbors.size() + 1) * y;
-        if (neighborhood_ranks[index] == r) {
-            startingIndex = index + 1;
-            endingIndex = startingIndex + neighbors.size();
-        }
-    }
+    int i = std::distance(neighbors.begin(),
+                          std::find(neighbors.begin(), neighbors.end(), r));
+
+    int startingIndex = neighbors.size() * i;
+    int endingIndex = startingIndex + neighbors.size();
 
     assert(startingIndex != -1 && endingIndex != -1);
 
@@ -259,7 +252,7 @@ std::vector<rank_type> PSDiffusion::neighbar_procs(rank_type r)
 
     assert(result.size() == neighbors.size());
 
-    return std::vector<rank_type>(start, end);
+    return result;
 }
 #endif
 
