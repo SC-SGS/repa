@@ -42,12 +42,13 @@ protected:
 private:
     bool coords_based_allow_sending(local_cell_index_type c,
                                     rank_type neighrank);
+    Vec3i fix_periodic_edge(const Vec3i &c0, const Vec3i &c2);
+
+#ifndef NDEBUG
     bool rank_based_allow_sending(local_cell_index_type c, rank_type neighrank);
     std::vector<rank_type> neighbar_procs(rank_type r);
 
     std::vector<rank_type> neighborhood_ranks;
-
-#ifndef NDEBUG
     std::vector<rank_type> initial_neighborhood;
 #endif
 };
