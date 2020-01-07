@@ -19,48 +19,15 @@
 
 #include "psdiffusion.hpp"
 
+#include <algorithm>
 #include <set>
 
+#include "grids/util/mpi_cart.hpp"
 #include "grids/util/mpi_graph.hpp"
 #include "util/vec_arith.hpp"
 
 #ifndef NDEBUG
 #define PSDIFFUSION_DEBUG
-#endif
-
-#ifdef PSDIFFUSION_DEBUG
-/*
- * @returns True if structure is fine, false if not
- */
-static bool check_structure(std::vector<repa::grids::rank_type> initial,
-                            std::vector<repa::grids::rank_type> current)
-{
-    std::set<repa::grids::rank_type> L1(initial.begin(), initial.end());
-    std::set<repa::grids::rank_type> L2(current.begin(), current.end());
-    auto it1 = L1.begin();
-    auto it2 = L2.begin();
-
-    while (it1 != L1.end() && it2 != L2.end()) {
-        if (*it1 < *it2) {
-            // Losing Neighbors is allowed
-            *it1++;
-        }
-        else if (*it2 < *it1) {
-            // Gaining Neighbors is not allowed
-            return false;
-        }
-        else {
-            it1++;
-            it2++;
-        }
-    }
-
-    // Gained at least 1 Neighbor so true
-    if (it2 != L2.end())
-        return false;
-
-    return true;
-}
 #endif
 
 namespace repa {
@@ -69,7 +36,11 @@ namespace grids {
 std::vector<double> PSDiffusion::compute_send_volume(double load)
 {
 #ifdef PSDIFFUSION_DEBUG
-    assert(check_structure(initial_neighborhood, neighbors));
+    std::set<rank_type> a(initial_neighborhood.begin(),
+                          initial_neighborhood.end());
+    std::set<rank_type> b(neighbors.begin(), neighbors.end());
+
+    assert(std::includes(a.begin(), a.end(), b.begin(), b.end()));
 #endif
 
     return Diffusion::compute_send_volume(load);
@@ -94,14 +65,27 @@ void PSDiffusion::post_init(bool firstcall)
     Diffusion::post_init(firstcall);
 
 #ifdef PSDIFFUSION_DEBUG
-    neighborhood_ranks.resize(neighbors.size() * neighbors.size());
-    MPI_Neighbor_allgather(neighbors.data(), neighbors.size(), MPI_INT,
-                           neighborhood_ranks.data(), neighbors.size(), MPI_INT,
-                           neighcomm);
-
     if (firstcall) {
         initial_neighborhood
             = std::vector<rank_type>(neighbors.begin(), neighbors.end());
+
+        // Allgather over neighbors.size
+        std::vector<int> neighbors_sizes(neighbors.size());
+        int nsize = neighbors.size();
+        MPI_Neighbor_allgather(&nsize, 1, MPI_INT, neighbors_sizes.data(), 1,
+                               MPI_INT, neighcomm);
+        // Assert neighbors.size equal
+        assert(std::equal(neighbors_sizes.begin() + 1, neighbors_sizes.end(),
+                          neighbors_sizes.begin()));
+
+        neighborhood_ranks.resize(neighbors.size() * neighbors.size());
+        MPI_Neighbor_allgather(neighbors.data(), neighbors.size(), MPI_INT,
+                               neighborhood_ranks.data(), neighbors.size(),
+                               MPI_INT, neighcomm);
+
+        for (int i = 0; i < neighbors.size(); i++)
+            nr_mappings[neighbors[i]]
+                = &neighborhood_ranks.data()[0] + (neighbors.size() * i);
     }
 #endif
 }
@@ -153,10 +137,7 @@ PSDiffusion::compute_send_list(std::vector<double> &&send_loads,
             bool b1 = coords_based_allow_sending(cidx, neighrank);
 #ifdef PSDIFFUSION_DEBUG
             bool b2 = rank_based_allow_sending(cidx, neighrank);
-
-            if (b1 != b2)
-                std::cout << "B1: " << b1 << "; B2: " << b2 << std::endl;
-                /* assert(b1 == b2); */
+            assert(b1 == b2);
 #endif
             if (!b1)
                 continue;
@@ -210,11 +191,7 @@ Vec3i PSDiffusion::fix_periodic_edge(const Vec3i &c0, const Vec3i &c2)
         ts[i] = c0[i] - c2[i] > 1;
     }
 
-    int gsize;
-    if (neighbors.size() == 2)
-        gsize = comm.size();
-    else
-        gsize = std::cbrt(comm.size());
+    Vec3i gsize = util::mpi_cart_get_dims(comm_cart);
 
     return c2 + ts * gsize - te * gsize;
 }
@@ -228,37 +205,18 @@ bool PSDiffusion::rank_based_allow_sending(local_cell_index_type c,
         if (rank_of_cell(d1) != neighrank)
             continue;
         rank_type r1 = rank_of_cell(d1);
-        auto npr = neighbar_procs(r1);
+        auto npr_begin = nr_mappings[r1];
+        auto npr_end = npr_begin + initial_neighborhood.size();
         for (const global_cell_index_type &d2 :
              gbox.full_shell_neigh(cells[c])) {
             rank_type r2 = rank_of_cell(d2);
             if (r1 == r2 || r2 == rank_of_cell(cells[c]))
                 continue;
-            if (std::find(npr.begin(), npr.end(), r2) == npr.end())
+            if (std::find(npr_begin, npr_end, r2) == npr_end)
                 return false;
         }
     }
     return true;
-}
-
-std::vector<rank_type> PSDiffusion::neighbar_procs(rank_type r)
-{
-    int i = std::distance(neighbors.begin(),
-                          std::find(neighbors.begin(), neighbors.end(), r));
-
-    int startingIndex = neighbors.size() * i;
-    int endingIndex = startingIndex + neighbors.size();
-
-    assert(startingIndex != -1 && endingIndex != -1);
-
-    auto start = neighborhood_ranks.begin() + startingIndex;
-    auto end = neighborhood_ranks.begin() + endingIndex;
-
-    auto result = std::vector<rank_type>(start, end);
-
-    assert(result.size() == neighbors.size());
-
-    return result;
 }
 #endif
 

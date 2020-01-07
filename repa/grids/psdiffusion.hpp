@@ -46,9 +46,10 @@ private:
 
 #ifndef NDEBUG
     bool rank_based_allow_sending(local_cell_index_type c, rank_type neighrank);
-    std::vector<rank_type> neighbar_procs(rank_type r);
 
     std::vector<rank_type> neighborhood_ranks;
+    std::unordered_map<int, rank_type *> nr_mappings;
+
     std::vector<rank_type> initial_neighborhood;
 #endif
 };
