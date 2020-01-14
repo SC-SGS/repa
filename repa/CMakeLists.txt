@@ -20,6 +20,7 @@ set(repa_SRC
     grids/glomethod.cpp
     grids/diffusion.cpp
     grids/psdiffusion.cpp
+    grids/schornbaum.cpp
     grids/cart.cpp
     grids/util/neighbor_offsets.cpp
     grid_types.cpp
