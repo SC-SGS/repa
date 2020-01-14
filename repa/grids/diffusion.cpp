@@ -267,7 +267,7 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
     // Initial partitioning
     partition.resize(gbox.ncells());
     util::InitPartitioning{gbox, comm_cart}(
-        util::InitialPartitionType::LINEAR,
+        util::InitialPartitionType::CARTESIAN1D,
         [this](global_cell_index_type idx, rank_type r) {
             assert(r >= 0 && r < this->comm.size());
             this->partition[idx] = r;
