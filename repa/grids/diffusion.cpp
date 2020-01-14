@@ -127,8 +127,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     double local_load
         = std::accumulate(std::begin(cellweights), std::end(cellweights), 0.0);
 
-    std::vector<double> send_volume
-        = compute_send_volume(local_load);
+    std::vector<double> send_volume = compute_send_volume(local_load);
 #ifdef DIFFUSION_DEBUG
     assert(send_volume.size() == neighbors.size());
 #endif
@@ -267,7 +266,7 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
     // Initial partitioning
     partition.resize(gbox.ncells());
     util::InitPartitioning{gbox, comm_cart}(
-        util::InitialPartitionType::LINEAR,
+        util::InitialPartitionType::CARTESIAN,
         [this](global_cell_index_type idx, rank_type r) {
             assert(r >= 0 && r < this->comm.size());
             this->partition[idx] = r;

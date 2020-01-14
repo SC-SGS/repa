@@ -49,6 +49,8 @@ struct Diffusion : public GloMethod {
     ~Diffusion();
 
 protected:
+    virtual void post_init(bool firstcall) override;
+
     /*
      * Determines the status of each process (underloaded, overloaded)
      * in the neighborhood given the local load and returns the volume of load
@@ -69,25 +71,11 @@ protected:
      */
     virtual std::vector<double> compute_send_volume(double load);
 
-    // Neighborhood communicator
-    boost::mpi::communicator neighcomm;
-
-private:
-    friend struct HybridGPDiff; // Needs access to "partition" vector
-
-    void pre_init(bool firstcall) override;
-    void post_init(bool firstcall) override;
-    void init_new_foreign_cell(local_cell_index_type localcell,
-                               global_cell_index_type foreigncell,
-                               rank_type owner) override;
-
     virtual rank_type rank_of_cell(global_cell_index_type idx) override
     {
         t_assert(idx >= 0 && idx < gbox.ncells());
         return partition[idx];
     }
-
-    bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
 
     //
     // Additional data
@@ -96,7 +84,8 @@ private:
     // Stores all local cells which ar at the border of the local area of
     // this process (Stores the local index)
     std::vector<local_cell_index_type> borderCells;
-    // Stores for each cell in "borderCells" the ranks of their neighbourhood
+
+    // Stores for each cell in "borderCells" the ranks of their neighborhood
     // Key is the local cell ID and value a set of ranks
     std::map<local_cell_index_type, std::vector<rank_type>>
         borderCellsNeighbors;
@@ -105,12 +94,8 @@ private:
     // index.
     std::vector<rank_type> partition;
 
-    //
-    // Additional methods
-    //
-
-    // Clears obsolete entries from "partition"
-    void clear_unknown_cell_ownership();
+    // Neighborhood communicator
+    boost::mpi::communicator neighcomm;
 
     /** Type "Per_Neighbor": an element designated for communication with
      * a neighboring process (one per rank_index_type).
@@ -123,9 +108,26 @@ private:
     using GlobalCellIndices = std::vector<global_cell_index_type>;
 
     // Computes vector of vectors of cells which has to be send to neighbours
-    PerNeighbor<GlobalCellIndices>
+    virtual PerNeighbor<GlobalCellIndices>
     compute_send_list(std::vector<double> &&sendLoads,
                       const std::vector<double> &weights);
+
+private:
+    friend struct HybridGPDiff; // Needs access to "partition" vector
+
+    void pre_init(bool firstcall) override;
+    void init_new_foreign_cell(local_cell_index_type localcell,
+                               global_cell_index_type foreigncell,
+                               rank_type owner) override;
+
+    bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
+
+    //
+    // Additional methods
+    //
+
+    // Clears obsolete entries from "partition"
+    void clear_unknown_cell_ownership();
 
     // Send message with neighbourhood of received cells in "sendCells"
     PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
