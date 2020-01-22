@@ -21,6 +21,7 @@
 
 #include "common_types.hpp"
 #include <mpi.h>
+#include <boost/mpi/communicator.hpp>
 
 namespace repa {
 namespace util {

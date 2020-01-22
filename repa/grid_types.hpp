@@ -34,7 +34,6 @@ enum class GridType {
     GRAPH,
     DIFF,
     PSDIFF,
-    SCHORN,
     KD_TREE,
     HYB_GP_DIFF,
     GRIDBASED

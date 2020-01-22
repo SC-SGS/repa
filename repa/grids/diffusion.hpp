@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "diff_variants.hpp"
 #include "globox.hpp"
 #include "glomethod.hpp"
 #include "pargrid.hpp"
@@ -50,26 +51,6 @@ struct Diffusion : public GloMethod {
 
 protected:
     virtual void post_init(bool firstcall) override;
-
-    /*
-     * Determines the status of each process (underloaded, overloaded)
-     * in the neighborhood given the local load and returns the volume of load
-     * to send to each neighbor. On underloaded processes, returns a vector of
-     * zeros.
-     *
-     * This call is collective on neighcomm.
-     *
-     * Default implementation follows [Willebeek Le Mair and Reeves, IEEE Tr.
-     * Par. Distr. Sys. 4(9), Sep 1993] propose
-     *
-     * @param neighcomm Graph communicator which reflects the neighbor
-     * relationship amongst processes (undirected edges), without edges to the
-     *                  process itself.
-     * @param load The load of the calling process.
-     * @returns Vector of load values ordered according to the neighborhood
-     *          ordering in neighcomm.
-     */
-    virtual std::vector<double> compute_send_volume(double load);
 
     virtual rank_type rank_of_cell(global_cell_index_type idx) override
     {
@@ -112,8 +93,18 @@ protected:
     compute_send_list(std::vector<double> &&sendLoads,
                       const std::vector<double> &weights);
 
+    virtual void command(std::string s) override;
+
+    virtual bool accept_transfer(local_cell_index_type cell,
+                                 rank_type rank)
+    {
+        return true;
+    };
+
 private:
     friend struct HybridGPDiff; // Needs access to "partition" vector
+
+    std::unique_ptr<diff_variants::FlowCalculator> flow_calc;
 
     void pre_init(bool firstcall) override;
     void init_new_foreign_cell(local_cell_index_type localcell,

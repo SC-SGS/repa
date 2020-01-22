@@ -23,6 +23,7 @@
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/vector.hpp>
 #include <numeric>
+#include <regex>
 
 #include "util/fill.hpp"
 #include "util/initial_partitioning.hpp"
@@ -66,42 +67,6 @@ void serialize(Archive &ar,
 namespace repa {
 namespace grids {
 
-std::vector<double> Diffusion::compute_send_volume(double load)
-{
-    int nneigh = repa::util::mpi_undirected_neighbor_count(neighcomm);
-    // Exchange load in local neighborhood
-    std::vector<double> neighloads(nneigh);
-    MPI_Neighbor_allgather(&load, 1, MPI_DOUBLE, neighloads.data(), 1,
-                           MPI_DOUBLE, neighcomm);
-
-    double avgload
-        = std::accumulate(std::begin(neighloads), std::end(neighloads), load)
-          / (nneigh + 1);
-
-    // Return empty send volume if this process is underloaded
-    if (load < avgload)
-        return std::vector<double>(neighloads.size(), 0.0);
-
-    std::vector<double> deficiency(neighloads.size());
-
-    // Calculate deficiency
-    for (size_t i = 0; i < neighloads.size(); ++i) {
-        deficiency[i] = std::max(avgload - neighloads[i], 0.0);
-    }
-
-    auto total_deficiency
-        = std::accumulate(std::begin(deficiency), std::end(deficiency), 0.0);
-    double overload = load - avgload;
-
-    // Make "deficiency" relative and then scale it to be an
-    // absolute part of this process's overload
-    for (size_t i = 0; i < neighloads.size(); ++i) {
-        deficiency[i] = overload * deficiency[i] / total_deficiency;
-    }
-
-    return deficiency;
-}
-
 void Diffusion::clear_unknown_cell_ownership()
 {
     auto is_my_cell = [this](local_or_ghost_cell_index_type neighcell) {
@@ -127,7 +92,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     double local_load
         = std::accumulate(std::begin(cellweights), std::end(cellweights), 0.0);
 
-    std::vector<double> send_volume = compute_send_volume(local_load);
+    std::vector<double> send_volume
+        = flow_calc->compute_flow(neighcomm, local_load);
 #ifdef DIFFUSION_DEBUG
     assert(send_volume.size() == neighbors.size());
 #endif
@@ -261,7 +227,9 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 Diffusion::Diffusion(const boost::mpi::communicator &comm,
                      Vec3d box_size,
                      double min_cell_size)
-    : GloMethod(comm, box_size, min_cell_size)
+    : GloMethod(comm, box_size, min_cell_size),
+      flow_calc(diff_variants::create_flow_calc(
+          diff_variants::FlowCalcKind::WILLEBEEK))
 {
     // Initial partitioning
     partition.resize(gbox.ncells());
@@ -321,6 +289,9 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
         plist.pop_back();
 
         for (auto neighrank : borderCellsNeighbors[cidx]) {
+            if (!accept_transfer(cidx, neighrank))
+                continue;
+
             auto neighidx
                 = std::distance(std::begin(neighbors),
                                 std::find(std::begin(neighbors),
@@ -403,6 +374,39 @@ void Diffusion::init_new_foreign_cell(local_cell_index_type localcell,
         borderCells.push_back(localcell);
 
     util::push_back_unique(borderCellsNeighbors[localcell], owner);
+}
+
+void Diffusion::command(std::string s)
+{
+    std::smatch m;
+
+    static const std::regex iter_re("(set) (flow_count) ([[:digit:]]+)");
+    if (std::regex_match(s, m, iter_re)) {
+        uint32_t flow_count = std::stoul(m[3].str().c_str(), NULL);
+        std::cout << "Setting flow_count = " << flow_count << std::endl;
+        try {
+            DIFFUSION_MAYBE_SET_NFLOW_ITER(flow_calc.get(), flow_count);
+        }
+        catch (...) {
+            std::cerr << "Cannot set nflow iter." << std::endl;
+        }
+        return;
+    }
+
+    static const std::regex flow_re("(set) (flow) (willebeek|schornbaum");
+    if (std::regex_match(s, m, flow_re)) {
+        const std::string &impl = m[3].str();
+        std::cout << "Setting implementation to: " << impl << std::endl;
+        if (impl == "willebeek")
+            flow_calc = diff_variants::create_flow_calc(
+                diff_variants::FlowCalcKind::WILLEBEEK);
+        else if (impl == "schornbaum")
+            flow_calc = diff_variants::create_flow_calc(
+                diff_variants::FlowCalcKind::SCHORN);
+        else
+            assert(false);
+        return;
+    }
 }
 
 } // namespace grids

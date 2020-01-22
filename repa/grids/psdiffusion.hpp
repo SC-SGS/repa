@@ -31,26 +31,25 @@ struct PSDiffusion : public Diffusion {
     ~PSDiffusion();
 
 protected:
-    virtual std::vector<double> compute_send_volume(double load) override;
+    virtual bool accept_transfer(local_cell_index_type cidx,
+                                 rank_type neighrank) override;
 
     virtual void post_init(bool firstcall) override;
-
-    virtual PerNeighbor<GlobalCellIndices>
-    compute_send_list(std::vector<double> &&sendLoads,
-                      const std::vector<double> &weights) override;
 
 private:
     bool coords_based_allow_sending(local_cell_index_type c,
                                     rank_type neighrank);
-    Vec3i fix_periodic_edge(const Vec3i &c0, const Vec3i &c2);
 
 #ifndef NDEBUG
-    bool rank_based_allow_sending(local_cell_index_type c, rank_type neighrank);
+    bool rank_based_allow_sending(local_cell_index_type c,
+                                  rank_type neighrank);
 
     std::vector<rank_type> neighborhood_ranks;
     std::unordered_map<int, rank_type *> nr_mappings;
 
     std::vector<rank_type> initial_neighborhood;
+
+    Vec3i comm_dims;
 #endif
 };
 
