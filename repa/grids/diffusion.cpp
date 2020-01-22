@@ -27,6 +27,7 @@
 #include "util/fill.hpp"
 #include "util/initial_partitioning.hpp"
 #include "util/mpi_graph.hpp"
+#include "util/mpi_subset_allgather.hpp"
 #include "util/push_back_unique.hpp"
 
 #ifndef NDEBUG
@@ -127,8 +128,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     double local_load
         = std::accumulate(std::begin(cellweights), std::end(cellweights), 0.0);
 
-    std::vector<double> send_volume
-        = compute_send_volume(local_load);
+    std::vector<double> send_volume = compute_send_volume(local_load);
 #ifdef DIFFUSION_DEBUG
     assert(send_volume.size() == neighbors.size());
 #endif
@@ -158,8 +158,6 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     // This is used to avoid inconsistencies, especially at newly created
     // neighborhood relationships
     //
-    std::vector<boost::mpi::request> sreq_cells(neighbors.size());
-    std::vector<boost::mpi::request> rreq_cells(neighbors.size());
 
     for (rank_index_type i = 0; i < neighbors.size(); ++i) {
         // Push back the rank, that is save an extra communication of
@@ -167,21 +165,9 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         toSend[i].push_back(static_cast<global_cell_index_type>(neighbors[i]));
     }
 
-    // Extra loop as all ranks need to be added before sending
-    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
-        sreq_cells[i] = comm_cart.isend(neighbors[i], 2, toSend);
-    }
-
     // All send volumes from all processes
-    PerNeighbor<PerNeighbor<GlobalCellIndices>>
-        //          ^^^^^^^^^^^ this "PerNeighbor" is actually
-        //          "PerNeighborsNeighbor"
-        received_cells(neighbors.size());
-    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
-        rreq_cells[i] = comm_cart.irecv(neighbors[i], 2, received_cells[i]);
-    }
-
-    boost::mpi::wait_all(std::begin(rreq_cells), std::end(rreq_cells));
+    PerNeighbor<PerNeighbor<GlobalCellIndices>> received_cells
+        = util::mpi_subset_allgather(comm_cart, neighbors, toSend);
 
     // Update the partition entry for all received cells.
     for (size_t from = 0; from < received_cells.size(); ++from) {
@@ -195,8 +181,6 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
                              std::end(received_cells[from][to]), target_rank);
         }
     }
-
-    boost::mpi::wait_all(std::begin(sreq_cells), std::end(sreq_cells));
 
     //
     // END of first communication step
