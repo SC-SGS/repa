@@ -29,6 +29,7 @@
 #include "util/initial_partitioning.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/mpi_subset_allgather.hpp"
+#include "util/mpi_subset_scatter_gather.hpp"
 #include "util/push_back_unique.hpp"
 
 #ifndef NDEBUG
@@ -217,26 +218,10 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     // Second communication Step
     // Send neighbourhood of sent cells.
     //
-    std::vector<boost::mpi::request> rreq_neigh(neighbors.size());
-    std::vector<boost::mpi::request> sreq_neigh(neighbors.size());
+    auto received_neighborhood = util::mpi_subset_scatter_gather(
+        comm, neighbors, sendNeighbourhood(toSend));
 
-    auto sendVectors = sendNeighbourhood(toSend);
-
-    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
-        sreq_neigh[i] = comm_cart.isend(neighbors[i], 2, sendVectors[i]);
-    }
-
-    // All send volumes from all processes
-    PerNeighbor<__diff_impl::CellNeighborhoodPerCell> received_neighborhood(
-        neighbors.size());
-    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
-        rreq_neigh[i]
-            = comm_cart.irecv(neighbors[i], 2, received_neighborhood[i]);
-    }
-
-    boost::mpi::wait_all(std::begin(rreq_neigh), std::end(rreq_neigh));
     updateReceivedNeighbourhood(received_neighborhood);
-    boost::mpi::wait_all(std::begin(sreq_neigh), std::end(sreq_neigh));
 
 #ifdef DIFFUSION_DEBUG
     for (global_cell_index_type i = 0; i < partition.size(); ++i) {
