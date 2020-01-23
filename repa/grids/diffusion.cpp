@@ -218,10 +218,12 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     // Second communication Step
     // Send neighbourhood of sent cells.
     //
-    auto received_neighborhood = util::mpi_subset_scatter_gather(
-        comm, neighbors, sendNeighbourhood(toSend));
+    {
+        auto received_neighborhood = util::mpi_subset_scatter_gather(
+            comm, neighbors, sendNeighbourhood(toSend));
 
-    updateReceivedNeighbourhood(received_neighborhood);
+        updateReceivedNeighbourhood(received_neighborhood);
+    }
 
 #ifdef DIFFUSION_DEBUG
     for (global_cell_index_type i = 0; i < partition.size(); ++i) {
