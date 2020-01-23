@@ -159,9 +159,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         = std::accumulate(std::begin(cellweights), std::end(cellweights), 0.0);
 
     std::vector<double> send_volume = compute_send_volume(local_load);
-#ifdef DIFFUSION_DEBUG
     assert(send_volume.size() == neighbors.size());
-#endif
 
     PerNeighbor<GlobalCellIndices> toSend(neighbors.size());
 
