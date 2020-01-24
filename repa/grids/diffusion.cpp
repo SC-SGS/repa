@@ -54,6 +54,7 @@ static void mark_new_owners_from_sendvolume(
     const auto &indicess = std::get<0>(sendvolume);
     const auto &new_values = std::get<1>(sendvolume);
     assert(indicess.size() == new_values.size());
+    // Do *not* loop over new_values, "indicess" can be empty.
     for (size_t set_num = 0; set_num < indicess.size(); ++set_num) {
         const auto &indices = indicess[set_num];
         const auto &n_value = new_values[set_num];
