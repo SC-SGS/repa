@@ -28,8 +28,8 @@
 #include "util/fill.hpp"
 #include "util/initial_partitioning.hpp"
 #include "util/mpi_graph.hpp"
-#include "util/mpi_subset_allgather.hpp"
-#include "util/mpi_subset_alltoall.hpp"
+#include "util/mpi_neighbor_allgather.hpp"
+#include "util/mpi_neighbor_alltoall.hpp"
 #include "util/push_back_unique.hpp"
 
 #ifndef NDEBUG
@@ -187,9 +187,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     //
     {
         // All send volumes from all processes
-        auto neighbor_sendvolumes = util::mpi_subset_allgather(
-            comm_cart, neighbors,
-            std::make_pair(std::cref(toSend), std::cref(neighbors)));
+        auto neighbor_sendvolumes = util::mpi_neighbor_allgather(
+            neighcomm, std::make_pair(std::cref(toSend), std::cref(neighbors)));
 
         // Update the partition entry for all received cells.
         using namespace std::placeholders;
@@ -219,8 +218,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     // Send neighbourhood of sent cells.
     //
     {
-        auto received_neighborhood = util::mpi_subset_alltoall(
-            comm, neighbors, sendNeighbourhood(toSend));
+        auto received_neighborhood
+            = util::mpi_neighbor_alltoall(neighcomm, sendNeighbourhood(toSend));
 
         updateReceivedNeighbourhood(received_neighborhood);
     }

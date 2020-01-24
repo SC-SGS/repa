@@ -1,20 +1,23 @@
 
 #pragma once
 
-#include "pargrid.hpp"
+#include "mpi_graph.hpp"
 #include <boost/mpi.hpp>
 
 namespace repa {
 namespace util {
 
+namespace __impl {
+
 /** MPI_Scatter "data" to the processes indicated by "neighbors" as well as
  * MPI_Gather from them and return this data.
+ * Corresponds to a MPI_Alltoall among "neighbors".
  */
 template <typename T>
 std::vector<T>
 mpi_subset_alltoall(const boost::mpi::communicator &comm,
-                     const std::vector<grids::rank_type> &neighbors,
-                     const std::vector<T> &data)
+                    const std::vector<grids::rank_type> &neighbors,
+                    const std::vector<T> &data)
 {
     std::vector<boost::mpi::request> sreq_cells(neighbors.size());
     std::vector<boost::mpi::request> rreq_cells(neighbors.size());
@@ -34,6 +37,18 @@ mpi_subset_alltoall(const boost::mpi::communicator &comm,
     return gathered_data;
 }
 
+} // namespace _impl
+
+/** MPI_Neighbor_alltoall.
+ */
+template <typename T>
+std::vector<T> mpi_neighbor_alltoall(const boost::mpi::communicator &neighcomm,
+                                     const std::vector<T> &data)
+{
+    assert(has_dist_graph_topology(neighcomm));
+    return __impl::mpi_subset_alltoall(
+        neighcomm, mpi_undirected_neighbors(neighcomm), data);
+}
 
 } // namespace util
 } // namespace repa
