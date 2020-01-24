@@ -201,21 +201,12 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     std::vector<double> send_volume = compute_send_volume(local_load);
     assert(send_volume.size() == neighbors.size());
 
-    PerNeighbor<GlobalCellIndices> toSend(neighbors.size());
+    PerNeighbor<GlobalCellIndices> toSend
+        = compute_send_list(std::move(send_volume), cellweights);
 
-    if (std::any_of(std::begin(send_volume), std::end(send_volume),
-                    [](double d) { return d > 0.0; })) {
-
-        // Create list of border cells which can be send to neighbors.
-        // First element of each vector is the rank to which the sells should
-        // be send. The other elements in the vectors are the global cell IDs
-        // of the cells.
-        toSend = compute_send_list(std::move(send_volume), cellweights);
-
-        // Update partition array
-        _impl::mark_new_owners_from_sendvolume(
-            partition, std::make_pair(std::cref(toSend), std::cref(neighbors)));
-    }
+    // Update partition array
+    _impl::mark_new_owners_from_sendvolume(
+        partition, std::make_pair(std::cref(toSend), std::cref(neighbors)));
 
     //
     // First communication step
@@ -283,6 +274,12 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
                              const std::vector<double> &weights) const
 {
     std::vector<std::tuple<int, double, local_cell_index_type>> plist;
+
+    // Return empty vector, if nothing to send
+    if (std::none_of(send_loads.begin(), send_loads.end(),
+                     [](double v) { return v > 0.; }))
+        return PerNeighbor<GlobalCellIndices>(send_loads.size());
+
     for (size_t i = 0; i < borderCells.size(); i++) {
         // Profit when sending this cell away
         double profit = weights[borderCells[i]];
