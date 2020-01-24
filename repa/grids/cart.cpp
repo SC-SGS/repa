@@ -26,7 +26,6 @@
 #include "util/mpi_cart.hpp"
 #include "util/neighbor_offsets.hpp"
 #include "util/push_back_unique.hpp"
-#include "util/vadd.hpp"
 #include "util/vec_arith.hpp"
 
 #include "_compat.hpp"
