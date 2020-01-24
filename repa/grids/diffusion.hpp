@@ -67,7 +67,7 @@ protected:
      * @returns Vector of load values ordered according to the neighborhood
      *          ordering in neighcomm.
      */
-    virtual std::vector<double> compute_send_volume(double load);
+    virtual std::vector<double> compute_send_volume(double load) const;
 
     // Neighborhood communicator
     boost::mpi::communicator neighcomm;
@@ -125,11 +125,11 @@ private:
     // Computes vector of vectors of cells which has to be send to neighbours
     PerNeighbor<GlobalCellIndices>
     compute_send_list(std::vector<double> &&sendLoads,
-                      const std::vector<double> &weights);
+                      const std::vector<double> &weights) const;
 
     // Send message with neighbourhood of received cells in "sendCells"
     PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
-    sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend);
+    sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend) const;
 
     // Update partition array
     void updateReceivedNeighbourhood(

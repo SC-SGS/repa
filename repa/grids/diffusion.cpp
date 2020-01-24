@@ -137,7 +137,7 @@ void serialize(Archive &ar,
 namespace repa {
 namespace grids {
 
-std::vector<double> Diffusion::compute_send_volume(double load)
+std::vector<double> Diffusion::compute_send_volume(double load) const
 {
     int nneigh = repa::util::mpi_undirected_neighbor_count(neighcomm);
     // Exchange load in local neighborhood
@@ -280,7 +280,7 @@ Diffusion::~Diffusion()
  */
 Diffusion::PerNeighbor<Diffusion::GlobalCellIndices>
 Diffusion::compute_send_list(std::vector<double> &&send_loads,
-                             const std::vector<double> &weights)
+                             const std::vector<double> &weights) const
 {
     std::vector<std::tuple<int, double, local_cell_index_type>> plist;
     for (size_t i = 0; i < borderCells.size(); i++) {
@@ -293,7 +293,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
              gbox.full_shell_neigh_without_center(cells[borderCells[i]])) {
             if (partition[neighCell] == comm_cart.rank()
                 && std::find(std::begin(borderCells), std::end(borderCells),
-                             global_to_local[neighCell])
+                             global_to_local.at(neighCell))
                        != std::end(borderCells)) {
                 nadditional_comm++;
             }
@@ -317,7 +317,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
         local_cell_index_type cidx = std::get<2>(plist.back());
         plist.pop_back();
 
-        for (auto neighrank : borderCellsNeighbors[cidx]) {
+        for (auto neighrank : borderCellsNeighbors.at(cidx)) {
             auto neighidx
                 = std::distance(std::begin(neighbors),
                                 std::find(std::begin(neighbors),
@@ -336,7 +336,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
 }
 
 Diffusion::PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
-Diffusion::sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend)
+Diffusion::sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend) const
 {
     PerNeighbor<__diff_impl::CellNeighborhoodPerCell> sendVectors(
         toSend.size());
