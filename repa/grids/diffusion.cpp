@@ -29,7 +29,7 @@
 #include "util/initial_partitioning.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/mpi_subset_allgather.hpp"
-#include "util/mpi_subset_scatter_gather.hpp"
+#include "util/mpi_subset_alltoall.hpp"
 #include "util/push_back_unique.hpp"
 
 #ifndef NDEBUG
@@ -219,7 +219,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     // Send neighbourhood of sent cells.
     //
     {
-        auto received_neighborhood = util::mpi_subset_scatter_gather(
+        auto received_neighborhood = util::mpi_subset_alltoall(
             comm, neighbors, sendNeighbourhood(toSend));
 
         updateReceivedNeighbourhood(received_neighborhood);

@@ -12,7 +12,7 @@ namespace util {
  */
 template <typename T>
 std::vector<T>
-mpi_subset_scatter_gather(const boost::mpi::communicator &comm,
+mpi_subset_alltoall(const boost::mpi::communicator &comm,
                      const std::vector<grids::rank_type> &neighbors,
                      const std::vector<T> &data)
 {
