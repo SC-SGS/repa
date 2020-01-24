@@ -23,7 +23,6 @@
 #include "glomethod.hpp"
 #include "pargrid.hpp"
 #include <array>
-#include <mpi.h>
 #include <vector>
 
 namespace repa {

@@ -20,7 +20,6 @@
 #pragma once
 
 #include "../pargrid.hpp"
-#include <array>
 #include <vector>
 
 namespace repa {
