@@ -198,9 +198,6 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
                                 std::ref(partition), _1));
     }
 
-    //
-    // END of first communication step
-    //
 #ifdef DIFFUSION_DEBUG
     auto p2 = partition;
     for (auto &el : p2)
@@ -229,9 +226,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         if (partition[i] != comm_cart.rank())
             continue;
 
-        for (int j = 0; j < 27; ++j) {
-            global_cell_index_type n = gbox.neighbor(i, j);
-            assert(partition[n] != UNKNOWN_RANK);
+        for (auto ni : gbox.full_shell_neigh(i)) {
+            assert(partition[ni] != UNKNOWN_RANK);
         }
     }
 #endif
