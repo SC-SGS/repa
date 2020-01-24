@@ -122,16 +122,22 @@ private:
      */
     using GlobalCellIndices = std::vector<global_cell_index_type>;
 
-    // Computes vector of vectors of cells which has to be send to neighbours
+    /** Computes vector of vectors of cells to be sent to neighboring processes
+     * based on the send volume passed in "send_volume".
+     */
     PerNeighbor<GlobalCellIndices>
-    compute_send_list(std::vector<double> &&sendLoads,
+    compute_send_list(std::vector<double> &&send_volume,
                       const std::vector<double> &weights) const;
 
-    // Send message with neighbourhood of received cells in "sendCells"
+    /** Generate neighborhood information to send to processes that received
+     * the cells in "cells_to_send".
+     */
     PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
-    get_neighborhood_information(const PerNeighbor<GlobalCellIndices> &toSend) const;
+    get_neighborhood_information(const PerNeighbor<GlobalCellIndices> &cells_to_send) const;
 
-    // Update partition array
+    /** Update "partition" vector based on cell neighborhood information
+     * from neighboring processes.
+     */
     void update_partitioning_from_received_neighbourhood(
         const PerNeighbor<__diff_impl::CellNeighborhoodPerCell> &neighbourhood);
 };

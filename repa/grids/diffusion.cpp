@@ -245,9 +245,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 
     return true;
 }
-/*
- * Initialization
- */
+
 Diffusion::Diffusion(const boost::mpi::communicator &comm,
                      Vec3d box_size,
                      double min_cell_size)
@@ -267,10 +265,6 @@ Diffusion::~Diffusion()
 {
 }
 
-/*
- * Computes a vector of vectors. The inner vectors contain a rank of the
- * process where the cells shall send and the cellids of this cells.
- */
 Diffusion::PerNeighbor<Diffusion::GlobalCellIndices>
 Diffusion::compute_send_list(std::vector<double> &&send_loads,
                              const std::vector<double> &weights) const
@@ -357,10 +351,6 @@ Diffusion::get_neighborhood_information(
     return sendVectors;
 }
 
-/*
- * Based on neighbourhood, received in function "receiveNeighbourhood",
- * partition array is updated. (Only neighbourhood is changed)
- */
 void Diffusion::update_partitioning_from_received_neighbourhood(
     const PerNeighbor<__diff_impl::CellNeighborhoodPerCell> &neighs)
 {
