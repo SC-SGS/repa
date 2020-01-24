@@ -201,29 +201,31 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     std::vector<double> send_volume = compute_send_volume(local_load);
     assert(send_volume.size() == neighbors.size());
 
-    PerNeighbor<GlobalCellIndices> toSend
+    const PerNeighbor<GlobalCellIndices> cells_to_send
         = compute_send_list(std::move(send_volume), cellweights);
+    const auto send_information
+        = std::make_pair(std::cref(cells_to_send), std::cref(neighbors));
 
     // Update partition array
-    _impl::mark_new_owners_from_sendvolume(
-        partition, std::make_pair(std::cref(toSend), std::cref(neighbors)));
+    _impl::mark_new_owners_from_sendvolume(partition, send_information);
 
     //
     // First communication step
-    // Send *all* vectors in "toSend" to *all* neighbors.
+    // Send *all* vectors in "cells_to_send" to *all* neighbors.
     // (Not only their respective receive volumes.)
     // This is used to avoid inconsistencies, especially at newly created
     // neighborhood relationships
     //
     {
         // All send volumes from all processes
-        auto neighbor_sendvolumes = util::mpi_neighbor_allgather(
-            neighcomm, std::make_pair(std::cref(toSend), std::cref(neighbors)));
+        const auto neighbor_sendinformation = util::mpi_neighbor_allgather(
+            neighcomm,
+            send_information);
 
         // Update the partition entry for all received cells.
         using namespace std::placeholders;
-        std::for_each(std::begin(neighbor_sendvolumes),
-                      std::end(neighbor_sendvolumes),
+        std::for_each(std::begin(neighbor_sendinformation),
+                      std::end(neighbor_sendinformation),
                       std::bind(_impl::mark_new_owners_from_sendvolume,
                                 std::ref(partition), _1));
     }
@@ -234,10 +236,10 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     // Send neighbourhood of sent cells.
     //
     {
-        auto received_neighborhood
-            = util::mpi_neighbor_alltoall(neighcomm, sendNeighbourhood(toSend));
+        const auto received_neighborhood_info = util::mpi_neighbor_alltoall(
+            neighcomm, sendNeighbourhood(cells_to_send));
 
-        updateReceivedNeighbourhood(received_neighborhood);
+        updateReceivedNeighbourhood(received_neighborhood_info);
     }
     assert(_impl::is_ghost_layer_fully_known(partition, comm_cart, gbox));
 
@@ -333,14 +335,15 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
 }
 
 Diffusion::PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
-Diffusion::sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend) const
+Diffusion::sendNeighbourhood(
+    const PerNeighbor<GlobalCellIndices> &cells_to_send) const
 {
     PerNeighbor<__diff_impl::CellNeighborhoodPerCell> sendVectors(
-        toSend.size());
-    for (size_t i = 0; i < toSend.size(); ++i) {
-        sendVectors[i].resize(toSend[i].size());
-        for (size_t j = 0; j < toSend[i].size(); ++j) {
-            sendVectors[i][j].basecell = toSend[i][j];
+        cells_to_send.size());
+    for (size_t i = 0; i < cells_to_send.size(); ++i) {
+        sendVectors[i].resize(cells_to_send[i].size());
+        for (size_t j = 0; j < cells_to_send[i].size(); ++j) {
+            sendVectors[i][j].basecell = cells_to_send[i][j];
             int k = 0;
             for (global_cell_index_type n :
                  gbox.full_shell_neigh_without_center(
