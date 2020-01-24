@@ -19,11 +19,7 @@
 
 #pragma once
 
-#include <array>
 #include <boost/mpi/communicator.hpp>
-#include <map>
-#include <memory>
-#include <stdexcept>
 #include <vector>
 
 #include "common_types.hpp"
