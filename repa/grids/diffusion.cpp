@@ -63,6 +63,44 @@ static void mark_new_owners_from_sendvolume(
     }
 }
 
+#ifndef NDEBUG
+static bool is_correct_distributed_partitioning(
+    const std::vector<repa::grids::rank_type> &partition,
+    const boost::mpi::communicator &comm)
+{
+    // Check that every cell has exactly one owner
+    std::vector<int> nowners(partition.size(), 0);
+    for (size_t i = 0; i < nowners.size(); ++i)
+        if (partition[i] == comm.rank())
+            nowners[i]++;
+
+    MPI_Allreduce(MPI_IN_PLACE, nowners.data(), nowners.size(), MPI_INT,
+                  MPI_SUM, comm);
+    return std::all_of(std::begin(nowners), std::end(nowners),
+                       [](int el) { return el == 1; });
+}
+
+static bool is_ghost_layer_fully_known(
+    const std::vector<repa::grids::rank_type> &partition,
+    const boost::mpi::communicator &comm,
+    const repa::grids::globox::GlobalBox<repa::grids::global_cell_index_type,
+                                         repa::grids::global_cell_index_type>
+        &gbox)
+{
+    // Check that the neighborhood of every owned cell is known.
+    for (repa::grids::global_cell_index_type i = 0; i < partition.size(); ++i) {
+        if (partition[i] != comm.rank())
+            continue;
+
+        for (auto ni : gbox.full_shell_neigh(i)) {
+            if (partition[ni] == UNKNOWN_RANK)
+                return false;
+        }
+    }
+    return true;
+}
+#endif
+
 } // namespace _impl
 
 namespace boost {
@@ -197,18 +235,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
                       std::bind(_impl::mark_new_owners_from_sendvolume,
                                 std::ref(partition), _1));
     }
-
-#ifdef DIFFUSION_DEBUG
-    auto p2 = partition;
-    for (auto &el : p2)
-        if (el != comm_cart.rank())
-            el = UNKNOWN_RANK;
-
-    MPI_Allreduce(MPI_IN_PLACE, p2.data(), p2.size(), MPI_INT, MPI_MAX,
-                  comm_cart);
-    for (auto el : p2)
-        assert(el != UNKNOWN_RANK);
-#endif
+    assert(_impl::is_correct_distributed_partitioning(partition, comm_cart));
 
     //
     // Second communication Step
@@ -220,17 +247,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 
         updateReceivedNeighbourhood(received_neighborhood);
     }
-
-#ifdef DIFFUSION_DEBUG
-    for (global_cell_index_type i = 0; i < partition.size(); ++i) {
-        if (partition[i] != comm_cart.rank())
-            continue;
-
-        for (auto ni : gbox.full_shell_neigh(i)) {
-            assert(partition[ni] != UNKNOWN_RANK);
-        }
-    }
-#endif
+    assert(_impl::is_ghost_layer_fully_known(partition, comm_cart, gbox));
 
     return true;
 }
