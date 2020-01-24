@@ -33,6 +33,7 @@ inline int mpi_undirected_neighbor_count(MPI_Comm neighcomm)
 {
     int indegree = 0, outdegree = 0, weighted = 0;
     MPI_Dist_graph_neighbors_count(neighcomm, &indegree, &outdegree, &weighted);
+    assert(indegree == outdegree);
     return indegree;
 }
 
