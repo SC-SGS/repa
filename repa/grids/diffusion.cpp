@@ -237,9 +237,9 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     //
     {
         const auto received_neighborhood_info = util::mpi_neighbor_alltoall(
-            neighcomm, sendNeighbourhood(cells_to_send));
+            neighcomm, get_neighborhood_information(cells_to_send));
 
-        updateReceivedNeighbourhood(received_neighborhood_info);
+        update_partitioning_from_received_neighbourhood(received_neighborhood_info);
     }
     assert(_impl::is_ghost_layer_fully_known(partition, comm_cart, gbox));
 
@@ -335,7 +335,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
 }
 
 Diffusion::PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
-Diffusion::sendNeighbourhood(
+Diffusion::get_neighborhood_information(
     const PerNeighbor<GlobalCellIndices> &cells_to_send) const
 {
     PerNeighbor<__diff_impl::CellNeighborhoodPerCell> sendVectors(
@@ -361,7 +361,7 @@ Diffusion::sendNeighbourhood(
  * Based on neighbourhood, received in function "receiveNeighbourhood",
  * partition array is updated. (Only neighbourhood is changed)
  */
-void Diffusion::updateReceivedNeighbourhood(
+void Diffusion::update_partitioning_from_received_neighbourhood(
     const PerNeighbor<__diff_impl::CellNeighborhoodPerCell> &neighs)
 {
     for (size_t i = 0; i < neighs.size(); ++i) {

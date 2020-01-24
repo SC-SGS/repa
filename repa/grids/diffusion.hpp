@@ -129,10 +129,10 @@ private:
 
     // Send message with neighbourhood of received cells in "sendCells"
     PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
-    sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend) const;
+    get_neighborhood_information(const PerNeighbor<GlobalCellIndices> &toSend) const;
 
     // Update partition array
-    void updateReceivedNeighbourhood(
+    void update_partitioning_from_received_neighbourhood(
         const PerNeighbor<__diff_impl::CellNeighborhoodPerCell> &neighbourhood);
 };
 } // namespace grids
