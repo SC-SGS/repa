@@ -49,7 +49,7 @@ void init_part_linear(const globox::GlobalBox<global_cell_index_type> &gbox,
 
 namespace __cart_impl {
 
-constexpr inline repa::Vec3i ceil_div(const repa::Vec3i &a,
+inline repa::Vec3i ceil_div(const repa::Vec3i &a,
                                       const repa::Vec3i &b)
 {
     Vec3i result;
@@ -62,13 +62,13 @@ constexpr inline repa::Vec3i ceil_div(const repa::Vec3i &a,
 }
 
 struct Cart_CellProcessIndexConverter {
-    constexpr Cart_CellProcessIndexConverter(const repa::Vec3i &cell_grid,
+    Cart_CellProcessIndexConverter(const repa::Vec3i &cell_grid,
                                              const repa::Vec3i &dims)
         : dims(dims), cells_per_proc(ceil_div(cell_grid, dims))
     {
     }
 
-    constexpr Vec3i operator()(const Vec3i &cell_idx) const
+    Vec3i operator()(const Vec3i &cell_idx) const
     {
         Vec3i result;
         for (int d = 0; d < 3; ++d) {
