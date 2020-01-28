@@ -80,7 +80,7 @@ private:
                                global_cell_index_type foreigncell,
                                rank_type owner) override;
 
-    virtual rank_type rank_of_cell(global_cell_index_type idx) override
+    virtual rank_type rank_of_cell(global_cell_index_type idx) const override
     {
         t_assert(idx >= 0 && idx < gbox.ncells());
         return partition[idx];
