@@ -94,7 +94,7 @@ private:
     }
 
     value_type cell;
-    int idx;
+    difference_type idx;
     const GloBox *g;
 };
 
