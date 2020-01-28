@@ -23,7 +23,6 @@
 #include "globox.hpp"
 #include "graph.hpp"
 #include "pargrid.hpp"
-#include <array>
 
 namespace repa {
 namespace grids {

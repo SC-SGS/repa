@@ -20,10 +20,8 @@
 
 #pragma once
 
-#include <cstring>
 #include <mpi.h>
-#include <tuple>
-#include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include <kdpart/kdpart.h>
