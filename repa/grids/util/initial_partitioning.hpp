@@ -28,7 +28,7 @@ namespace util {
 
 using namespace repa::grids; // cell index types
 
-enum InitialPartitionType { LINEAR, CARTESIAN };
+enum InitialPartitionType { LINEAR, CARTESIAN1D, CARTESIAN3D };
 
 namespace impl {
 
@@ -47,33 +47,85 @@ void init_part_linear(const globox::GlobalBox<global_cell_index_type> &gbox,
     }
 }
 
-template <typename AssignFunc>
-void init_part_cartesian(const globox::GlobalBox<global_cell_index_type> &gbox,
-                         const boost::mpi::communicator &comm,
-                         AssignFunc &&assign_cell)
+namespace __cart_impl {
+
+inline repa::Vec3i ceil_div(const repa::Vec3i &a,
+                                      const repa::Vec3i &b)
 {
-    assert(comm.has_cartesian_topology());
-
-    auto nglobalcells = gbox.ncells();
-
-    int dims[3] = {0, 0, 0};
-    MPI_Dims_create(comm.size(), 3, dims);
-
-    auto cellgrid = gbox.grid_size();
-    Vec3i cells_per_proc;
+    Vec3i result;
     for (int i = 0; i < 3; ++i) {
-        cells_per_proc[i] = static_cast<Vec3i::value_type>(
-            std::ceil(static_cast<double>(cellgrid[i]) / dims[i]));
+        // Does not assign an equal amount of cells to each process.
+        result[i] = static_cast<Vec3i::value_type>(
+            std::ceil(static_cast<double>(a[i]) / b[i]));
+    }
+    return result;
+}
+
+struct Cart_CellProcessIndexConverter {
+    Cart_CellProcessIndexConverter(const repa::Vec3i &cell_grid,
+                                             const repa::Vec3i &dims)
+        : dims(dims), cells_per_proc(ceil_div(cell_grid, dims))
+    {
     }
 
+    Vec3i operator()(const Vec3i &cell_idx) const
+    {
+        Vec3i result;
+        for (int d = 0; d < 3; ++d) {
+            result[d] = std::min(cell_idx[d] / cells_per_proc[d], dims[d] - 1);
+        }
+        return result;
+    }
+
+private:
+    const repa::Vec3i &dims;
+    const repa::Vec3i cells_per_proc;
+};
+
+} // namespace __cart_impl
+
+template <typename AssignFunc>
+void init_part_cartesian3d(
+    const globox::GlobalBox<global_cell_index_type> &gbox,
+    const boost::mpi::communicator &comm,
+    AssignFunc &&assign_cell)
+{
+    assert(comm.has_cartesian_topology());
+    const auto nglobalcells = gbox.ncells();
+    const auto cellgrid = gbox.grid_size();
+
+    Vec3i dims{0, 0, 0};
+    MPI_Dims_create(comm.size(), 3, dims.data());
+    const __cart_impl::Cart_CellProcessIndexConverter to_procidx{cellgrid,
+                                                                 dims};
+
     for (global_cell_index_type i = 0; i < nglobalcells; ++i) {
-        auto cellidx = util::unlinearize(i, gbox.grid_size());
-        // Transform cellidx to 3d proc coord
-        for (int d = 0; d < 3; ++d)
-            cellidx[d] /= cells_per_proc[d];
+        const auto procidx = to_procidx(util::unlinearize(i, cellgrid));
         int rank;
-        MPI_Cart_rank(comm, cellidx.data(), &rank);
+        MPI_Cart_rank(comm, procidx.data(), &rank);
         assign_cell(i, rank);
+    }
+}
+
+template <typename AssignFunc>
+void init_part_cartesian1d(
+    const globox::GlobalBox<global_cell_index_type> &gbox,
+    const boost::mpi::communicator &comm,
+    AssignFunc &&assign_cell)
+{
+    assert(comm.has_cartesian_topology());
+    const auto nglobalcells = gbox.ncells();
+    const auto cellgrid = gbox.grid_size();
+
+    Vec3i dims{comm.size(), 1, 1};
+    const __cart_impl::Cart_CellProcessIndexConverter to_procidx{cellgrid,
+                                                                 dims};
+
+    for (global_cell_index_type i = 0; i < nglobalcells; ++i) {
+        const auto procidx = to_procidx(util::unlinearize(i, gbox.grid_size()));
+        // 1d partitioning, thus, rank is procidx[0].
+        // Do not use MPI_Cart_rank here, as it is a 3d Cartesian communicator.
+        assign_cell(i, procidx[0]);
     }
 }
 
@@ -93,8 +145,13 @@ struct InitPartitioning {
         case InitialPartitionType::LINEAR:
             impl::init_part_linear(gbox, comm, std::forward<AssignFunc>(f));
             break;
-        case InitialPartitionType::CARTESIAN:
-            impl::init_part_cartesian(gbox, comm, std::forward<AssignFunc>(f));
+        case InitialPartitionType::CARTESIAN1D:
+            impl::init_part_cartesian1d(gbox, comm,
+                                        std::forward<AssignFunc>(f));
+            break;
+        case InitialPartitionType::CARTESIAN3D:
+            impl::init_part_cartesian3d(gbox, comm,
+                                        std::forward<AssignFunc>(f));
             break;
         }
         return *this;

@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <boost/mpi/nonblocking.hpp>
 #include <boost/serialization/array.hpp>
+#include <boost/serialization/utility.hpp> // std::pair
 #include <boost/serialization/vector.hpp>
 #include <numeric>
 #include <regex>
@@ -28,11 +29,41 @@
 #include "util/fill.hpp"
 #include "util/initial_partitioning.hpp"
 #include "util/mpi_graph.hpp"
+#include "util/mpi_subset_allgather.hpp"
 #include "util/push_back_unique.hpp"
 
 #ifndef NDEBUG
 #define DIFFUSION_DEBUG
 #endif
+
+namespace _impl {
+
+using GlobalIndices = std::vector<repa::grids::global_cell_index_type>;
+using SendVolIndices = std::vector<GlobalIndices>;
+using RankVector = std::vector<repa::grids::rank_type>;
+
+/** Does a number of "set partition[i] = v for all i in i-vector".
+ *
+ * The different operations are given as vectors and the values and
+ * i-vector-vector are passed as std::pair.
+ */
+static void mark_new_owners_from_sendvolume(
+    std::vector<repa::grids::rank_type> &partition,
+    const std::pair<const SendVolIndices &, const RankVector &> &sendvolume)
+{
+    const auto &indicess = std::get<0>(sendvolume);
+    const auto &new_values = std::get<1>(sendvolume);
+    assert(indicess.size() == new_values.size());
+    for (size_t set_num = 0; set_num < indicess.size(); ++set_num) {
+        const auto &indices = indicess[set_num];
+        const auto &n_value = new_values[set_num];
+
+        for (const auto i : indices)
+            partition[i] = n_value;
+    }
+}
+
+} // namespace _impl
 
 namespace boost {
 namespace serialization {
@@ -110,10 +141,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         toSend = compute_send_list(std::move(send_volume), cellweights);
 
         // Update partition array
-        for (size_t i = 0; i < toSend.size(); ++i) {
-            fill_index_range(partition, std::begin(toSend[i]),
-                             std::end(toSend[i]), neighbors[i]);
-        }
+        _impl::mark_new_owners_from_sendvolume(
+            partition, std::make_pair(std::cref(toSend), std::cref(neighbors)));
     }
 
     //
@@ -123,45 +152,19 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     // This is used to avoid inconsistencies, especially at newly created
     // neighborhood relationships
     //
-    std::vector<boost::mpi::request> sreq_cells(neighbors.size());
-    std::vector<boost::mpi::request> rreq_cells(neighbors.size());
+    {
+        // All send volumes from all processes
+        auto neighbor_sendvolumes = util::mpi_subset_allgather(
+            comm_cart, neighbors,
+            std::make_pair(std::cref(toSend), std::cref(neighbors)));
 
-    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
-        // Push back the rank, that is save an extra communication of
-        // "neighbors" and interleave it into "toSend"
-        toSend[i].push_back(static_cast<global_cell_index_type>(neighbors[i]));
+        // Update the partition entry for all received cells.
+        using namespace std::placeholders;
+        std::for_each(std::begin(neighbor_sendvolumes),
+                      std::end(neighbor_sendvolumes),
+                      std::bind(_impl::mark_new_owners_from_sendvolume,
+                                std::ref(partition), _1));
     }
-
-    // Extra loop as all ranks need to be added before sending
-    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
-        sreq_cells[i] = comm_cart.isend(neighbors[i], 2, toSend);
-    }
-
-    // All send volumes from all processes
-    PerNeighbor<PerNeighbor<GlobalCellIndices>>
-        //          ^^^^^^^^^^^ this "PerNeighbor" is actually
-        //          "PerNeighborsNeighbor"
-        received_cells(neighbors.size());
-    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
-        rreq_cells[i] = comm_cart.irecv(neighbors[i], 2, received_cells[i]);
-    }
-
-    boost::mpi::wait_all(std::begin(rreq_cells), std::end(rreq_cells));
-
-    // Update the partition entry for all received cells.
-    for (size_t from = 0; from < received_cells.size(); ++from) {
-        for (size_t to = 0; to < received_cells[from].size(); ++to) {
-            // Extract target rank, again.
-            rank_type target_rank
-                = static_cast<rank_type>(received_cells[from][to].back());
-            received_cells[from][to].pop_back();
-
-            fill_index_range(partition, std::begin(received_cells[from][to]),
-                             std::end(received_cells[from][to]), target_rank);
-        }
-    }
-
-    boost::mpi::wait_all(std::begin(sreq_cells), std::end(sreq_cells));
 
     //
     // END of first communication step
@@ -177,10 +180,6 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     for (auto el : p2)
         assert(el != UNKNOWN_RANK);
 #endif
-
-    // Remove ranks from "toSend", again.
-    for (rank_index_type i = 0; i < neighbors.size(); ++i)
-        toSend[i].pop_back();
 
     //
     // Second communication Step
@@ -234,7 +233,7 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
     // Initial partitioning
     partition.resize(gbox.ncells());
     util::InitPartitioning{gbox, comm_cart}(
-        util::InitialPartitionType::CARTESIAN,
+        util::InitialPartitionType::CARTESIAN1D,
         [this](global_cell_index_type idx, rank_type r) {
             assert(r >= 0 && r < this->comm.size());
             this->partition[idx] = r;
