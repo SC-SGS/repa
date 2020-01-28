@@ -31,22 +31,3 @@ static void fill_if_index(FwdIt first, FwdIt last, const T &val, Pred p)
         ++i;
     }
 }
-
-/** Sets "data[i]" to "val" for all i in the half-open interval
- * ["first_index", "last_index").
- */
-template <typename T, typename FwdIt>
-static void fill_index_range(std::vector<T> &data,
-                             FwdIt first_index,
-                             FwdIt last_index,
-                             const T &val)
-{
-    using idx_type = typename FwdIt::value_type;
-    std::for_each(first_index, last_index, [&data, &val](idx_type i) {
-#ifdef NDEBUG
-        data[i] = val;
-#else
-        data.at(i) = val;
-#endif
-    });
-}

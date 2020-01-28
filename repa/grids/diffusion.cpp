@@ -28,7 +28,8 @@
 #include "util/fill.hpp"
 #include "util/initial_partitioning.hpp"
 #include "util/mpi_graph.hpp"
-#include "util/mpi_subset_allgather.hpp"
+#include "util/mpi_neighbor_allgather.hpp"
+#include "util/mpi_neighbor_alltoall.hpp"
 #include "util/push_back_unique.hpp"
 
 #ifndef NDEBUG
@@ -53,6 +54,7 @@ static void mark_new_owners_from_sendvolume(
     const auto &indicess = std::get<0>(sendvolume);
     const auto &new_values = std::get<1>(sendvolume);
     assert(indicess.size() == new_values.size());
+    // Do *not* loop over new_values, "indicess" can be empty.
     for (size_t set_num = 0; set_num < indicess.size(); ++set_num) {
         const auto &indices = indicess[set_num];
         const auto &n_value = new_values[set_num];
@@ -61,6 +63,44 @@ static void mark_new_owners_from_sendvolume(
             partition[i] = n_value;
     }
 }
+
+#ifndef NDEBUG
+static bool is_correct_distributed_partitioning(
+    const std::vector<repa::grids::rank_type> &partition,
+    const boost::mpi::communicator &comm)
+{
+    // Check that every cell has exactly one owner
+    std::vector<int> nowners(partition.size(), 0);
+    for (size_t i = 0; i < nowners.size(); ++i)
+        if (partition[i] == comm.rank())
+            nowners[i]++;
+
+    MPI_Allreduce(MPI_IN_PLACE, nowners.data(), nowners.size(), MPI_INT,
+                  MPI_SUM, comm);
+    return std::all_of(std::begin(nowners), std::end(nowners),
+                       [](int el) { return el == 1; });
+}
+
+static bool is_ghost_layer_fully_known(
+    const std::vector<repa::grids::rank_type> &partition,
+    const boost::mpi::communicator &comm,
+    const repa::grids::globox::GlobalBox<repa::grids::global_cell_index_type,
+                                         repa::grids::global_cell_index_type>
+        &gbox)
+{
+    // Check that the neighborhood of every owned cell is known.
+    for (repa::grids::global_cell_index_type i = 0; i < partition.size(); ++i) {
+        if (partition[i] != comm.rank())
+            continue;
+
+        for (auto ni : gbox.full_shell_neigh(i)) {
+            if (partition[ni] == UNKNOWN_RANK)
+                return false;
+        }
+    }
+    return true;
+}
+#endif
 
 } // namespace _impl
 
@@ -97,7 +137,7 @@ void serialize(Archive &ar,
 namespace repa {
 namespace grids {
 
-std::vector<double> Diffusion::compute_send_volume(double load)
+std::vector<double> Diffusion::compute_send_volume(double load) const
 {
     int nneigh = repa::util::mpi_undirected_neighbor_count(neighcomm);
     // Exchange load in local neighborhood
@@ -159,104 +199,53 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         = std::accumulate(std::begin(cellweights), std::end(cellweights), 0.0);
 
     std::vector<double> send_volume = compute_send_volume(local_load);
-#ifdef DIFFUSION_DEBUG
     assert(send_volume.size() == neighbors.size());
-#endif
 
-    PerNeighbor<GlobalCellIndices> toSend(neighbors.size());
+    const PerNeighbor<GlobalCellIndices> cells_to_send
+        = compute_send_list(std::move(send_volume), cellweights);
+    const auto send_information
+        = std::make_pair(std::cref(cells_to_send), std::cref(neighbors));
 
-    if (std::any_of(std::begin(send_volume), std::end(send_volume),
-                    [](double d) { return d > 0.0; })) {
-
-        // Create list of border cells which can be send to neighbors.
-        // First element of each vector is the rank to which the sells should
-        // be send. The other elements in the vectors are the global cell IDs
-        // of the cells.
-        toSend = compute_send_list(std::move(send_volume), cellweights);
-
-        // Update partition array
-        _impl::mark_new_owners_from_sendvolume(
-            partition, std::make_pair(std::cref(toSend), std::cref(neighbors)));
-    }
+    // Update partition array
+    _impl::mark_new_owners_from_sendvolume(partition, send_information);
 
     //
     // First communication step
-    // Send *all* vectors in "toSend" to *all* neighbors.
+    // Send *all* vectors in "cells_to_send" to *all* neighbors.
     // (Not only their respective receive volumes.)
     // This is used to avoid inconsistencies, especially at newly created
     // neighborhood relationships
     //
     {
         // All send volumes from all processes
-        auto neighbor_sendvolumes = util::mpi_subset_allgather(
-            comm_cart, neighbors,
-            std::make_pair(std::cref(toSend), std::cref(neighbors)));
+        const auto neighbor_sendinformation = util::mpi_neighbor_allgather(
+            neighcomm,
+            send_information);
 
         // Update the partition entry for all received cells.
         using namespace std::placeholders;
-        std::for_each(std::begin(neighbor_sendvolumes),
-                      std::end(neighbor_sendvolumes),
+        std::for_each(std::begin(neighbor_sendinformation),
+                      std::end(neighbor_sendinformation),
                       std::bind(_impl::mark_new_owners_from_sendvolume,
                                 std::ref(partition), _1));
     }
-
-    //
-    // END of first communication step
-    //
-#ifdef DIFFUSION_DEBUG
-    auto p2 = partition;
-    for (auto &el : p2)
-        if (el != comm_cart.rank())
-            el = UNKNOWN_RANK;
-
-    MPI_Allreduce(MPI_IN_PLACE, p2.data(), p2.size(), MPI_INT, MPI_MAX,
-                  comm_cart);
-    for (auto el : p2)
-        assert(el != UNKNOWN_RANK);
-#endif
+    assert(_impl::is_correct_distributed_partitioning(partition, comm_cart));
 
     //
     // Second communication Step
     // Send neighbourhood of sent cells.
     //
-    std::vector<boost::mpi::request> rreq_neigh(neighbors.size());
-    std::vector<boost::mpi::request> sreq_neigh(neighbors.size());
+    {
+        const auto received_neighborhood_info = util::mpi_neighbor_alltoall(
+            neighcomm, get_neighborhood_information(cells_to_send));
 
-    auto sendVectors = sendNeighbourhood(toSend);
-
-    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
-        sreq_neigh[i] = comm_cart.isend(neighbors[i], 2, sendVectors[i]);
+        update_partitioning_from_received_neighbourhood(received_neighborhood_info);
     }
-
-    // All send volumes from all processes
-    PerNeighbor<__diff_impl::CellNeighborhoodPerCell> received_neighborhood(
-        neighbors.size());
-    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
-        rreq_neigh[i]
-            = comm_cart.irecv(neighbors[i], 2, received_neighborhood[i]);
-    }
-
-    boost::mpi::wait_all(std::begin(rreq_neigh), std::end(rreq_neigh));
-    updateReceivedNeighbourhood(received_neighborhood);
-    boost::mpi::wait_all(std::begin(sreq_neigh), std::end(sreq_neigh));
-
-#ifdef DIFFUSION_DEBUG
-    for (global_cell_index_type i = 0; i < partition.size(); ++i) {
-        if (partition[i] != comm_cart.rank())
-            continue;
-
-        for (int j = 0; j < 27; ++j) {
-            global_cell_index_type n = gbox.neighbor(i, j);
-            assert(partition[n] != UNKNOWN_RANK);
-        }
-    }
-#endif
+    assert(_impl::is_ghost_layer_fully_known(partition, comm_cart, gbox));
 
     return true;
 }
-/*
- * Initialization
- */
+
 Diffusion::Diffusion(const boost::mpi::communicator &comm,
                      Vec3d box_size,
                      double min_cell_size)
@@ -276,15 +265,17 @@ Diffusion::~Diffusion()
 {
 }
 
-/*
- * Computes a vector of vectors. The inner vectors contain a rank of the
- * process where the cells shall send and the cellids of this cells.
- */
 Diffusion::PerNeighbor<Diffusion::GlobalCellIndices>
 Diffusion::compute_send_list(std::vector<double> &&send_loads,
-                             const std::vector<double> &weights)
+                             const std::vector<double> &weights) const
 {
     std::vector<std::tuple<int, double, local_cell_index_type>> plist;
+
+    // Return empty vector, if nothing to send
+    if (std::none_of(send_loads.begin(), send_loads.end(),
+                     [](double v) { return v > 0.; }))
+        return PerNeighbor<GlobalCellIndices>(send_loads.size());
+
     for (size_t i = 0; i < borderCells.size(); i++) {
         // Profit when sending this cell away
         double profit = weights[borderCells[i]];
@@ -295,7 +286,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
              gbox.full_shell_neigh_without_center(cells[borderCells[i]])) {
             if (partition[neighCell] == comm_cart.rank()
                 && std::find(std::begin(borderCells), std::end(borderCells),
-                             global_to_local[neighCell])
+                             global_to_local.at(neighCell))
                        != std::end(borderCells)) {
                 nadditional_comm++;
             }
@@ -319,7 +310,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
         local_cell_index_type cidx = std::get<2>(plist.back());
         plist.pop_back();
 
-        for (auto neighrank : borderCellsNeighbors[cidx]) {
+        for (auto neighrank : borderCellsNeighbors.at(cidx)) {
             auto neighidx
                 = std::distance(std::begin(neighbors),
                                 std::find(std::begin(neighbors),
@@ -338,14 +329,15 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
 }
 
 Diffusion::PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
-Diffusion::sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend)
+Diffusion::get_neighborhood_information(
+    const PerNeighbor<GlobalCellIndices> &cells_to_send) const
 {
     PerNeighbor<__diff_impl::CellNeighborhoodPerCell> sendVectors(
-        toSend.size());
-    for (size_t i = 0; i < toSend.size(); ++i) {
-        sendVectors[i].resize(toSend[i].size());
-        for (size_t j = 0; j < toSend[i].size(); ++j) {
-            sendVectors[i][j].basecell = toSend[i][j];
+        cells_to_send.size());
+    for (size_t i = 0; i < cells_to_send.size(); ++i) {
+        sendVectors[i].resize(cells_to_send[i].size());
+        for (size_t j = 0; j < cells_to_send[i].size(); ++j) {
+            sendVectors[i][j].basecell = cells_to_send[i][j];
             int k = 0;
             for (global_cell_index_type n :
                  gbox.full_shell_neigh_without_center(
@@ -359,11 +351,7 @@ Diffusion::sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend)
     return sendVectors;
 }
 
-/*
- * Based on neighbourhood, received in function "receiveNeighbourhood",
- * partition array is updated. (Only neighbourhood is changed)
- */
-void Diffusion::updateReceivedNeighbourhood(
+void Diffusion::update_partitioning_from_received_neighbourhood(
     const PerNeighbor<__diff_impl::CellNeighborhoodPerCell> &neighs)
 {
     for (size_t i = 0; i < neighs.size(); ++i) {

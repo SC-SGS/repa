@@ -67,7 +67,7 @@ protected:
      * @returns Vector of load values ordered according to the neighborhood
      *          ordering in neighcomm.
      */
-    virtual std::vector<double> compute_send_volume(double load);
+    virtual std::vector<double> compute_send_volume(double load) const;
 
     // Neighborhood communicator
     boost::mpi::communicator neighcomm;
@@ -122,17 +122,23 @@ private:
      */
     using GlobalCellIndices = std::vector<global_cell_index_type>;
 
-    // Computes vector of vectors of cells which has to be send to neighbours
+    /** Computes vector of vectors of cells to be sent to neighboring processes
+     * based on the send volume passed in "send_volume".
+     */
     PerNeighbor<GlobalCellIndices>
-    compute_send_list(std::vector<double> &&sendLoads,
-                      const std::vector<double> &weights);
+    compute_send_list(std::vector<double> &&send_volume,
+                      const std::vector<double> &weights) const;
 
-    // Send message with neighbourhood of received cells in "sendCells"
+    /** Generate neighborhood information to send to processes that received
+     * the cells in "cells_to_send".
+     */
     PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
-    sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend);
+    get_neighborhood_information(const PerNeighbor<GlobalCellIndices> &cells_to_send) const;
 
-    // Update partition array
-    void updateReceivedNeighbourhood(
+    /** Update "partition" vector based on cell neighborhood information
+     * from neighboring processes.
+     */
+    void update_partitioning_from_received_neighbourhood(
         const PerNeighbor<__diff_impl::CellNeighborhoodPerCell> &neighbourhood);
 };
 } // namespace grids
