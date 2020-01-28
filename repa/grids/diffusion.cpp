@@ -218,9 +218,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     //
     {
         // All send volumes from all processes
-        const auto neighbor_sendinformation = util::mpi_neighbor_allgather(
-            neighcomm,
-            send_information);
+        const auto neighbor_sendinformation
+            = util::mpi_neighbor_allgather(neighcomm, send_information);
 
         // Update the partition entry for all received cells.
         using namespace std::placeholders;
@@ -239,7 +238,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         const auto received_neighborhood_info = util::mpi_neighbor_alltoall(
             neighcomm, get_neighborhood_information(cells_to_send));
 
-        update_partitioning_from_received_neighbourhood(received_neighborhood_info);
+        update_partitioning_from_received_neighbourhood(
+            received_neighborhood_info);
     }
     assert(_impl::is_ghost_layer_fully_known(partition, comm_cart, gbox));
 
