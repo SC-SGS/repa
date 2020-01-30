@@ -32,21 +32,22 @@ struct PSDiffusion : public Diffusion {
 
 protected:
     virtual bool accept_transfer(local_cell_index_type cidx,
-                                 rank_type neighrank) override;
+                                 rank_type neighrank) const override;
 
     virtual void post_init(bool firstcall) override;
 
 private:
     bool coords_based_allow_sending(local_cell_index_type c,
-                                    rank_type neighrank);
+                                    rank_type neighrank) const;
 
     Vec3i comm_dims;
 
 #ifndef NDEBUG
-    bool rank_based_allow_sending(local_cell_index_type c, rank_type neighrank);
+    bool rank_based_allow_sending(local_cell_index_type c,
+                                  rank_type neighrank) const;
 
     std::vector<rank_type> neighborhood_ranks;
-    std::unordered_map<int, rank_type *> nr_mappings;
+    mutable std::unordered_map<int, rank_type *> nr_mappings;
 
     std::vector<rank_type> initial_neighborhood;
 #endif

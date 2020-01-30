@@ -24,7 +24,6 @@
 #include "glomethod.hpp"
 #include "pargrid.hpp"
 #include <array>
-#include <mpi.h>
 #include <vector>
 
 namespace repa {
@@ -52,7 +51,7 @@ struct Diffusion : public GloMethod {
 protected:
     virtual void post_init(bool firstcall) override;
 
-    virtual rank_type rank_of_cell(global_cell_index_type idx) override
+    virtual rank_type rank_of_cell(global_cell_index_type idx) const override
     {
         t_assert(idx >= 0 && idx < gbox.ncells());
         return partition[idx];
@@ -88,15 +87,10 @@ protected:
      */
     using GlobalCellIndices = std::vector<global_cell_index_type>;
 
-    // Computes vector of vectors of cells which has to be send to neighbours
-    virtual PerNeighbor<GlobalCellIndices>
-    compute_send_list(std::vector<double> &&sendLoads,
-                      const std::vector<double> &weights);
-
     virtual void command(std::string s) override;
 
     virtual bool accept_transfer(local_cell_index_type cell,
-                                 rank_type rank)
+                                 rank_type rank) const
     {
         return true;
     };
@@ -120,12 +114,24 @@ private:
     // Clears obsolete entries from "partition"
     void clear_unknown_cell_ownership();
 
-    // Send message with neighbourhood of received cells in "sendCells"
-    PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
-    sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend);
+    /** Computes vector of vectors of cells to be sent to neighboring processes
+     * based on the send volume passed in "send_volume".
+     */
+    PerNeighbor<GlobalCellIndices>
+    compute_send_list(std::vector<double> &&send_volume,
+                      const std::vector<double> &weights) const;
 
-    // Update partition array
-    void updateReceivedNeighbourhood(
+    /** Generate neighborhood information to send to processes that received
+     * the cells in "cells_to_send".
+     */
+    PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
+    get_neighborhood_information(
+        const PerNeighbor<GlobalCellIndices> &cells_to_send) const;
+
+    /** Update "partition" vector based on cell neighborhood information
+     * from neighboring processes.
+     */
+    void update_partitioning_from_received_neighbourhood(
         const PerNeighbor<__diff_impl::CellNeighborhoodPerCell> &neighbourhood);
 };
 } // namespace grids

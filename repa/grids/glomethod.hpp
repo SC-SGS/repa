@@ -22,7 +22,6 @@
 
 #include "globox.hpp"
 #include "pargrid.hpp"
-#include <array>
 #include <unordered_map>
 
 namespace repa {
@@ -112,7 +111,7 @@ protected:
     //
     // @param idx cell index to resolve
     // @returns rank which is responsible for global cell index idx
-    virtual rank_type rank_of_cell(global_cell_index_type idx) = 0;
+    virtual rank_type rank_of_cell(global_cell_index_type idx) const = 0;
 
     // Reinitializes the subdomain and communication data structures
     // after repartitioning.

@@ -20,11 +20,21 @@
 #pragma once
 
 #include "common_types.hpp"
+#include "pargrid.hpp" // UNKNOWN_RANK
 #include <mpi.h>
 #include <boost/mpi/communicator.hpp>
 
 namespace repa {
 namespace util {
+
+/** Returns true if "comm" has DIST_GRAPH topology.
+ */
+inline bool has_dist_graph_topology(MPI_Comm comm)
+{
+    int status;
+    MPI_Topo_test(comm, &status);
+    return status == MPI_DIST_GRAPH;
+}
 
 /** Returns the number of neighbors in an undirected Dist_graph communicator.
  * This function simply assumes that the graph topology is undirected and
@@ -32,9 +42,29 @@ namespace util {
  */
 inline int mpi_undirected_neighbor_count(MPI_Comm neighcomm)
 {
+    assert(has_dist_graph_topology(neighcomm));
+
     int indegree = 0, outdegree = 0, weighted = 0;
     MPI_Dist_graph_neighbors_count(neighcomm, &indegree, &outdegree, &weighted);
+    assert(indegree == outdegree);
     return indegree;
+}
+
+inline std::vector<int> mpi_undirected_neighbors(MPI_Comm neighcomm)
+{
+    assert(has_dist_graph_topology(neighcomm));
+
+    auto nneigh = util::mpi_undirected_neighbor_count(neighcomm);
+
+    std::vector<int> srcneigh(nneigh, UNKNOWN_RANK),
+        dstneigh(nneigh, UNKNOWN_RANK), dummy(nneigh);
+    MPI_Dist_graph_neighbors(neighcomm, nneigh, srcneigh.data(), dummy.data(),
+                             nneigh, dstneigh.data(), dummy.data());
+
+    assert(srcneigh == dstneigh); // Undirected sanity check
+    assert(std::find(srcneigh.begin(), srcneigh.end(), UNKNOWN_RANK)
+           == srcneigh.end());
+    return srcneigh;
 }
 
 /** Returns a boost::mpi::communicator with a undirected Dist_graph
@@ -42,8 +72,8 @@ inline int mpi_undirected_neighbor_count(MPI_Comm neighcomm)
  */
 inline boost::mpi::communicator
 directed_graph_communicator(MPI_Comm parent_communicator,
-                          const std::vector<int> &source_ranks,
-                          const std::vector<int> &destination_ranks)
+                            const std::vector<int> &source_ranks,
+                            const std::vector<int> &destination_ranks)
 {
     MPI_Comm comm;
     // Edges to all processes in "neighbors"
@@ -77,10 +107,10 @@ directed_graph_communicator(MPI_Comm parent_communicator,
  */
 inline boost::mpi::communicator
 undirected_graph_communicator(MPI_Comm parent_communicator,
-                            const std::vector<int> &neighbor_ranks)
+                              const std::vector<int> &neighbor_ranks)
 {
     return directed_graph_communicator(parent_communicator, neighbor_ranks,
-                                     neighbor_ranks);
+                                       neighbor_ranks);
 }
 
 } // namespace util

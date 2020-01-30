@@ -98,7 +98,7 @@ void PSDiffusion::post_init(bool firstcall)
 }
 
 bool PSDiffusion::accept_transfer(local_cell_index_type cidx,
-                                  rank_type neighrank)
+                                  rank_type neighrank) const
 {
     const bool b1 = coords_based_allow_sending(cidx, neighrank);
 #ifdef PSDIFFUSION_DEBUG
@@ -108,7 +108,7 @@ bool PSDiffusion::accept_transfer(local_cell_index_type cidx,
 }
 
 bool PSDiffusion::coords_based_allow_sending(local_cell_index_type c,
-                                             rank_type neighrank)
+                                             rank_type neighrank) const
 {
     Vec3i c0, cn;
     MPI_Cart_coords(comm_cart, rank_of_cell(cells[c]), 3, c0.data());
@@ -132,7 +132,7 @@ bool PSDiffusion::coords_based_allow_sending(local_cell_index_type c,
 
 #ifdef PSDIFFUSION_DEBUG
 bool PSDiffusion::rank_based_allow_sending(local_cell_index_type c,
-                                           rank_type neighrank)
+                                           rank_type neighrank) const
 {
     for (const global_cell_index_type &d1 :
          gbox.full_shell_neigh_without_center(cells[c])) {

@@ -19,11 +19,7 @@
 
 #pragma once
 
-#include <array>
 #include <boost/mpi/communicator.hpp>
-#include <map>
-#include <memory>
-#include <stdexcept>
 #include <vector>
 
 #include "common_types.hpp"
@@ -61,7 +57,7 @@ typedef int rank_type;
 
 /** Encodes an unknown rank. Denotes an error if necessary rank == UNKNOWN_RANK.
  */
-#define UNKNOWN_RANK (static_cast<rank_type>(-1))
+#define UNKNOWN_RANK (static_cast<repa::grids::rank_type>(-1))
 
 /** Index of a neighboring process (rank) (0..n_neighbors-1)
  * or the total number of neighbor ranks (n_neighbors).

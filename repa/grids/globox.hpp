@@ -94,7 +94,7 @@ private:
     }
 
     value_type cell;
-    int idx;
+    difference_type idx;
     const GloBox *g;
 };
 
@@ -163,7 +163,7 @@ struct GlobalBox {
      * shell neighborhood (including the center cell "index" itself)
      */
     using NeighIt = NeighborIterator<GlobalBox>;
-    boost::iterator_range<NeighIt> full_shell_neigh(index_type_1d index)
+    boost::iterator_range<NeighIt> full_shell_neigh(index_type_1d index) const
     {
         return {NeighIt(this, index, 0), NeighIt()};
     }
@@ -172,7 +172,7 @@ struct GlobalBox {
      * shell neighborhood without the center cell ("index").
      */
     boost::iterator_range<NeighIt>
-    full_shell_neigh_without_center(index_type_1d index)
+    full_shell_neigh_without_center(index_type_1d index) const
     {
         return {NeighIt(this, index, 1), NeighIt()};
     }
