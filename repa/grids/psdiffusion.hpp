@@ -40,16 +40,15 @@ private:
     bool coords_based_allow_sending(local_cell_index_type c,
                                     rank_type neighrank);
 
+    Vec3i comm_dims;
+
 #ifndef NDEBUG
-    bool rank_based_allow_sending(local_cell_index_type c,
-                                  rank_type neighrank);
+    bool rank_based_allow_sending(local_cell_index_type c, rank_type neighrank);
 
     std::vector<rank_type> neighborhood_ranks;
     std::unordered_map<int, rank_type *> nr_mappings;
 
     std::vector<rank_type> initial_neighborhood;
-
-    Vec3i comm_dims;
 #endif
 };
 

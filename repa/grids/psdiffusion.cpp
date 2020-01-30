@@ -46,21 +46,6 @@ fix_periodic_edge(const Vec3i &c0, const Vec3i &c2, const Vec3i &gsize)
 }
 
 /*
-std::vector<double> PSDiffusion::compute_send_volume(double load)
-{
-#ifdef PSDIFFUSION_DEBUG
-    std::set<rank_type> a(initial_neighborhood.begin(),
-                          initial_neighborhood.end());
-    std::set<rank_type> b(neighbors.begin(), neighbors.end());
-
-    assert(std::includes(a.begin(), a.end(), b.begin(), b.end()));
-#endif
-
-    return Diffusion::compute_send_volume(load);
-}
-*/
-
-/*
  * Initialization
  */
 PSDiffusion::PSDiffusion(const boost::mpi::communicator &comm,
@@ -102,6 +87,13 @@ void PSDiffusion::post_init(bool firstcall)
             nr_mappings[neighbors[i]]
                 = &neighborhood_ranks.data()[0] + (neighbors.size() * i);
     }
+
+    // Neighborhood consistence check
+    std::set<rank_type> a(initial_neighborhood.begin(),
+                          initial_neighborhood.end());
+    std::set<rank_type> b(neighbors.begin(), neighbors.end());
+
+    assert(std::includes(a.begin(), a.end(), b.begin(), b.end()));
 #endif
 }
 
@@ -109,7 +101,9 @@ bool PSDiffusion::accept_transfer(local_cell_index_type cidx,
                                   rank_type neighrank)
 {
     const bool b1 = coords_based_allow_sending(cidx, neighrank);
+#ifdef PSDIFFUSION_DEBUG
     assert(b1 == rank_based_allow_sending(cidx, neighrank));
+#endif
     return b1;
 }
 
