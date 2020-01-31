@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <cassert>
 #include <numeric>
+#include <kdpart/kdpart.h>
 
 static int volume(const repa::Vec3i &v)
 {
@@ -204,10 +205,22 @@ static bool are_domains_intersecting(const repa::grids::Domain &localdomain,
 namespace repa {
 namespace grids {
 
+struct KDTreePrivateImpl {
+    kdpart::PartTreeStorage t;
+
+    kdpart::PartTreeStorage* operator->() {
+        return &t;
+    }
+
+    KDTreePrivateImpl() = delete;
+    KDTreePrivateImpl(const kdpart::PartTreeStorage&) = delete;
+    KDTreePrivateImpl(kdpart::PartTreeStorage&& t): t(t) {}
+};
+
 void KDTreeGrid::init_local_domain_bounds()
 {
     using namespace util::vector_arithmetic;
-    m_local_subdomain = m_kdtree.subdomain_bounds(comm_cart.rank());
+    m_local_subdomain = (*m_kdtree)->subdomain_bounds(comm_cart.rank());
     m_local_ghostdomain = to_ghost_domain_bounds(m_local_subdomain);
     m_local_subdomain_size = m_local_subdomain.second - m_local_subdomain.first;
     m_local_ghostdomain_size
@@ -266,7 +279,7 @@ void KDTreeGrid::init_neighborhood_information()
     std::fill(std::begin(m_neighbor_processes_inverse),
               std::end(m_neighbor_processes_inverse), UNKNOWN_RANK);
 
-    m_kdtree.walkp(
+    (*m_kdtree)->walkp(
         [this](auto node) {
             return are_domains_intersecting({node.lu(), node.ro()},
                                             m_local_ghostdomain,
@@ -287,7 +300,7 @@ void KDTreeGrid::init_neighborhood_information(rank_type neighbor_rank)
 
     // Initialize neighborhood information about ghostcells that the local
     // process is receiving from the neighbor process.
-    const Domain neighbor_subdomain = m_kdtree.subdomain_bounds(neighbor_rank);
+    const Domain neighbor_subdomain = (*m_kdtree)->subdomain_bounds(neighbor_rank);
     init_recv_cells(gexd, neighbor_subdomain);
 
     // Initialize neighborhood information about localcells that the local
@@ -383,9 +396,9 @@ KDTreeGrid::KDTreeGrid(const boost::mpi::communicator &comm,
 {
     // Use constant load to make initial tree evenly distributed
     auto load_function = [](Vec3i) { return 1; };
-    m_kdtree = kdpart::make_parttree(comm.size(), {0, 0, 0},
+    m_kdtree = std::make_unique<KDTreePrivateImpl>(kdpart::make_parttree(comm.size(), {0, 0, 0},
                                      m_global_domain_size.as_array(),
-                                     load_function, kdpart::quality_splitting);
+                                     load_function, kdpart::quality_splitting));
     reinitialize();
 }
 
@@ -465,7 +478,7 @@ rank_type KDTreeGrid::position_to_rank(Vec3d pos)
 {
     using namespace util::vector_arithmetic;
     const Vec3i cell_coords = static_cast_vec<Vec3i>(pos / m_cell_size);
-    return m_kdtree.responsible_process(cell_coords.as_array());
+    return (*m_kdtree)->responsible_process(cell_coords.as_array());
 }
 
 rank_index_type KDTreeGrid::position_to_neighidx(Vec3d pos)
@@ -473,7 +486,7 @@ rank_index_type KDTreeGrid::position_to_neighidx(Vec3d pos)
     using namespace util::vector_arithmetic;
     const Vec3i cell_coords = static_cast_vec<Vec3i>(pos / m_cell_size);
     const rank_type prank
-        = m_kdtree.responsible_process(cell_coords.as_array());
+        = (*m_kdtree)->responsible_process(cell_coords.as_array());
     const rank_index_type rank_idx = m_neighbor_processes_inverse[prank];
 
     // TODO: See github issue #28
@@ -490,7 +503,7 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
     const auto weights = m();
     assert(weights.size() == n_local_cells());
 
-    m_kdtree = repart_parttree_par(m_kdtree, comm_cart, m());
+    m_kdtree = std::make_unique<KDTreePrivateImpl>(kdpart::repart_parttree_par(m_kdtree->t, comm_cart, m()));
     cb();
     reinitialize();
     return true;
