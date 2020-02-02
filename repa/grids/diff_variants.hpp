@@ -19,8 +19,10 @@
 
 #pragma once
 
+#include <boost/mpi/communicator.hpp>
 #include <memory>
 #include <mpi.h>
+#include <unordered_map>
 #include <vector>
 
 #include "pargrid.hpp"
@@ -32,25 +34,36 @@ namespace grids {
 namespace diff_variants {
 
 /**
- * 
+ *
  * Flow calculation
- * 
+ *
  */
 
 template <typename T>
 using PerNeighbor = std::vector<T>;
 
 struct FlowCalculator {
-    virtual PerNeighbor<double> compute_flow(MPI_Comm, double) const = 0;
+    virtual PerNeighbor<double> compute_flow(boost::mpi::communicator,
+                                             const std::vector<rank_type> &,
+                                             double) const
+        = 0;
 };
 
 struct FlowIterSetter {
     virtual void set_n_flow_iter(uint32_t nflow_iter) = 0;
 };
 
+struct BetaValueSetter {
+    virtual void set_beta_value(double beta_value) = 0;
+};
+
 #define DIFFUSION_MAYBE_SET_NFLOW_ITER(obj, nflow_iter)                        \
     dynamic_cast<repa::grids::diff_variants::FlowIterSetter *>(obj)            \
         ->set_n_flow_iter(nflow_iter)
+
+#define DIFFUSION_MAYBE_SET_BETA(obj, beta_value)                              \
+    dynamic_cast<repa::grids::diff_variants::BetaValueSetter *>(obj)           \
+        ->set_beta_value(beta_value)
 
 /*
  * Determines the status of each process (underloaded, overloaded)
@@ -71,20 +84,54 @@ struct FlowIterSetter {
  *          ordering in neighcomm.
  */
 struct WLMVolumeComputation : public FlowCalculator {
-    PerNeighbor<double> compute_flow(MPI_Comm neighcomm,
+    PerNeighbor<double> compute_flow(boost::mpi::communicator neighcomm,
+                                     const std::vector<rank_type> &neighbors,
                                      double load) const override;
 };
 
 struct SchornVolumeComputation : public FlowCalculator, public FlowIterSetter {
-    virtual PerNeighbor<double> compute_flow(MPI_Comm neighcomm,
-                                             double load) const override;
+    virtual PerNeighbor<double>
+    compute_flow(boost::mpi::communicator neighcomm,
+                 const std::vector<rank_type> &neighbors,
+                 double load) const override;
     virtual void set_n_flow_iter(uint32_t nflow_iter) override;
 
 protected:
     uint32_t _nflow_iter = 1;
 };
 
-enum class FlowCalcKind { WILLEBEEK, SCHORN };
+struct SOVolumeComputation : public FlowCalculator, public BetaValueSetter {
+    virtual PerNeighbor<double>
+    compute_flow(boost::mpi::communicator neighcomm,
+                 const std::vector<rank_type> &neighbors,
+                 double load) const override;
+
+    virtual void set_beta_value(double beta_value) override;
+
+protected:
+    double _beta = 1.8;
+
+private:
+    mutable std::unordered_map<rank_type, double> _prev_deficiency;
+};
+
+struct SOFVolumeComputation : public FlowCalculator,
+                              public FlowIterSetter,
+                              public BetaValueSetter {
+    virtual PerNeighbor<double>
+    compute_flow(boost::mpi::communicator neighcomm,
+                 const std::vector<rank_type> &neighbors,
+                 double load) const override;
+
+    virtual void set_n_flow_iter(uint32_t nflow_iter) override;
+    virtual void set_beta_value(double beta_value) override;
+
+protected:
+    double _beta = 1.8;
+    uint32_t _nflow_iter = 1;
+};
+
+enum class FlowCalcKind { WILLEBEEK, SCHORN, SO, SOF };
 std::unique_ptr<FlowCalculator> create_flow_calc(FlowCalcKind);
 
 } // namespace diff_variants

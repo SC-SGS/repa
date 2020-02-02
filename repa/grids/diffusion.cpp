@@ -164,7 +164,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         = std::accumulate(std::begin(cellweights), std::end(cellweights), 0.0);
 
     std::vector<double> send_volume
-        = flow_calc->compute_flow(neighcomm, local_load);
+        = flow_calc->compute_flow(neighcomm, neighbors, local_load);
     assert(send_volume.size() == neighbors.size());
 
     const PerNeighbor<GlobalCellIndices> cells_to_send
@@ -369,7 +369,8 @@ void Diffusion::command(std::string s)
     static const std::regex iter_re("(set) (flow_count) ([[:digit:]]+)");
     if (std::regex_match(s, m, iter_re)) {
         uint32_t flow_count = std::stoul(m[3].str().c_str(), NULL);
-        std::cout << "Setting flow_count = " << flow_count << std::endl;
+        if (comm_cart.rank() == 0)
+            std::cout << "Setting flow_count = " << flow_count << std::endl;
         try {
             DIFFUSION_MAYBE_SET_NFLOW_ITER(flow_calc.get(), flow_count);
         }
@@ -379,16 +380,38 @@ void Diffusion::command(std::string s)
         return;
     }
 
-    static const std::regex flow_re("(set) (flow) (willebeek|schornbaum");
+    static const std::regex beta_re("(set) (beta) ([[:digit:]]+)");
+    if (std::regex_match(s, m, beta_re)) {
+        uint32_t beta_value = std::stoul(m[3].str().c_str(), NULL);
+        if (comm_cart.rank() == 0)
+            std::cout << "Setting beta = " << beta_value << std::endl;
+        try {
+            DIFFUSION_MAYBE_SET_BETA(flow_calc.get(), beta_value);
+        }
+        catch (...) {
+            std::cerr << "Cannot set nflow iter." << std::endl;
+        }
+        return;
+    }
+
+    static const std::regex flow_re(
+        "(set) (flow) (willebeek|schornbaum|so|sof)");
     if (std::regex_match(s, m, flow_re)) {
         const std::string &impl = m[3].str();
-        std::cout << "Setting implementation to: " << impl << std::endl;
+        if (comm_cart.rank() == 0)
+            std::cout << "Setting implementation to: " << impl << std::endl;
         if (impl == "willebeek")
             flow_calc = diff_variants::create_flow_calc(
                 diff_variants::FlowCalcKind::WILLEBEEK);
         else if (impl == "schornbaum")
             flow_calc = diff_variants::create_flow_calc(
                 diff_variants::FlowCalcKind::SCHORN);
+        else if (impl == "so")
+            flow_calc = diff_variants::create_flow_calc(
+                diff_variants::FlowCalcKind::SO);
+        else if (impl == "sof")
+            flow_calc = diff_variants::create_flow_calc(
+                diff_variants::FlowCalcKind::SOF);
         else
             assert(false);
         return;

@@ -32,8 +32,10 @@ namespace repa {
 namespace grids {
 namespace diff_variants {
 
-PerNeighbor<double> WLMVolumeComputation::compute_flow(MPI_Comm neighcomm,
-                                                       double load) const
+PerNeighbor<double>
+WLMVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
+                                   const std::vector<rank_type> &neighbors,
+                                   double load) const
 {
     int nneigh = repa::util::mpi_undirected_neighbor_count(neighcomm);
     // Exchange load in local neighborhood
@@ -69,8 +71,10 @@ PerNeighbor<double> WLMVolumeComputation::compute_flow(MPI_Comm neighcomm,
     return deficiency;
 }
 
-PerNeighbor<double> SchornVolumeComputation::compute_flow(MPI_Comm neighcomm,
-                                                          double load) const
+PerNeighbor<double>
+SchornVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
+                                      const std::vector<rank_type> &neighbors,
+                                      double load) const
 {
     int nneigh = util::mpi_undirected_neighbor_count(neighcomm);
     // Init flow(deficiency) and alpha
@@ -107,18 +111,122 @@ void SchornVolumeComputation::set_n_flow_iter(uint32_t nflow_iter)
     _nflow_iter = nflow_iter;
 }
 
+PerNeighbor<double>
+SOVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
+                                  const std::vector<rank_type> &neighbors,
+                                  double load) const
+{
+    int nneigh = util::mpi_undirected_neighbor_count(neighcomm);
+
+    std::vector<double> deficiency(nneigh);
+
+    std::vector<int> dneigh(nneigh);
+    std::vector<double> alpha(nneigh);
+
+    MPI_Neighbor_allgather(&nneigh, 1, MPI_INT, dneigh.data(), 1, MPI_INT,
+                           neighcomm);
+
+    for (int i = 0; i < nneigh; i++)
+        alpha[i] = 1.0 / (std::max(nneigh, dneigh[i]) + 1.0);
+
+    // Exchange load in local neighborhood
+    std::vector<double> neighloads(nneigh);
+    MPI_Neighbor_allgather(&load, 1, MPI_DOUBLE, neighloads.data(), 1,
+                           MPI_DOUBLE, neighcomm);
+
+    if (_prev_deficiency.size() == 0) {
+        for (int j = 0; j < neighloads.size(); j++)
+            deficiency[j] = alpha[j] * (load - neighloads[j]);
+
+        _prev_deficiency.reserve(nneigh);
+        for (int i = 0; i < nneigh; i++)
+            _prev_deficiency[neighbors[i]] = deficiency[i];
+    }
+    else {
+        for (int j = 0; j < neighloads.size(); j++)
+            deficiency[j] = _beta * alpha[j] * (load - neighloads[j])
+                            + (1 - _beta) * _prev_deficiency[neighbors[j]];
+
+        for (int i = 0; i < nneigh; i++)
+            _prev_deficiency[neighbors[i]] = deficiency[i];
+    }
+
+    return deficiency;
+}
+
+void SOVolumeComputation::set_beta_value(double beta_value)
+{
+    _beta = beta_value;
+}
+
+PerNeighbor<double>
+SOFVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
+                                   const std::vector<rank_type> &neighbors,
+                                   double load) const
+{
+    int nneigh = util::mpi_undirected_neighbor_count(neighcomm);
+
+    std::vector<double> deficiency(nneigh);
+
+    std::vector<int> dneigh(nneigh);
+    std::vector<double> alpha(nneigh);
+
+    MPI_Neighbor_allgather(&nneigh, 1, MPI_INT, dneigh.data(), 1, MPI_INT,
+                           neighcomm);
+
+    for (int i = 0; i < nneigh; i++)
+        alpha[i] = 1.0 / (std::max(nneigh, dneigh[i]) + 1.0);
+
+    // Exchange load in local neighborhood
+    std::vector<double> neighloads(nneigh);
+    MPI_Neighbor_allgather(&load, 1, MPI_DOUBLE, neighloads.data(), 1,
+                           MPI_DOUBLE, neighcomm);
+
+    std::vector<double> prev_deficiency(nneigh);
+    for (int i = 0; i < _nflow_iter; i++) {
+        if (i == 0) {
+            for (int j = 0; j < neighloads.size(); j++)
+                deficiency[j] = alpha[j] * (load - neighloads[j]);
+
+            for (int j = 0; j < nneigh; j++)
+                prev_deficiency[j] = deficiency[j];
+        }
+        else {
+            for (int j = 0; j < neighloads.size(); j++)
+                deficiency[j] = _beta * alpha[j] * (load - neighloads[j])
+                                + (1 - _beta) * prev_deficiency[j];
+
+            for (int j = 0; j < nneigh; j++)
+                prev_deficiency[j] = deficiency[j];
+        }
+    }
+
+    return deficiency;
+}
+
+void SOFVolumeComputation::set_n_flow_iter(uint32_t nflow_iter)
+{
+    _nflow_iter = nflow_iter;
+}
+
+void SOFVolumeComputation::set_beta_value(double beta_value)
+{
+    _beta = beta_value;
+}
+
 typedef std::function<FlowCalculator *(void)> FlowCreateFunction;
 static const std::map<FlowCalcKind, FlowCreateFunction> flow_create_function_map
     = {
         {FlowCalcKind::WILLEBEEK, []() { return new WLMVolumeComputation(); }},
         {FlowCalcKind::SCHORN, []() { return new SchornVolumeComputation(); }},
+        {FlowCalcKind::SO, []() { return new SOVolumeComputation(); }},
+        {FlowCalcKind::SOF, []() { return new SOFVolumeComputation(); }},
 };
 
 std::unique_ptr<FlowCalculator> create_flow_calc(FlowCalcKind kind)
 {
     return std::unique_ptr<FlowCalculator>(flow_create_function_map.at(kind)());
 }
-
 
 } // namespace diff_variants
 } // namespace grids
