@@ -32,67 +32,27 @@
 
 namespace repa {
 
-// Custom assert that throws. We can, then, catch assertion exceptions
-// in the testing framework.
-namespace tassert {
-
-struct AssertionException : public std::exception {
-    AssertionException(const char *expr,
-                       const char *file,
-                       int line,
-                       const char *func)
-    {
-        std::stringstream sstr;
-        sstr << file << ":" << line << ": " << func << ": Assertion `" << expr
-             << "' failed.";
-        err = sstr.str();
-    }
-
-    virtual const char *what() const noexcept override
-    {
-        return err.c_str();
-    }
-
-private:
-    std::string err;
-};
-
-[[noreturn]] inline void
-__t_assert__fail(const char *expr, const char *file, int line, const char *func)
+namespace __ensure_impl {
+[[noreturn]] inline void __ensure_fail(const char *expr,
+                                       const char *file,
+                                       int line,
+                                       const char *func,
+                                       const char *msg)
 {
-    throw AssertionException{expr, file, line, func};
-}
-} // namespace tassert
-
-#ifdef NDEBUG
-#define t_assert(expr) ((void)0)
-#else
-#define t_assert(expr)                                                         \
-    (static_cast<bool>(expr) ? (void)0                                         \
-                             : repa::tassert::__t_assert__fail(                \
-                                   #expr, __FILE__, __LINE__, __func__))
-#endif
-
-namespace __production_assert_impl {
-[[noreturn]] inline void __production_assert_fail(const char *expr,
-                                                  const char *file,
-                                                  int line,
-                                                  const char *func,
-                                                  const char *msg)
-{
-    std::printf("Production code assertion error: `%s' in %s:%d "
+    std::printf("Unrecoverable error: Condition failed: `%s' in %s:%d "
                 "(%s): %s",
                 expr, file, line, func, msg);
     std::abort();
 }
-} // namespace __production_assert_impl
+} // namespace __ensure_impl
 
-// Production code assert (*not* compiled in case NDEBUG is set)
-#define production_assert(expr, msg)                                           \
-    (static_cast<bool>(expr)                                                   \
-         ? (void)0                                                             \
-         : __production_assert_impl::__production_assert_fail(                 \
-               #expr, __FILE__, __LINE__, __func__, msg))
+/** Assert equivalent that is *always* ensured and not only if NDEBUG is not set
+ * (as assert).
+ */
+#define ensure(expr, msg)                                                      \
+    (static_cast<bool>(expr) ? (void)0                                         \
+                             : __ensure_impl::__ensure_fail(                   \
+                                   #expr, __FILE__, __LINE__, __func__, msg))
 
 /** Base type for Expression Templates in vec_arith.hpp
  */
@@ -328,7 +288,10 @@ struct IntegralRange {
               = typename std::enable_if<std::is_integral<S>::value>::type>
     inline IntegralRange(S v) : value(static_cast<T>(v))
     {
-        t_assert(in_bounds(v));
+#ifndef NDEBUG
+        if (!in_bounds(v))
+            throw std::domain_error("IntegralRange: Value not in bounds.");
+#endif
     }
 
     template <typename S,
@@ -336,7 +299,10 @@ struct IntegralRange {
               = typename std::enable_if<std::is_integral<S>::value>::type>
     inline IntegralRange operator=(S v)
     {
-        t_assert(in_bounds(v));
+#ifndef NDEBUG
+        if (!in_bounds(v))
+            throw std::domain_error("IntegralRange: Value not in bounds.");
+#endif
         value = static_cast<T>(v);
         return *this;
     }

@@ -39,9 +39,9 @@
 
 namespace _impl {
 
-using GlobalIndices = std::vector<repa::grids::global_cell_index_type>;
+using GlobalIndices = std::vector<repa::global_cell_index_type>;
 using SendVolIndices = std::vector<GlobalIndices>;
-using RankVector = std::vector<repa::grids::rank_type>;
+using RankVector = std::vector<repa::rank_type>;
 
 /** Does a number of "set partition[i] = v for all i in i-vector".
  *
@@ -49,7 +49,7 @@ using RankVector = std::vector<repa::grids::rank_type>;
  * i-vector-vector are passed as std::pair.
  */
 static void mark_new_owners_from_sendvolume(
-    std::vector<repa::grids::rank_type> &partition,
+    std::vector<repa::rank_type> &partition,
     const std::pair<const SendVolIndices &, const RankVector &> &sendvolume)
 {
     const auto &indicess = std::get<0>(sendvolume);
@@ -67,7 +67,7 @@ static void mark_new_owners_from_sendvolume(
 
 #ifndef NDEBUG
 static bool is_correct_distributed_partitioning(
-    const std::vector<repa::grids::rank_type> &partition,
+    const std::vector<repa::rank_type> &partition,
     const boost::mpi::communicator &comm)
 {
     // Check that every cell has exactly one owner
@@ -83,14 +83,14 @@ static bool is_correct_distributed_partitioning(
 }
 
 static bool is_ghost_layer_fully_known(
-    const std::vector<repa::grids::rank_type> &partition,
+    const std::vector<repa::rank_type> &partition,
     const boost::mpi::communicator &comm,
-    const repa::grids::globox::GlobalBox<repa::grids::global_cell_index_type,
-                                         repa::grids::global_cell_index_type>
+    const repa::grids::globox::GlobalBox<repa::global_cell_index_type,
+                                         repa::global_cell_index_type>
         &gbox)
 {
     // Check that the neighborhood of every owned cell is known.
-    for (repa::grids::global_cell_index_type i = 0; i < partition.size(); ++i) {
+    for (repa::global_cell_index_type i = 0; i < partition.size(); ++i) {
         if (partition[i] != comm.rank())
             continue;
 

@@ -40,18 +40,18 @@ inline Vec3i mpi_cart_get_coords(MPI_Comm comm)
     return coords;
 }
 
-inline Vec3i mpi_cart_get_coords(MPI_Comm comm, grids::rank_type r)
+inline Vec3i mpi_cart_get_coords(MPI_Comm comm, rank_type r)
 {
     Vec3i coords;
     MPI_Cart_coords(comm, static_cast<int>(r), 3, coords.data());
     return coords;
 }
 
-inline grids::rank_type mpi_cart_rank(MPI_Comm comm, const Vec3i& coord)
+inline rank_type mpi_cart_rank(MPI_Comm comm, const Vec3i& coord)
 {
     int r;
     MPI_Cart_rank(comm, coord.data(), &r);
-    return static_cast<grids::rank_type>(r);
+    return static_cast<rank_type>(r);
 }
 
 } // namespace util

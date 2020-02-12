@@ -32,6 +32,8 @@ MPI, Boost, ParMETIS and CGAL can be installed e.g. on Debian/Ubuntu using:
 apt-get install openmpi-bin libboost-all-dev libparmetis-dev libcgal-dev cmake
 ```
 
+Note for manual ParMETIS installations: ParMETIS's `make install` does *not* install metis.h from metis/include/. Copy this file manually to the appropriate prefix/include directory.
+
 Install dependencies:
 
 ```sh
@@ -56,6 +58,7 @@ git clone https://github.com/hirschsn/repa && cd repa
 mkdir build && cd build
 cmake .. -DKDPART_DIR="${DEP_DIR}" -DP4EST_DIR="${DEP_DIR}"
 make
+# If necessary, don't forget: export LD_LIBRARY_PATH="${DEP_DIR}/lib:$LD_LIBRARY_PATH"
 make test # Optional
 ```
 

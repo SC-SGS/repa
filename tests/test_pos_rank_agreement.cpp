@@ -30,6 +30,7 @@
 #include <boost/mpi/environment.hpp>
 #include <boost/serialization/vector.hpp>
 #include <random>
+#include <repa/grids/util/vec_arith.hpp>
 #include <repa/repa.hpp>
 
 template <typename T>
@@ -50,13 +51,39 @@ bool ignore_message(const E &e)
     return true;
 }
 
-static std::vector<int> neighranks(repa::grids::ParallelLCGrid *grid)
+static bool is_my_position(const boost::mpi::communicator &comm,
+                           repa::grids::ParallelLCGrid *grid,
+                           const repa::Vec3d &pos)
 {
-    std::vector<int> res;
-    res.reserve(grid->n_neighbors());
-    for (int i = 0; i < grid->n_neighbors(); ++i)
-        res.push_back(grid->neighbor_rank(i));
-    return res;
+    // Ugly. Checks if position_to_rank throws.
+    try {
+        return grid->position_to_rank(pos) == comm.rank();
+    }
+    catch (const std::domain_error &e) {
+        return false;
+    }
+}
+
+static bool is_in_ghost_layer(const boost::mpi::communicator &comm,
+                              repa::grids::ParallelLCGrid *grid,
+                              const repa::Vec3d &pos)
+{
+    using namespace repa::util::vector_arithmetic;
+    const auto cs = grid->cell_size();
+    const repa::Vec3d box = grid->cell_size() * grid->grid_size();
+    // Check in every direction if a shifted particle is accepted.
+    repa::Vec3i direction;
+    for (direction[0] = -1; direction[0] <= 1; ++direction[0]) {
+        for (direction[1] = -1; direction[1] <= 1; ++direction[1]) {
+            for (direction[2] = -1; direction[2] <= 1; ++direction[2]) {
+                const repa::Vec3d shifted_pos = (pos + direction * cs) % box;
+                if (is_my_position(comm, grid, shifted_pos)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 static void test_position(const boost::mpi::communicator &comm,
@@ -81,23 +108,18 @@ static void test_position(const boost::mpi::communicator &comm,
 
         BOOST_TEST(((0 <= cidx) && (cidx < grid->n_local_cells())));
     }
+    else if (is_in_ghost_layer(comm, grid, pos)) {
+        // Check that position_to_neighidx can resolve "pos" if it is in
+        // the ghost layer of this process.
+        int nidx = -1;
+        BOOST_CHECK_NO_THROW(nidx = grid->position_to_neighidx(pos));
+        BOOST_TEST(((nidx >= 0) && (nidx < grid->n_neighbors())));
+    }
     else {
         // Check that all other processes refuse to resolve "pos"
         // to a cell index.
         BOOST_CHECK_EXCEPTION(grid->position_to_cell_index(pos),
                               std::domain_error, ignore_message);
-    }
-
-    // Check that position_to_neighidx can resolve "pos" if it actually is on a
-    // neighboring process
-    auto neighborranks
-        = neighranks(grid); // Okay, recreating this vecor for every position is
-                            // stupid, but I currently don't care.
-    if (std::find(std::begin(neighborranks), std::end(neighborranks), rank)
-        != std::end(neighborranks)) {
-        int nidx = -1;
-        BOOST_CHECK_NO_THROW(nidx = grid->position_to_neighidx(pos));
-        BOOST_TEST(((nidx >= 0) && (nidx <= grid->n_neighbors())));
     }
 
     test_agreement(comm, rank);

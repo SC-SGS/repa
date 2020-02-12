@@ -46,8 +46,6 @@ struct ExtraParams {
     std::function<Vec3d(void)> subdomain_midpoint = nullptr;
 };
 
-namespace grids {
-
 /** Some typedefs to document what an integer is supposed to mean
  */
 
@@ -57,7 +55,7 @@ typedef int rank_type;
 
 /** Encodes an unknown rank. Denotes an error if necessary rank == UNKNOWN_RANK.
  */
-#define UNKNOWN_RANK (static_cast<repa::grids::rank_type>(-1))
+#define UNKNOWN_RANK (static_cast<repa::rank_type>(-1))
 
 /** Index of a neighboring process (rank) (0..n_neighbors-1)
  * or the total number of neighbor ranks (n_neighbors).
@@ -87,6 +85,9 @@ typedef int local_or_ghost_cell_index_type;
  * cells across all processes.
  */
 typedef int global_cell_index_type;
+
+
+namespace grids {
 
 /** Describes a ghost exchange process.
  * Corresponds to a GhostCommunication from ghosts.[ch]pp.
@@ -197,9 +198,16 @@ struct ParallelLCGrid {
     virtual rank_type position_to_rank(Vec3d pos) = 0;
 
     /** Returns the index of a neighboring process which is responsible for the
-     * cell at position "pos". "Pos" must therefore be *in the ghost layer*.
+     * cell at position "pos".
+     * The implementation might require, that "pos" is in the ghost layer of
+     * this process *OR*---a more relaxed condition---is on any neighboring
+     * process. In any case, the position cannot be resolved and throws a
+     * std::domain_error. As a consequence, the user *MUST NOT* rely on this
+     * method throwing a std::domain_error means that the position is not in a
+     * ghost layer.
      *
-     * @throws std::domain_error if position is not in the ghost layer.
+     * @throws std::domain_error If position cannot be resolved by this process.
+     *                           See comment above!
      */
     virtual rank_index_type position_to_neighidx(Vec3d pos) = 0;
 

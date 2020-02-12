@@ -60,8 +60,8 @@ if(WITH_TESTS)
 endif(WITH_TESTS)
 find_package(Boost "1.67.0" REQUIRED ${REQ_BOOST_PACKAGES})
 
-if (Boost_VERSION VERSION_GREATER_EQUAL "1.69" AND Boost_VERSION VERSION_LESS_EQUAL "1.71")
-  message(FATAL_ERROR "Boost 1.69 - 1.71 have a bug and are not supported.")
+if (Boost_VERSION VERSION_GREATER_EQUAL "1.69" AND Boost_VERSION VERSION_LESS_EQUAL "1.72")
+  message(FATAL_ERROR "Boost 1.69 - 1.72 have a bug and are not supported.")
 endif()
 
 include_directories(${Boost_INCLUDE_DIRS})

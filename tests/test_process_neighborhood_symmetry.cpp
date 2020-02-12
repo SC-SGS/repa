@@ -38,7 +38,7 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
     neighranks.reserve(grid->n_neighbors());
 
     // Test validity and uniqueness (correct size).
-    for (repa::grids::rank_index_type i = 0; i < grid->n_neighbors(); ++i) {
+    for (repa::rank_index_type i = 0; i < grid->n_neighbors(); ++i) {
         auto n = grid->neighbor_rank(i);
 
         BOOST_TEST(((n >= 0) && (n < comm.size())));

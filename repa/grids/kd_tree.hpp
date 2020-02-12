@@ -24,8 +24,6 @@
 #include <utility>
 #include <vector>
 
-#include <kdpart/kdpart.h>
-
 #include "_compat.hpp"
 #include "pargrid.hpp"
 
@@ -39,6 +37,11 @@ namespace grids {
  */
 using Domain = std::pair<Vec3i, Vec3i>;
 
+/** Encapsulates a kdpart::PartTreeStorage from libkdpart in kd_tree.cpp
+ * to not having to include kdpart.h in this header.
+ */
+struct KDTreePrivateImpl;
+
 class KDTreeGrid : public ParallelLCGrid {
 private:
     /** Size of the global simulation box in cells. */
@@ -51,7 +54,7 @@ private:
     const Vec3d m_cell_size;
 
     /** Internal k-d tree datastructure. */
-    kdpart::PartTreeStorage m_kdtree;
+    std::unique_ptr<KDTreePrivateImpl> m_kdtree;
 
     Domain m_local_subdomain;
     Domain m_local_ghostdomain;
@@ -125,6 +128,9 @@ public:
 
     virtual rank_type position_to_rank(Vec3d pos) override;
 
+    /**
+     * @throws std::domain_error if position is not on a neighboring process.
+     */
     virtual rank_index_type position_to_neighidx(Vec3d pos) override;
 
     virtual bool

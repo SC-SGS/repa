@@ -152,9 +152,8 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
         // Catch total weight sum overlow
         wsum += std::accumulate(std::begin(w), std::end(w),
                                 static_cast<idx_t>(0));
-        production_assert(
-            wsum < std::numeric_limits<idx_t>::max() / comm_cart.size(),
-            "Graph weights too large for chosen Metis IDX_TYPE_WIDTH");
+        ensure(wsum < std::numeric_limits<idx_t>::max() / comm_cart.size(),
+               "Graph weights too large for chosen Metis IDX_TYPE_WIDTH");
     }
 
     for (rank_type i = 0; i < comm_cart.size(); ++i) {
@@ -264,8 +263,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
         vtxdist.data(), xadj.data(), adjncy.data(), vwgt.data(), adjwgt.data(),
         &wgtflag, &numflag, &ncon, &nparts, tpwgts.data(), &ubvec, options,
         &edgecut, part.data(), &communicator);
-    production_assert(metis_ret == METIS_OK,
-                      "ParMETIS_V3_PartKway returned error.");
+    ensure(metis_ret == METIS_OK, "ParMETIS_V3_PartKway returned error.");
 
     // Copy idx_t to rank. Avoid copying if idx_t and rank are the same types.
     auto parti = util::coerce_vector_to<rank_type>(part);

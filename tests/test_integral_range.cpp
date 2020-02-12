@@ -36,7 +36,7 @@ BOOST_AUTO_TEST_CASE(test_integral_range)
 
 #ifndef NDEBUG
     repa::fs_neighidx ni = 0;
-    BOOST_CHECK_THROW(ni = 27, repa::tassert::AssertionException);
-    BOOST_CHECK_THROW(ni = -1, repa::tassert::AssertionException);
+    BOOST_CHECK_THROW(ni = 27, std::domain_error);
+    BOOST_CHECK_THROW(ni = -1, std::domain_error);
 #endif
 }
