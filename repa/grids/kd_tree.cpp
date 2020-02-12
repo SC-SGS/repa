@@ -489,7 +489,6 @@ rank_index_type KDTreeGrid::position_to_neighidx(Vec3d pos)
         = (*m_kdtree)->responsible_process(cell_coords.as_array());
     const rank_index_type rank_idx = m_neighbor_processes_inverse[prank];
 
-    // TODO: See github issue #28
     if (rank_idx == UNKNOWN_RANK) {
         throw std::domain_error("Position not within neighbor a process");
     }

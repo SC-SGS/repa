@@ -128,6 +128,9 @@ public:
 
     virtual rank_type position_to_rank(Vec3d pos) override;
 
+    /**
+     * @throws std::domain_error if position is not on a neighboring process.
+     */
     virtual rank_index_type position_to_neighidx(Vec3d pos) override;
 
     virtual bool
