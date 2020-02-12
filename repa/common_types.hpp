@@ -46,7 +46,8 @@ namespace __production_assert_impl {
 }
 } // namespace __production_assert_impl
 
-// Production code assert (*not* compiled in case NDEBUG is set)
+/** Production code assert (*IS* compiled in case NDEBUG is set)
+ */
 #define production_assert(expr, msg)                                           \
     (static_cast<bool>(expr)                                                   \
          ? (void)0                                                             \
