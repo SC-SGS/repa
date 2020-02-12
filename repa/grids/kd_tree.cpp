@@ -145,7 +145,7 @@ intersection_domains(const repa::grids::Domain &localdomain,
     // Datastructure for gathering the results
     std::vector<repa::grids::Domain> intersection_domains;
 
-    for (repa::grids::rank_index_type nidx = 0;
+    for (repa::rank_index_type nidx = 0;
          nidx < volume(neighborhood_to_check); nidx++) {
         // Determine neighbor offset
         repa::Vec3i neighbor_offset

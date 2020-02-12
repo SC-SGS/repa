@@ -46,8 +46,6 @@ struct ExtraParams {
     std::function<Vec3d(void)> subdomain_midpoint = nullptr;
 };
 
-namespace grids {
-
 /** Some typedefs to document what an integer is supposed to mean
  */
 
@@ -57,7 +55,7 @@ typedef int rank_type;
 
 /** Encodes an unknown rank. Denotes an error if necessary rank == UNKNOWN_RANK.
  */
-#define UNKNOWN_RANK (static_cast<repa::grids::rank_type>(-1))
+#define UNKNOWN_RANK (static_cast<repa::rank_type>(-1))
 
 /** Index of a neighboring process (rank) (0..n_neighbors-1)
  * or the total number of neighbor ranks (n_neighbors).
@@ -87,6 +85,9 @@ typedef int local_or_ghost_cell_index_type;
  * cells across all processes.
  */
 typedef int global_cell_index_type;
+
+
+namespace grids {
 
 /** Describes a ghost exchange process.
  * Corresponds to a GhostCommunication from ghosts.[ch]pp.
