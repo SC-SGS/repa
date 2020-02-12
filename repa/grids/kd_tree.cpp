@@ -25,8 +25,8 @@
 
 #include <algorithm>
 #include <cassert>
-#include <numeric>
 #include <kdpart/kdpart.h>
+#include <numeric>
 
 static int volume(const repa::Vec3i &v)
 {
@@ -145,8 +145,8 @@ intersection_domains(const repa::grids::Domain &localdomain,
     // Datastructure for gathering the results
     std::vector<repa::grids::Domain> intersection_domains;
 
-    for (repa::rank_index_type nidx = 0;
-         nidx < volume(neighborhood_to_check); nidx++) {
+    for (repa::rank_index_type nidx = 0; nidx < volume(neighborhood_to_check);
+         nidx++) {
         // Determine neighbor offset
         repa::Vec3i neighbor_offset
             = repa::util::unlinearize(nidx, neighborhood_to_check.second
@@ -208,13 +208,16 @@ namespace grids {
 struct KDTreePrivateImpl {
     kdpart::PartTreeStorage t;
 
-    kdpart::PartTreeStorage* operator->() {
+    kdpart::PartTreeStorage *operator->()
+    {
         return &t;
     }
 
     KDTreePrivateImpl() = delete;
-    KDTreePrivateImpl(const kdpart::PartTreeStorage&) = delete;
-    KDTreePrivateImpl(kdpart::PartTreeStorage&& t): t(t) {}
+    KDTreePrivateImpl(const kdpart::PartTreeStorage &) = delete;
+    KDTreePrivateImpl(kdpart::PartTreeStorage &&t) : t(t)
+    {
+    }
 };
 
 void KDTreeGrid::init_local_domain_bounds()
@@ -300,7 +303,8 @@ void KDTreeGrid::init_neighborhood_information(rank_type neighbor_rank)
 
     // Initialize neighborhood information about ghostcells that the local
     // process is receiving from the neighbor process.
-    const Domain neighbor_subdomain = (*m_kdtree)->subdomain_bounds(neighbor_rank);
+    const Domain neighbor_subdomain
+        = (*m_kdtree)->subdomain_bounds(neighbor_rank);
     init_recv_cells(gexd, neighbor_subdomain);
 
     // Initialize neighborhood information about localcells that the local
@@ -396,9 +400,9 @@ KDTreeGrid::KDTreeGrid(const boost::mpi::communicator &comm,
 {
     // Use constant load to make initial tree evenly distributed
     auto load_function = [](Vec3i) { return 1; };
-    m_kdtree = std::make_unique<KDTreePrivateImpl>(kdpart::make_parttree(comm.size(), {0, 0, 0},
-                                     m_global_domain_size.as_array(),
-                                     load_function, kdpart::quality_splitting));
+    m_kdtree = std::make_unique<KDTreePrivateImpl>(kdpart::make_parttree(
+        comm.size(), {0, 0, 0}, m_global_domain_size.as_array(), load_function,
+        kdpart::quality_splitting));
     reinitialize();
 }
 
@@ -502,7 +506,8 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
     const auto weights = m();
     assert(weights.size() == n_local_cells());
 
-    m_kdtree = std::make_unique<KDTreePrivateImpl>(kdpart::repart_parttree_par(m_kdtree->t, comm_cart, m()));
+    m_kdtree = std::make_unique<KDTreePrivateImpl>(
+        kdpart::repart_parttree_par(m_kdtree->t, comm_cart, m()));
     cb();
     reinitialize();
     return true;
