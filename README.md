@@ -56,6 +56,7 @@ git clone https://github.com/hirschsn/repa && cd repa
 mkdir build && cd build
 cmake .. -DKDPART_DIR="${DEP_DIR}" -DP4EST_DIR="${DEP_DIR}"
 make
+# If necessary, don't forget: export LD_LIBRARY_PATH="${DEP_DIR}/lib:$LD_LIBRARY_PATH"
 make test # Optional
 ```
 
