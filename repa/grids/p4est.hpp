@@ -85,6 +85,9 @@ struct P4estGrid : public ParallelLCGrid {
                         fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
     local_cell_index_type position_to_cell_index(Vec3d pos) override;
+    /**
+     * @throws std::domain_error if position is not on a neighboring process.
+     */
     rank_type position_to_rank(Vec3d pos) override;
     rank_index_type position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
