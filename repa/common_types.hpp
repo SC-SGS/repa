@@ -32,27 +32,27 @@
 
 namespace repa {
 
-namespace __production_assert_impl {
-[[noreturn]] inline void __production_assert_fail(const char *expr,
-                                                  const char *file,
-                                                  int line,
-                                                  const char *func,
-                                                  const char *msg)
+namespace __ensure_impl {
+[[noreturn]] inline void __ensure_fail(const char *expr,
+                                       const char *file,
+                                       int line,
+                                       const char *func,
+                                       const char *msg)
 {
-    std::printf("Production code assertion error: `%s' in %s:%d "
+    std::printf("Unrecoverable error: Condition failed: `%s' in %s:%d "
                 "(%s): %s",
                 expr, file, line, func, msg);
     std::abort();
 }
-} // namespace __production_assert_impl
+} // namespace __ensure_impl
 
-/** Production code assert (*IS* compiled in case NDEBUG is set)
+/** Assert equivalent that is *always* ensured and not only if NDEBUG is not set
+ * (as assert).
  */
-#define production_assert(expr, msg)                                           \
-    (static_cast<bool>(expr)                                                   \
-         ? (void)0                                                             \
-         : __production_assert_impl::__production_assert_fail(                 \
-               #expr, __FILE__, __LINE__, __func__, msg))
+#define ensure(expr, msg)                                                      \
+    (static_cast<bool>(expr) ? (void)0                                         \
+                             : __ensure_impl::__ensure_fail(                   \
+                                   #expr, __FILE__, __LINE__, __func__, msg))
 
 /** Base type for Expression Templates in vec_arith.hpp
  */

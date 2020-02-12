@@ -549,7 +549,7 @@ bool P4estGrid::repartition(CellMetric m,
                         return cellpref + weight;
                     });
     m_repartstate.allreduce();
-    production_assert(m_repartstate.nquads_per_proc[comm_cart.rank()] > 0,
+    ensure(m_repartstate.nquads_per_proc[comm_cart.rank()] > 0,
                       "Detected a process with no quads assigned.");
 
     // Reinitialize the grid and prepare its internal datastructures for
