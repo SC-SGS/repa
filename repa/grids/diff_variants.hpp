@@ -44,9 +44,9 @@ using PerNeighbor = std::vector<T>;
 
 struct FlowCalculator {
     virtual PerNeighbor<double> compute_flow(boost::mpi::communicator,
+                                             boost::mpi::communicator comm_cart,
                                              const std::vector<rank_type> &,
-                                             double) const
-        = 0;
+                                             double) const = 0;
 };
 
 struct FlowIterSetter {
@@ -85,6 +85,7 @@ struct BetaValueSetter {
  */
 struct WLMVolumeComputation : public FlowCalculator {
     PerNeighbor<double> compute_flow(boost::mpi::communicator neighcomm,
+                                     boost::mpi::communicator comm_cart,
                                      const std::vector<rank_type> &neighbors,
                                      double load) const override;
 };
@@ -92,6 +93,7 @@ struct WLMVolumeComputation : public FlowCalculator {
 struct SchornVolumeComputation : public FlowCalculator, public FlowIterSetter {
     virtual PerNeighbor<double>
     compute_flow(boost::mpi::communicator neighcomm,
+                 boost::mpi::communicator comm_cart,
                  const std::vector<rank_type> &neighbors,
                  double load) const override;
     virtual void set_n_flow_iter(uint32_t nflow_iter) override;
@@ -100,9 +102,45 @@ protected:
     uint32_t _nflow_iter = 1;
 };
 
+struct SOCVolumeComputation : public FlowCalculator, public BetaValueSetter {
+    virtual PerNeighbor<double>
+    compute_flow(boost::mpi::communicator neighcomm,
+                 boost::mpi::communicator comm_cart,
+                 const std::vector<rank_type> &neighbors,
+                 double load) const override;
+
+    virtual void set_beta_value(double beta_value) override;
+
+protected:
+    double _beta = 1.8;
+
+private:
+    std::vector<double>
+    construct_local_w(const std::vector<double> &world_load,
+                      const std::vector<int> &world_load_rcounts,
+                      const std::vector<int> &world_load_displs,
+                      const std::vector<rank_type> &all_neighbors,
+                      const std::vector<int> &all_neighbors_rcounts,
+                      const std::vector<int> &all_neighbors_displs,
+                      int j) const;
+    std::vector<double> addition(const std::vector<double> &v1,
+                                 const std::vector<double> &v2) const;
+    std::vector<double> scalar(double scalar,
+                               const std::vector<double> &v) const;
+    std::vector<std::vector<double>>
+    Matrix_scalar(double scalar,
+                  const std::vector<std::vector<double>> &M) const;
+    std::vector<double> multiply(const std::vector<std::vector<double>> &M,
+                                 const std::vector<double> &v) const;
+
+    mutable std::vector<std::vector<double>> _M;
+    mutable std::vector<std::vector<double>> _prev_load;
+};
+
 struct SOVolumeComputation : public FlowCalculator, public BetaValueSetter {
     virtual PerNeighbor<double>
     compute_flow(boost::mpi::communicator neighcomm,
+                 boost::mpi::communicator comm_cart,
                  const std::vector<rank_type> &neighbors,
                  double load) const override;
 
@@ -120,6 +158,7 @@ struct SOFVolumeComputation : public FlowCalculator,
                               public BetaValueSetter {
     virtual PerNeighbor<double>
     compute_flow(boost::mpi::communicator neighcomm,
+                 boost::mpi::communicator comm_cart,
                  const std::vector<rank_type> &neighbors,
                  double load) const override;
 
@@ -131,7 +170,7 @@ protected:
     uint32_t _nflow_iter = 1;
 };
 
-enum class FlowCalcKind { WILLEBEEK, SCHORN, SO, SOF };
+enum class FlowCalcKind { WILLEBEEK, SCHORN, SOC, SO, SOF };
 std::unique_ptr<FlowCalculator> create_flow_calc(FlowCalcKind);
 
 } // namespace diff_variants

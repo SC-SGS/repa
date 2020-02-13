@@ -164,7 +164,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         = std::accumulate(std::begin(cellweights), std::end(cellweights), 0.0);
 
     std::vector<double> send_volume
-        = flow_calc->compute_flow(neighcomm, neighbors, local_load);
+        = flow_calc->compute_flow(neighcomm, comm_cart, neighbors, local_load);
     assert(send_volume.size() == neighbors.size());
 
     const PerNeighbor<GlobalCellIndices> cells_to_send
@@ -222,7 +222,7 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
     // Initial partitioning
     partition.resize(gbox.ncells());
     util::InitPartitioning{gbox, comm_cart}(
-        util::InitialPartitionType::CARTESIAN1D,
+        util::InitialPartitionType::CARTESIAN3D,
         [this](global_cell_index_type idx, rank_type r) {
             assert(r >= 0 && r < this->comm.size());
             this->partition[idx] = r;
@@ -395,7 +395,7 @@ void Diffusion::command(std::string s)
     }
 
     static const std::regex flow_re(
-        "(set) (flow) (willebeek|schornbaum|so|sof)");
+        "(set) (flow) (willebeek|schornbaum|soc|so|sof)");
     if (std::regex_match(s, m, flow_re)) {
         const std::string &impl = m[3].str();
         if (comm_cart.rank() == 0)
@@ -406,6 +406,9 @@ void Diffusion::command(std::string s)
         else if (impl == "schornbaum")
             flow_calc = diff_variants::create_flow_calc(
                 diff_variants::FlowCalcKind::SCHORN);
+        else if (impl == "soc")
+            flow_calc = diff_variants::create_flow_calc(
+                diff_variants::FlowCalcKind::SOC);
         else if (impl == "so")
             flow_calc = diff_variants::create_flow_calc(
                 diff_variants::FlowCalcKind::SO);
