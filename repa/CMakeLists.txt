@@ -83,7 +83,7 @@ endif(WITH_P4EST AND P4EST_FOUND)
 if(WITH_PARMETIS AND PARMETIS_FOUND)
   target_include_directories(repa
                              PRIVATE ${PARMETIS_INCLUDE_DIR}
-                                    ${METIS_INCLUDE_DIR})
+                                     ${METIS_INCLUDE_DIR})
   target_link_libraries(repa PRIVATE ${PARMETIS_LIBRARIES})
   add_definitions(-DHAVE_PARMETIS)
 endif(WITH_PARMETIS AND PARMETIS_FOUND)
@@ -102,5 +102,6 @@ install(TARGETS repa
 # Keep folder structure, so no install for all repa_HDR
 foreach(hdr ${repa_HDR})
     get_filename_component(dir ${hdr} DIRECTORY)
-    install(FILES ${hdr} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/repa/${dir})
+    install(FILES ${hdr}
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/include/repa/${dir})
 endforeach()
