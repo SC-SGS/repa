@@ -21,10 +21,12 @@
 
 #include <numeric>
 
+#include <algorithm>
 #include <functional>
 #include <p8est_algorithms.h>
 #include <p8est_bits.h>
 #include <p8est_extended.h>
+#include <vector>
 
 #include "p4est.hpp"
 
