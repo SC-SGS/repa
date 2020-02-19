@@ -120,24 +120,6 @@ SOCVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
                                    double load) const
 {
     int nneigh = util::mpi_undirected_neighbor_count(neighcomm);
-    int nneigh_include_center = nneigh + 1;
-
-    // MATRIX CALCULATION
-    if (_M.size() == 0) {
-        _M.resize(nneigh_include_center);
-        for (int i = 0; i < nneigh_include_center; i++)
-            _M[i].resize(nneigh_include_center);
-
-        for (int i = 0; i < nneigh_include_center; i++) {
-            for (int j = 0; j < nneigh_include_center; j++) {
-                if (i == j)
-                    _M[i][j] = 0;
-                else
-                    _M[i][j] = (1.0 / nneigh_include_center);
-            }
-        }
-    }
-
     int world_size;
     MPI_Comm_size(comm_cart, &world_size);
 
@@ -161,111 +143,57 @@ SOCVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
                 all_neighbors_displs.data(), MPI_INT, 0, comm_cart);
     // GATHERV FOR NEIGHBORS DONE
 
-    // GATHERV FOR LOADS, DOES INCLUDE MYSELF
-    std::vector<double> neighloads_include_center(nneigh_include_center);
-    neighloads_include_center[0] = load;
-
-    MPI_Neighbor_allgather(&load, 1, MPI_DOUBLE,
-                           neighloads_include_center.data() + 1, 1, MPI_DOUBLE,
-                           neighcomm);
-    std::vector<int> world_load_rcounts(world_size);
-    MPI_Gather(&nneigh_include_center, 1, MPI_INT, world_load_rcounts.data(), 1,
-               MPI_INT, 0, comm_cart);
-    int max_nneigh_include_center = *std::max_element(world_load_rcounts.begin(),
-                                       world_load_rcounts.end());
-
-    int world_load_stride = max_nneigh_include_center + 10;
-    std::vector<double> world_load(world_size * world_load_stride);
-    std::vector<int> world_load_displs(world_size);
-
-    for (int i = 0; i < world_size; i++) {
-        world_load_displs[i] = i * world_load_stride;
-    }
-
-    MPI_Gatherv(neighloads_include_center.data(),
-                neighloads_include_center.size(), MPI_DOUBLE, world_load.data(),
-                world_load_rcounts.data(), world_load_displs.data(), MPI_DOUBLE,
-                0, comm_cart);
-    // GATHERV FOR LOADS DONE
-
-    // CREATE SEND_BUFFER FOR MPI_SCATTERV
-    int send_buffer_stride = (*std::max_element(all_neighbors_rcounts.begin(),
-                                                all_neighbors_rcounts.end()))
-                             + 10;
-    std::vector<double> send_buffer(world_size * send_buffer_stride);
-    std::vector<int> send_buffer_counts(world_size);
-    std::vector<int> send_buffer_displs(world_size);
-    for (int i = 0; i < world_size; i++) {
-        send_buffer_counts[i] = all_neighbors_rcounts[i];
-        send_buffer_displs[i] = i * send_buffer_stride;
-    }
+    // GATHER LOAD
+    std::vector<double> w(world_size);
+    MPI_Gather(&load, 1, MPI_DOUBLE, w.data(), 1, MPI_DOUBLE, 0, comm_cart);
 
     // CALCULATE ON RANK 0
+    std::vector<double> next_load(world_size);
     if (comm_cart.rank() == 0) {
-        std::vector<std::vector<double>> next_load(world_size);
-        if (_prev_load.size() == 0) {
-            _prev_load.reserve(world_size);
-            for (int j = 0; j < world_size; j++) {
-                std::vector<double> w = construct_local_w(
-                    world_load, world_load_rcounts, world_load_displs,
-                    all_neighbors, all_neighbors_rcounts, all_neighbors_displs,
-                    j);
+        // MATRIX CALCULATION
+        if (_M.size() == 0) {
+            _M.resize(world_size);
+            for (int i = 0; i < _M.size(); i++)
+                _M[i].resize(world_size);
 
-                next_load[j] = multiply(_M, w);
+            for (int i = 0; i < _M.size(); i++) {
+                auto l_neigh
+                    = all_neighbors.begin() + (all_neighbors_displs[i]);
+                auto r_neigh
+                    = all_neighbors.begin()
+                      + (all_neighbors_displs[i] + all_neighbors_rcounts[i]);
+                for (int j = 0; j < _M.size(); j++) {
+                    if (i == j)
+                        _M[i][j] = 0;
+                    else if (std::find(l_neigh, r_neigh, j) != r_neigh)
+                        _M[i][j] = (1.0 / all_neighbors_rcounts[i]);
+                    else
+                        _M[i][j] = 0;
+                }
             }
-            _prev_load = next_load;
+        }
+
+        if (_prev_load.size() == 0) {
+            next_load = multiply(_M, w);
+            _prev_load = w;
         }
         else {
-            for (int j = 0; j < world_size; j++) {
-                std::vector<double> w = construct_local_w(
-                    world_load, world_load_rcounts, world_load_displs,
-                    all_neighbors, all_neighbors_rcounts, all_neighbors_displs,
-                    j);
+            auto new_M = Matrix_scalar(_beta, _M);
+            auto p1 = multiply(new_M, w);
+            auto p2 = scalar((1 - _beta), _prev_load);
 
-                auto new_M = Matrix_scalar(_beta, _M);
-                auto p1 = multiply(new_M, w);
-
-                auto p2 = scalar((1 - _beta), _prev_load[j]);
-
-                next_load[j] = addition(p1, p2);
-            }
-            _prev_load = next_load;
-        }
-
-        // MAP TO SEND_BUFFER
-        for (int i = 0; i < next_load.size(); i++) {
-            assert(send_buffer_counts == next_load[i]);
-            int l = send_buffer_displs[i];
-            for (int j = 0; j < send_buffer_counts[i]; j++) {
-                send_buffer[l + j] = next_load[i][j];
-            }
+            next_load = addition(p1, p2);
+            _prev_load = w;
         }
     }
 
-    // MPI_SCATTERV SEND_BUFFER
-    std::vector<double> new_local_load(neighbors.size());
-    MPI_Scatterv(send_buffer.data(), send_buffer_counts.data(),
-                 send_buffer_displs.data(), MPI_DOUBLE, new_local_load.data(),
-                 neighbors.size(), MPI_DOUBLE, 0, comm_cart);
+    // MPI_Bcast next_load
+    MPI_Bcast(next_load.data(), next_load.size(), MPI_DOUBLE, 0, comm_cart);
 
-    // MAP BACK TO NEIGHBORS SORTING
-    std::vector<double> deficiency(neighbors.size());
-
-    std::vector<rank_type> sorted_neighbors = neighbors;
-    std::sort(sorted_neighbors.begin(), sorted_neighbors.end());
-    std::unordered_map<rank_type, double> mapped_new_loads(neighbors.size());
-    for (int i = 0; i < mapped_new_loads.size(); i++) {
-        mapped_new_loads[sorted_neighbors[i]] = new_local_load[i];
-    }
-
-    // neighloads_include_center i + 1 to exclude ourself which is placed at
-    // index 0
-    for (int i = 0; i < neighbors.size(); i++) {
-        // should be the other way arround but this results only in negative
-        // deficiencies
-        deficiency[i]
-            = neighloads_include_center[i + 1] - mapped_new_loads[neighbors[i]];
-    }
+    std::vector<double> deficiency(nneigh);
+    double d = load - next_load[comm_cart.rank()];
+    for (int i = 0; i < deficiency.size(); i++)
+        deficiency[i] = (1. / nneigh) * d;
 
     return deficiency;
 }
@@ -275,65 +203,14 @@ void SOCVolumeComputation::set_beta_value(double beta_value)
     _beta = beta_value;
 }
 
-std::vector<double> SOCVolumeComputation::construct_local_w(
-    const std::vector<double> &world_load,
-    const std::vector<int> &world_load_rcounts,
-    const std::vector<int> &world_load_displs,
-    const std::vector<rank_type> &all_neighbors,
-    const std::vector<int> &all_neighbors_rcounts,
-    const std::vector<int> &all_neighbors_displs,
-    int j) const
-{
-    auto l_loads = world_load.begin() + (world_load_displs[j]);
-    auto r_loads
-        = world_load.begin() + (world_load_displs[j] + world_load_rcounts[j]);
-    std::vector<double> w_temp(l_loads, r_loads);
-
-    auto l_neigh = all_neighbors.begin() + (all_neighbors_displs[j]);
-    auto r_neigh = all_neighbors.begin()
-                   + (all_neighbors_displs[j] + all_neighbors_rcounts[j]);
-    std::vector<rank_type> neighbors(l_neigh, r_neigh);
-
-    int nneigh = neighbors.size();
-    int nneigh_include_center = nneigh + 1;
-
-    std::vector<std::tuple<rank_type, double>> w_sorted(nneigh);
-    for (int i = 0; i < w_sorted.size(); i++) {
-        w_sorted[i] = std::make_tuple(neighbors[i], w_temp[i + 1]);
-    }
-    std::sort(w_sorted.begin(), w_sorted.end());
-
-    std::vector<double> w(nneigh_include_center);
-    w[0] = w_temp[0];
-    for (int i = 1; i < w.size(); i++)
-        w[i] = std::get<1>(w_sorted[i - 1]);
-
-    return w;
-}
-
 std::vector<double>
 SOCVolumeComputation::addition(const std::vector<double> &v1,
                                const std::vector<double> &v2) const
 {
-    // get min and max size. Run array until min size and fill up array with
-    // elements from vx. vx vector with more elements
-    int minSize = std::min(v1.size(), v2.size());
-    int maxSize = std::max(v1.size(), v2.size());
-
-    std::vector<double> result(maxSize);
-    for (int i = 0; i < minSize; i++)
+    assert(v1.size() == v2.size());
+    std::vector<double> result(v1.size());
+    for (int i = 0; i < v1.size(); i++)
         result[i] = v1[i] + v2[i];
-
-    if (minSize != maxSize) {
-        if (v1.size() > v2.size()) {
-            for (int i = minSize; i < maxSize; i++)
-                result[i] = v1[i];
-        }
-        else {
-            for (int i = minSize; i < maxSize; i++)
-                result[i] = v2[i];
-        }
-    }
 
     return result;
 }
@@ -364,13 +241,11 @@ std::vector<double>
 SOCVolumeComputation::multiply(const std::vector<std::vector<double>> &M,
                                const std::vector<double> &v) const
 {
-    // use v.size() as for condition to make sure the calculations are correct.
-    // Basicly shrink the matrix in x and y direction
     std::vector<double> result(v.size());
 
-    for (int i = 0; i < v.size(); i++) {
+    for (int i = 0; i < M.size(); i++) {
         double r = 0.;
-        for (int j = 0; j < v.size(); j++) {
+        for (int j = 0; j < M[i].size(); j++) {
             r += M[i][j] * v[j];
         }
         result[i] = r;

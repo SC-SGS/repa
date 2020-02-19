@@ -263,7 +263,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
         assert(nadditional_comm < 27);
 #endif
 
-        if (profit > 0)
+        /* if (profit > 0) */
             plist.emplace_back(27 - nadditional_comm, profit, borderCells[i]);
     }
 
