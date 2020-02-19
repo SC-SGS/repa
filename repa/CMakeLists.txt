@@ -75,7 +75,7 @@ if(WITH_CGAL AND CGAL_FOUND)
 endif(WITH_CGAL AND CGAL_FOUND)
 
 if(WITH_P4EST AND P4EST_FOUND)
-  target_include_directories(repa PRIVATE ${PEST_INCLUDE_DIR})
+  target_include_directories(repa PRIVATE ${P4EST_INCLUDE_DIR})
   target_link_libraries(repa PRIVATE ${P4EST_LIBRARIES})
   add_definitions(-DHAVE_P4EST)
 endif(WITH_P4EST AND P4EST_FOUND)
