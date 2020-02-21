@@ -86,8 +86,7 @@ static bool is_ghost_layer_fully_known(
     const std::vector<repa::rank_type> &partition,
     const boost::mpi::communicator &comm,
     const repa::grids::globox::GlobalBox<repa::global_cell_index_type,
-                                         repa::global_cell_index_type>
-        &gbox)
+                                         repa::global_cell_index_type> &gbox)
 {
     // Check that the neighborhood of every owned cell is known.
     for (repa::global_cell_index_type i = 0; i < partition.size(); ++i) {
@@ -263,7 +262,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
         assert(nadditional_comm < 27);
 #endif
 
-        /* if (profit > 0) */
+        if (profit > 0 || !profitCheck)
             plist.emplace_back(27 - nadditional_comm, profit, borderCells[i]);
     }
 
@@ -366,6 +365,14 @@ void Diffusion::command(std::string s)
 {
     std::smatch m;
 
+    static const std::regex profit_re("(disable) (profit) (check)");
+    if (std::regex_match(s, m, profit_re)) {
+        if (comm_cart.rank() == 0)
+            std::cout << "Disabling profit check" << std::endl;
+        profitCheck = false;
+        return;
+    }
+
     static const std::regex iter_re("(set) (flow_count) ([[:digit:]]+)");
     if (std::regex_match(s, m, iter_re)) {
         uint32_t flow_count = std::stoul(m[3].str().c_str(), NULL);
@@ -380,9 +387,10 @@ void Diffusion::command(std::string s)
         return;
     }
 
-    static const std::regex beta_re("(set) (beta) ([[:digit:]]+)");
+    static const std::regex beta_re(
+        "(set) (beta) (([[:digit:]]*[.])?[[:digit:]]+)");
     if (std::regex_match(s, m, beta_re)) {
-        uint32_t beta_value = std::stoul(m[3].str().c_str(), NULL);
+        double beta_value = std::stod(m[3].str().c_str(), NULL);
         if (comm_cart.rank() == 0)
             std::cout << "Setting beta = " << beta_value << std::endl;
         try {
