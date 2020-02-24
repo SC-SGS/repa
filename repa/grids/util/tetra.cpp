@@ -30,25 +30,18 @@ namespace __detail {
 	/*
 		FUNCTIONS
 	*/
-	Vec3i cross(Vec3i v1, Vec3i v2) {
-		Vec3i result;
-		result[0] = v1[1] * v2[2] - v1[2] * v2[1];
-		result[1] = v1[2] * v2[0] - v1[0] * v2[2];
-		result[2] = v1[0] * v2[1] - v1[1] * v2[0];
-		return result;
-	}
 
-	int64_t dot(Vec3i v1, Vec3i v2) { return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]; }
-
-	Vec3i integerized(Vec3d vec)
+	Vec3i integerize(Vec3d v)
 	{
-		return { {int(vec[0] * precision), int(vec[1] * precision), int(vec[2] * precision)} };
+		using namespace vector_arithmetic;
+		v *= precision;
+		return static_cast_vec<Vec3i>(v);
 	}
 
 	std::array<Vec3i, 8> integerizedArray(std::array<Vec3d, 8> vertices)
 	{
 		std::array<Vec3i, 8> intVert = {};
-		for (int i = 0; i < 8; i++) intVert[i] = integerized(vertices[i]);
+		for (int i = 0; i < 8; i++) { intVert[i] = integerize(vertices[i]); }
 		return intVert;
 	}
 
@@ -65,7 +58,7 @@ namespace __detail {
 	};
 
 	Plane::Plane(std::array<Vec3i, 3> vecs) {
-		using vector_arithmetic::operator-;
+		using namespace vector_arithmetic;
 		Vec3i v1 = vecs[1] - vecs[0];
 		Vec3i v2 = vecs[0] - vecs[2];
 		this->normVector = cross(v2, v1);
@@ -73,10 +66,12 @@ namespace __detail {
 	}
 
 	bool Plane::isAboveOrEqual(Vec3i point) {
+		using vector_arithmetic::dot;
 		return dot(point, this->normVector) >= this->heightOfPlane;
 	}
 
 	bool Plane::isAbove(Vec3i point) {
+		using vector_arithmetic::dot;
 		return dot(point, this->normVector) > this->heightOfPlane;
 	}
 
@@ -149,7 +144,7 @@ bool Octagon::contains(const Vec3d &p) const
 {
     if (!oi)
         throw std::runtime_error("contains() on empty octagon");
-    return __detail::contains(*oi, __detail::integerized(p));
+    return __detail::contains(*oi, __detail::integerize(p));
 }
 
 void Octagon::operator=(Octagon o)

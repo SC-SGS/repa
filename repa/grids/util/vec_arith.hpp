@@ -387,6 +387,28 @@ bool any(const VecExpression<bool, N, Expr> &v)
     return false;
 }
 
+/** Returns dot product of v1 and v2
+ */
+template <typename T, size_t N, typename Expr>
+Expr cross(const VecExpression<T, N, Expr>& v1, const VecExpression<T, N, Expr>& v2)
+{
+    Expr crossProduct;
+    for (size_t i = 0; i < N; ++i)
+        crossProduct[i] = v1[(i + 1) % N] * v2[(i + 2) % N] - v1[(i + 2) % N] * v2[(i + 1) % N];
+    return crossProduct;
+}
+
+/** Returns cross product of v1 and v2
+ */
+template <typename T, size_t N, typename Expr>
+T dot(const VecExpression<T, N, Expr>& v1, const VecExpression<T, N, Expr>& v2)
+{
+    T result = 0;
+    for (size_t i = 0; i < N; ++i)
+        result += v1[i] * v2[i];
+    return result;
+}
+
 } // namespace vector_arithmetic
 } // namespace util
 } // namespace repa
