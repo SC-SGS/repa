@@ -336,23 +336,12 @@ rank_type GridBasedGrid::position_to_rank(Vec3d pos)
     if (is_regular_grid)
         return cart_topology_position_to_rank(mp);
 
-    // Cell ownerership is not uniquely determined by .contains()
-    // because this function also accepts points on the boundary of an octagon.
-    //
-    // We simply define the owner to be the one with the lowest rank
-    // among all processes where .contains() evaluates to true.
-    //
-    // Note, that neighbor_ranks is ordered by rank.
-    rank_index_type i;
-    for (i = 0; i < n_neighbors() && neighbor_ranks[i] < comm.rank(); ++i) {
-        if (neighbor_doms[i].contains(mp))
-            return neighbor_ranks[i];
-    }
-
+    // First check if this domain contains the cell
     if (my_dom.contains(mp))
         return comm.rank();
 
-    for (; i < n_neighbors(); ++i) {
+    // If not, ask all neighbors
+    for (rank_index_type i = 0; i < n_neighbors(); ++i) {
         if (neighbor_doms[i].contains(mp))
             return neighbor_ranks[i];
     }

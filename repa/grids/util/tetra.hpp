@@ -32,6 +32,8 @@ namespace __detail {
 struct _Octagon_Impl;
 } // namespace __detail
 
+const int16_t precision = 10;
+
 struct Octagon {
     Octagon();
     Octagon(const std::array<Vec3d, 8> &vertices);
