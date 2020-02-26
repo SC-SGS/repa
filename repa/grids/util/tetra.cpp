@@ -73,7 +73,7 @@ struct Plane {
 } // namespace
 
 struct _Octagon_Impl {
-    static constexpr int cornerOrder[6] = {1, 3, 2, 6, 4, 5};
+    static const std::array<int, 6> cornerOrder;
     Plane tetras[6][4];
 
     _Octagon_Impl() = delete;
@@ -121,6 +121,8 @@ struct _Octagon_Impl {
         return false;
     }
 };
+
+const std::array<int, 6> _Octagon_Impl::cornerOrder = {{1, 3, 2, 6, 4, 5}};
 
 // These are declared here because _Octagon_Impl is an imcomplete type in the
 // header.
