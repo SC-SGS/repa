@@ -27,10 +27,6 @@ namespace tetra {
 
 namespace __detail {
 
-/*
-        FUNCTIONS
-*/
-
 Vec3i integerize(Vec3d v)
 {
     using namespace vector_arithmetic;
@@ -47,9 +43,6 @@ std::array<Vec3i, 8> integerizedArray(std::array<Vec3d, 8> vertices)
     return intVert;
 }
 
-/*
-        PLANE
-*/
 struct Plane {
     Vec3i normVector;
     int64_t heightOfPlane;
@@ -79,10 +72,6 @@ bool Plane::isAbove(Vec3i point)
     using vector_arithmetic::dot;
     return dot(point, this->normVector) > this->heightOfPlane;
 }
-
-/*
-        OCTAGON
-*/
 
 struct _Octagon_Impl {
     int cornerOrder[6] = {1, 3, 2, 6, 4, 5};
