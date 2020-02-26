@@ -27,10 +27,8 @@ namespace repa {
 namespace util {
 namespace tetra {
 
-namespace __detail {
 // Opaque struct to reduce compile times on inclusion site
 struct _Octagon_Impl;
-} // namespace __detail
 
 const int16_t precision = 10;
 
@@ -45,7 +43,7 @@ struct Octagon {
     bool contains(const Vec3d &p) const;
 
 private:
-    std::unique_ptr<__detail::_Octagon_Impl> oi;
+    std::unique_ptr<_Octagon_Impl> oi;
 
     friend void swap(Octagon &, Octagon &);
 };
