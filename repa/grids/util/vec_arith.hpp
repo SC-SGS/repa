@@ -387,23 +387,46 @@ bool any(const VecExpression<bool, N, Expr> &v)
     return false;
 }
 
-/** Returns dot product of v1 and v2
+/** Cross product
  */
-template <typename T, size_t N, typename Expr>
-Expr cross(const VecExpression<T, N, Expr>& v1, const VecExpression<T, N, Expr>& v2)
+template <typename T, size_t N, typename Expr1, typename Expr2>
+struct VecCross : public VecExpression<T, N, VecCross<T, N, Expr1, Expr2>> {
+    __REPA__EX_TMPL_EXPORT VecCross(const Expr1 &u, const Expr2 &v)
+        : _u(u), _v(v)
+    {
+    }
+
+    __REPA__EX_TMPL_EXPORT T operator[](size_t i) const
+    {
+        return _u[(i + 1) % N] * _v[(i + 2) % N]
+               - _u[(i + 2) % N] * _v[(i + 1) % N];
+    }
+
+private:
+    const Expr1 &_u;
+    const Expr2 &_v;
+};
+
+/** Vector cross product.
+ */
+template <typename T1, typename T2, size_t N, typename Expr1, typename Expr2>
+__REPA__EX_TMPL_EXPORT
+    VecCross<typename std::common_type<T1, T2>::type, N, Expr1, Expr2>
+    cross(const VecExpression<T1, N, Expr1> &a,
+          const VecExpression<T2, N, Expr2> &b)
 {
-    Expr crossProduct;
-    for (size_t i = 0; i < N; ++i)
-        crossProduct[i] = v1[(i + 1) % N] * v2[(i + 2) % N] - v1[(i + 2) % N] * v2[(i + 1) % N];
-    return crossProduct;
+    return VecCross<typename std::common_type<T1, T2>::type, N, Expr1, Expr2>{
+        *static_cast<const Expr1 *>(&a), *static_cast<const Expr2 *>(&b)};
 }
 
-/** Returns cross product of v1 and v2
+/** Dot product.
  */
-template <typename T, size_t N, typename Expr>
-T dot(const VecExpression<T, N, Expr>& v1, const VecExpression<T, N, Expr>& v2)
+template <typename T1, typename T2, size_t N, typename Expr1, typename Expr2>
+__REPA__EX_TMPL_EXPORT typename std::common_type<T1, T2>::type
+dot(const VecExpression<T1, N, Expr1> &v1,
+    const VecExpression<T2, N, Expr2> &v2)
 {
-    T result = 0;
+    typename std::common_type<T1, T2>::type result;
     for (size_t i = 0; i < N; ++i)
         result += v1[i] * v2[i];
     return result;
