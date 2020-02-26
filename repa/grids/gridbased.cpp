@@ -329,10 +329,8 @@ rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
 rank_type GridBasedGrid::position_to_rank(Vec3d pos)
 {
     // Cell ownership is based on the cell midpoint.
-    auto mp = gbox.midpoint(gbox.cell_at_pos(pos));
+    const auto mp = gbox.midpoint(gbox.cell_at_pos(pos));
 
-    // This is fragile. Hopefully, MPI_Cart_rank defines cell ownership
-    // as we do below...
     if (is_regular_grid)
         return cart_topology_position_to_rank(mp);
 
