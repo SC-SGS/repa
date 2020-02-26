@@ -57,20 +57,20 @@ Plane::Plane(std::array<Vec3i, 3> vecs)
     using namespace vector_arithmetic;
     Vec3i v1 = vecs[1] - vecs[0];
     Vec3i v2 = vecs[0] - vecs[2];
-    this->normVector = cross(v2, v1);
-    this->heightOfPlane = dot(this->normVector, vecs[0]);
+    normVector = cross(v2, v1);
+    heightOfPlane = dot(normVector, vecs[0]);
 }
 
 bool Plane::isAboveOrEqual(Vec3i point)
 {
     using vector_arithmetic::dot;
-    return dot(point, this->normVector) >= this->heightOfPlane;
+    return dot(point, normVector) >= heightOfPlane;
 }
 
 bool Plane::isAbove(Vec3i point)
 {
     using vector_arithmetic::dot;
-    return dot(point, this->normVector) > this->heightOfPlane;
+    return dot(point, normVector) > heightOfPlane;
 }
 
 struct _Octagon_Impl {
@@ -87,18 +87,18 @@ _Octagon_Impl::_Octagon_Impl(std::array<Vec3i, 8> corners)
     Vec3i end = corners[7];
     Vec3i last = corners[5];
     for (int i = 0; i < 6; i++) {
-        Vec3i next = corners[this->cornerOrder[i]];
-        this->addTetra(i, {start, end, last, next});
+        Vec3i next = corners[cornerOrder[i]];
+        addTetra(i, {start, end, last, next});
         last = next;
     }
 }
 
 void _Octagon_Impl::addTetra(int index, std::array<Vec3i, 4> corners)
 {
-    this->tetras[index][0] = Plane({corners[0], corners[1], corners[2]});
-    this->tetras[index][1] = Plane({corners[0], corners[2], corners[3]});
-    this->tetras[index][2] = Plane({corners[0], corners[3], corners[1]});
-    this->tetras[index][3] = Plane({corners[1], corners[3], corners[2]});
+    tetras[index][0] = Plane({corners[0], corners[1], corners[2]});
+    tetras[index][1] = Plane({corners[0], corners[2], corners[3]});
+    tetras[index][2] = Plane({corners[0], corners[3], corners[1]});
+    tetras[index][3] = Plane({corners[1], corners[3], corners[2]});
 }
 
 bool contains(_Octagon_Impl oi, Vec3i point)
