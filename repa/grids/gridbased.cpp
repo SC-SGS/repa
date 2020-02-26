@@ -334,11 +334,12 @@ rank_type GridBasedGrid::position_to_rank(Vec3d pos)
     if (is_regular_grid)
         return cart_topology_position_to_rank(mp);
 
-    // First check if this domain contains the cell
+    // .contains() is mutually exclusive. The expectation is that most queried
+    // positions belong to this node, so check it first. The order of the
+    // neighbors is not relevant.
     if (my_dom.contains(mp))
         return comm.rank();
 
-    // If not, ask all neighbors
     for (rank_index_type i = 0; i < n_neighbors(); ++i) {
         if (neighbor_doms[i].contains(mp))
             return neighbor_ranks[i];
