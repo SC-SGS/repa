@@ -55,9 +55,7 @@ struct Plane {
 Plane::Plane(std::array<Vec3i, 3> vecs)
 {
     using namespace vector_arithmetic;
-    Vec3i v1 = vecs[1] - vecs[0];
-    Vec3i v2 = vecs[0] - vecs[2];
-    normVector = cross(v2, v1);
+    normVector = cross(vecs[0] - vecs[2], vecs[1] - vecs[0]);
     heightOfPlane = dot(normVector, vecs[0]);
 }
 
