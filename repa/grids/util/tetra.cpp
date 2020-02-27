@@ -29,16 +29,15 @@ namespace tetra {
 // Anonymous namespace for internal linkage
 namespace {
 
-Vec3i integerize(Vec3d v)
+Vec3i integerize(const Vec3d &v)
 {
     using namespace vector_arithmetic;
-    v *= precision;
-    return static_cast_vec<Vec3i>(v);
+    return static_cast_vec<Vec3i>(v * static_cast<double>(precision));
 }
 
-std::array<Vec3i, 8> integerizedArray(std::array<Vec3d, 8> vertices)
+std::array<Vec3i, 8> integerizedArray(const std::array<Vec3d, 8> &vertices)
 {
-    std::array<Vec3i, 8> intVert = {};
+    std::array<Vec3i, 8> intVert;
     for (int i = 0; i < 8; i++) {
         intVert[i] = integerize(vertices[i]);
     }
@@ -51,7 +50,7 @@ struct Plane {
 
     Plane(){};
 
-    Plane(std::array<Vec3i, 3> vecs)
+    Plane(const std::array<Vec3i, 3> &vecs)
     {
         using namespace vector_arithmetic;
         normVector = cross(vecs[0] - vecs[2], vecs[1] - vecs[0]);
@@ -79,7 +78,7 @@ struct _Octagon_Impl {
 
     _Octagon_Impl() = delete;
 
-    _Octagon_Impl(std::array<Vec3i, 8> corners)
+    _Octagon_Impl(const std::array<Vec3i, 8> &corners)
     {
         Vec3i start = corners[0];
         Vec3i end = corners[7];
@@ -91,7 +90,7 @@ struct _Octagon_Impl {
         }
     }
 
-    void addTetra(int index, std::array<Vec3i, 4> corners)
+    void addTetra(int index, const std::array<Vec3i, 4> &corners)
     {
         tetras[index][0] = Plane({corners[0], corners[1], corners[2]});
         tetras[index][1] = Plane({corners[0], corners[2], corners[3]});
