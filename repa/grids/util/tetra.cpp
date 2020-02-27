@@ -26,18 +26,20 @@ namespace repa {
 namespace util {
 namespace tetra {
 
+using Vec3i64 = Vec3<int64_t>;
+
 // Anonymous namespace for internal linkage
 namespace {
 
-Vec3i integerize(const Vec3d &v)
+Vec3i64 integerize(const Vec3d &v)
 {
     using namespace vector_arithmetic;
-    return static_cast_vec<Vec3i>(v * static_cast<double>(precision));
+    return static_cast_vec<Vec3i64>(v * static_cast<double>(precision));
 }
 
-std::array<Vec3i, 8> integerizedArray(const std::array<Vec3d, 8> &vertices)
+std::array<Vec3i64, 8> integerizedArray(const std::array<Vec3d, 8> &vertices)
 {
-    std::array<Vec3i, 8> intVert;
+    std::array<Vec3i64, 8> intVert;
     for (int i = 0; i < 8; i++) {
         intVert[i] = integerize(vertices[i]);
     }
@@ -45,25 +47,25 @@ std::array<Vec3i, 8> integerizedArray(const std::array<Vec3d, 8> &vertices)
 }
 
 struct Plane {
-    Vec3i normVector;
+    Vec3i64 normVector;
     int64_t heightOfPlane;
 
     Plane(){};
 
-    Plane(const std::array<Vec3i, 3> &vecs)
+    Plane(const std::array<Vec3i64, 3> &vecs)
     {
         using namespace vector_arithmetic;
         normVector = cross(vecs[0] - vecs[2], vecs[1] - vecs[0]);
         heightOfPlane = dot(normVector, vecs[0]);
     }
 
-    bool isAboveOrEqual(Vec3i point)
+    bool isAboveOrEqual(Vec3i64 point)
     {
         using vector_arithmetic::dot;
         return dot(point, normVector) >= heightOfPlane;
     }
 
-    bool isAbove(Vec3i point)
+    bool isAbove(Vec3i64 point)
     {
         using vector_arithmetic::dot;
         return dot(point, normVector) > heightOfPlane;
@@ -78,19 +80,19 @@ struct _Octagon_Impl {
 
     _Octagon_Impl() = delete;
 
-    _Octagon_Impl(const std::array<Vec3i, 8> &corners)
+    _Octagon_Impl(const std::array<Vec3i64, 8> &corners)
     {
-        Vec3i start = corners[0];
-        Vec3i end = corners[7];
-        Vec3i last = corners[5];
+        Vec3i64 start = corners[0];
+        Vec3i64 end = corners[7];
+        Vec3i64 last = corners[5];
         for (int i = 0; i < 6; i++) {
-            Vec3i next = corners[cornerOrder[i]];
+            Vec3i64 next = corners[cornerOrder[i]];
             addTetra(i, {start, end, last, next});
             last = next;
         }
     }
 
-    void addTetra(int index, const std::array<Vec3i, 4> &corners)
+    void addTetra(int index, const std::array<Vec3i64, 4> &corners)
     {
         tetras[index][0] = Plane({corners[0], corners[1], corners[2]});
         tetras[index][1] = Plane({corners[0], corners[2], corners[3]});
@@ -98,7 +100,7 @@ struct _Octagon_Impl {
         tetras[index][3] = Plane({corners[1], corners[3], corners[2]});
     }
 
-    bool contains(Vec3i point)
+    bool contains(Vec3i64 point)
     {
         // Iterate over all tetrahedrons of the domain
         for (int tetra = 0; tetra < 6; tetra++) {
