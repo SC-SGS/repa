@@ -67,7 +67,7 @@ int ninside(const tetra::Octagon &o, int N)
     return n;
 }
 
-std::array<int, 3> ninside2Domains(std::array<, 8> corner1, std::array<, 8> corner2, int N)
+std::array<int, 3> ninside2Domains(std::array<repa::Vec3d, 8> corner1, std::array<repa::Vec3d, 8> corner2, int N)
 {
     auto o1 = tetra::Octagon(corner1);
     auto o2 = tetra::Octagon(corner2);
@@ -76,7 +76,7 @@ std::array<int, 3> ninside2Domains(std::array<, 8> corner1, std::array<, 8> corn
     std::array<int, 3> counter{ {0,0,0} };
 
     for (int i = 0; i < N; ++i) {
-         p = { rnd(), rnd(), rnd() };
+        repa::Vec3d p = { rnd(), rnd(), rnd() };
         bool c1 = o1.contains(p);
         bool c2 = o2.contains(p);
         counter[c1 + c2]++;
@@ -84,7 +84,7 @@ std::array<int, 3> ninside2Domains(std::array<, 8> corner1, std::array<, 8> corn
     return counter;
 }
 
-std::array<int, 9> ninside8Domains(std::array<, 8> corners[8], int N)
+std::array<int, 9> ninside8Domains(std::array<repa::Vec3d, 8> corners[8], int N)
 {
     std::array<tetra::Octagon, 8> octs = {};
     for (int i = 0; i < 8; i++) {
@@ -95,7 +95,7 @@ std::array<int, 9> ninside8Domains(std::array<, 8> corners[8], int N)
     std::array<int, 9> counter{ {0,0,0,0,0,0,0,0,0} };
     std::ofstream csv("doublePoints.csv");
     for (int i = 0; i < N; ++i) {
-         p = { rnd(), rnd(), rnd() };
+        repa::Vec3d p = { rnd(), rnd(), rnd() };
         int count = 0;
         for (int k = 0; k < 8; ++k) {
             if (octs[k].contains(p)) { count++; }
@@ -109,7 +109,7 @@ std::array<int, 9> ninside8Domains(std::array<, 8> corners[8], int N)
     return counter;
 }
 
-BOOST_AUTO_TEST_CASE(test_tetra)
+BOOST_AUTO_TEST_CASE(test_tetra_1)
 {
 
     tetra::Octagon r;
@@ -118,12 +118,12 @@ BOOST_AUTO_TEST_CASE(test_tetra)
 
     // 50% of the volume of the unit cube
     std::array<repa::Vec3d, 8> cs = {{{0., .5, 0.},
-                                      {0., 0., .5},
                                       {0., 1., .5},
+                                      {0., 0., .5},
                                       {0., .5, 1.},
                                       {1., .5, 0.},
-                                      {1., 0., .5},
                                       {1., 1., .5},
+                                      {1., 0., .5},
                                       {1., .5, 1.}}};
     auto o = tetra::Octagon{cs};
 
@@ -145,38 +145,38 @@ BOOST_AUTO_TEST_CASE(test_tetra)
     BOOST_CHECK((frac > .45 && frac < .55));
 }
 
-BOOST_AUTO_TEST_CASE(test_tetra)
+BOOST_AUTO_TEST_CASE(test_tetra_2)
 {
     auto rnd = Randgen{};
-    auto p1 = { rnd(), 0, 0 };
-    auto p2 = { rnd(), 1, 0 };
-    auto p3 = { rnd(), 0, 1 };
-    auto p4 = { rnd(), 1, 1 };
-    std::array<repa::Vec3d, 8> corner1 = { {0, 0, 0},
+    repa::Vec3d p1 = { rnd(), 0., 0. };
+    repa::Vec3d p2 = { rnd(), 1., 0. };
+    repa::Vec3d p3 = { rnd(), 0., 1. };
+    repa::Vec3d p4 = { rnd(), 1., 1. };
+    std::array<repa::Vec3d, 8> corner1 = { { {0., 0., 0.},
                                 p1,
-                                {0, 1, 0},
+                                {0., 1., 0.},
                                 p2,
-                                {0, 0, 1},
+                                {0., 0., 1.},
                                 p3,
-                                {0, 1, 1},
-                                p4};
-    std::array<repa::Vec3d, 8> corner2 = { p1,
-                                {1, 0, 0},
+                                {0., 1., 1.},
+                                p4}};
+    std::array<repa::Vec3d, 8> corner2 = {{ p1,
+                                {1., 0., 0.},
                                 p2,
-                                {1, 1, 0},
+                                {1., 1., 0.},
                                 p3,
-                                {1, 0, 1},
+                                {1., 0., 1.},
                                 p4,
-                                {1, 1, 1}};
+                                {1., 1., 1.}}};
 
     const int N = 10'000;
-    std::array<int, 3> result = ninsideTwoDomains(corner1, corner2, N);
+    std::array<int, 3> result = ninside2Domains(corner1, corner2, N);
     BOOST_CHECK(result[0] == 0);
     BOOST_CHECK(result[1] == N);
     BOOST_CHECK(result[2] == 0);
 }
 
-BOOST_AUTO_TEST_CASE(test_tetra)
+BOOST_AUTO_TEST_CASE(test_tetra_3)
 {
     using namespace repa;
     auto rnd = Randgen{};
@@ -192,7 +192,7 @@ BOOST_AUTO_TEST_CASE(test_tetra)
     point[1][1][1] = Vec3d{ rnd(), rnd(), rnd() };
 
 
-    std::array<, 8> corners[8] = {};
+    std::array<repa::Vec3d, 8> corners[8] = {};
     corners[0] = { point[0][0][0], point[1][0][0], point[0][1][0], point[1][1][0],
         point[0][0][1], point[1][0][1], point[0][1][1], point[1][1][1] };
     corners[1] = { point[1][0][0], point[2][0][0], point[1][1][0], point[2][1][0],
@@ -209,6 +209,7 @@ BOOST_AUTO_TEST_CASE(test_tetra)
         point[0][1][2], point[1][1][2], point[0][2][2], point[1][2][2] };
     corners[7] = { point[1][1][1], point[2][1][1], point[1][2][1], point[2][2][1],
         point[1][1][2], point[2][1][2], point[1][2][2], point[2][2][2] };
+     
     /*
     std::ofstream cornerCsv("corner.csv");
     for (auto corner : corners) {
@@ -222,8 +223,12 @@ BOOST_AUTO_TEST_CASE(test_tetra)
     */
 
     std::array<int, 9> result = return ninside8Domains(corners, N);
+
+    const int N = 10'000;
+    std::array<int, 9> result = ninside8Domains(corners, N);
     BOOST_CHECK(result[0] == 0);
     BOOST_CHECK(result[1] == N);
+    
     for (int i = 2; i < 9; i++) {
         BOOST_CHECK(result[i] == 0);
     }
