@@ -93,7 +93,6 @@ std::array<int, 9> ninside8Domains(std::array<repa::Vec3d, 8> corners[8], int N)
     auto rnd = Randgen{};
 
     std::array<int, 9> counter{ {0,0,0,0,0,0,0,0,0} };
-    std::ofstream csv("doublePoints.csv");
     for (int i = 0; i < N; ++i) {
         repa::Vec3d p = { rnd(), rnd(), rnd() };
         int count = 0;
@@ -101,11 +100,7 @@ std::array<int, 9> ninside8Domains(std::array<repa::Vec3d, 8> corners[8], int N)
             if (octs[k].contains(p)) { count++; }
         }
         counter[count]++;
-        if (count != 1) {
-            csv << std::to_string(p[0]) << "," << std::to_string(p[1]) << "," << std::to_string(p[2]) << "\n";
-        }
     }
-    csv.close();
     return counter;
 }
 
@@ -209,18 +204,6 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
         point[0][1][2], point[1][1][2], point[0][2][2], point[1][2][2] };
     corners[7] = { point[1][1][1], point[2][1][1], point[1][2][1], point[2][2][1],
         point[1][1][2], point[2][1][2], point[1][2][2], point[2][2][2] };
-     
-    /*
-    std::ofstream cornerCsv("corner.csv");
-    for (auto corner : corners) {
-        for (int i = 0; i < 8; i++) {
-            cornerCsv << corner[i][0] << ",";
-            cornerCsv << corner[i][1] << ",";
-            cornerCsv << corner[i][2] << "\n";
-        }
-    }
-    cornerCsv.close();
-    */
 
     std::array<int, 9> result = return ninside8Domains(corners, N);
 
