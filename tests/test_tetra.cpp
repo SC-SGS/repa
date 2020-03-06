@@ -104,6 +104,56 @@ std::array<int, 9> ninside8Domains(std::array<repa::Vec3d, 8> corners[8], int N)
     return counter;
 }
 
+template<int size>
+struct PointArray
+{
+    array<array<array<Vec3d, size>, size>, size> point = {};
+
+    Randgen rnd = Randgen{};
+    int domains = size - 1;
+    int ddom = double(size - 1);
+    PointArray()
+    {
+        for (int i = 0; i < size; i++) {
+            for (int k = 0; k < size; k++) {
+                for (int j = 0; j < size; j++) {
+                    point[i][k][j] = Vec3d{ doubleFrom(i),doubleFrom(k),doubleFrom(j) };
+                }
+            }
+        }
+    }
+    double doubleFrom(int i) { return double(range) * double(i) / ddom; }
+    double randomAround(int i) {
+        return (((double(i) * ddom) - 1) * range + 2 * rnd()) / std::pow(ddom, 2);
+    }
+    void randomize()
+    {
+        for (int i = 1; i < domains; i++) {
+            for (int k = 1; k < domains; k++) {
+                for (int l = 1; l < domains; l++) {
+                    point[i][k][l] = { {randomAround(i), randomAround(k), randomAround(l)} };
+                }
+            }
+        }
+    }
+    std::array<Vec3d, 8> getVerticesAtPosition(int x, int y, int z);
+}
+
+template<int size>
+std::array<Vec3d, 8> PointArray<size>::getVerticesAtPosition(int x, int y, int z)
+{
+    return { point[0 + x][0 + y][0 + z],
+             point[1 + x][0 + y][0 + z],
+             point[0 + x][1 + y][0 + z],
+             point[1 + x][1 + y][0 + z],
+             point[0 + x][0 + y][1 + z],
+             point[1 + x][0 + y][1 + z],
+             point[0 + x][1 + y][1 + z],
+             point[1 + x][1 + y][1 + z],
+    };
+}
+
+
 BOOST_AUTO_TEST_CASE(test_tetra_1)
 {
 
@@ -176,34 +226,17 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
     using namespace repa;
     auto rnd = Randgen{};
 
-    Vec3d point[3][3][3]{};
-    for (int i = 0; i < 3; i++) {
-        for (int k = 0; k < 3; k++) {
-            for (int j = 0; j < 3; j++) {
-                point[i][k][j] = Vec3d{ double(i) / 2.0,double(k) / 2.0,double(j) / 2.0 };
-            }
-        }
-    }
-    point[1][1][1] = Vec3d{ rnd(), rnd(), rnd() };
-
+    PointArray<3> p;
+    p.randomize();
 
     std::array<repa::Vec3d, 8> corners[8] = {};
-    corners[0] = { point[0][0][0], point[1][0][0], point[0][1][0], point[1][1][0],
-        point[0][0][1], point[1][0][1], point[0][1][1], point[1][1][1] };
-    corners[1] = { point[1][0][0], point[2][0][0], point[1][1][0], point[2][1][0],
-        point[1][0][1], point[2][0][1], point[1][1][1], point[2][1][1] };
-    corners[2] = { point[0][1][0], point[1][1][0], point[0][2][0], point[1][2][0],
-        point[0][1][1], point[1][1][1], point[0][2][1], point[1][2][1] };
-    corners[3] = { point[1][1][0], point[2][1][0], point[1][2][0], point[2][2][0],
-        point[1][1][1], point[2][1][1], point[1][2][1], point[2][2][1] };
-    corners[4] = { point[0][0][1], point[1][0][1], point[0][1][1], point[1][1][1],
-        point[0][0][2], point[1][0][2], point[0][1][2], point[1][1][2] };
-    corners[5] = { point[1][0][1], point[2][0][1], point[1][1][1], point[2][1][1],
-        point[1][0][2], point[2][0][2], point[1][1][2], point[2][1][2] };
-    corners[6] = { point[0][1][1], point[1][1][1], point[0][2][1], point[1][2][1],
-        point[0][1][2], point[1][1][2], point[0][2][2], point[1][2][2] };
-    corners[7] = { point[1][1][1], point[2][1][1], point[1][2][1], point[2][2][1],
-        point[1][1][2], point[2][1][2], point[1][2][2], point[2][2][2] };
+    index = 0;
+    for (int x = 0; x < 2; x++;) {
+        for (int y = 0; y < 2; y++) {
+            for (int z = 0; z < 2; z++) {
+                corners[index] = p->getVerticesAtPosition(x, y, z);
+                index++;
+    } } }
 
     const int N = 10'000;
     std::array<int, 9> result = ninside8Domains(corners, N);
@@ -216,5 +249,5 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
     for (int i = 2; i < 9; i++) {
         BOOST_CHECK(result[i] == 0);
     }
-    */
+     */
 }
