@@ -107,36 +107,31 @@ std::array<int, 9> ninside8Domains(std::array<repa::Vec3d, 8> corners[8], int N)
 template<int size>
 struct PointArray
 {
-    array<array<array<Vec3d, size>, size>, size> point = {};
+    array<array<array<repa::Vec3d, size>, size>, size> point = {};
 
     Randgen rnd = Randgen{};
     int domains = size - 1;
     int ddom = double(size - 1);
-    PointArray()
+    PointArray();
+    double valueFor(int i) 
     {
-        for (int i = 0; i < size; i++) {
-            for (int k = 0; k < size; k++) {
-                for (int j = 0; j < size; j++) {
-                    point[i][k][j] = Vec3d{ doubleFrom(i),doubleFrom(k),doubleFrom(j) };
-                }
-            }
-        }
-    }
-    double doubleFrom(int i) { return double(range) * double(i) / ddom; }
+        if (i == 0 || i == domains) { return double(range) * double(i) / ddom; }
+        return randomAround(i);
+    };
     double randomAround(int i) {
         return (((double(i) * ddom) - 1) * range + 2 * rnd()) / std::pow(ddom, 2);
     }
-    void randomize()
-    {
-        for (int i = 1; i < domains; i++) {
-            for (int k = 1; k < domains; k++) {
-                for (int l = 1; l < domains; l++) {
-                    point[i][k][l] = { {randomAround(i), randomAround(k), randomAround(l)} };
-                }
-            }
-        }
-    }
-    std::array<Vec3d, 8> getVerticesAtPosition(int x, int y, int z);
+    std::array<repa::Vec3d, 8> getVerticesAtPosition(int x, int y, int z);
+}
+
+template<int size>
+PointArray<size>::PointArray()
+{
+    for (int x = 0; x < size; x++) {
+        for (int y = 0; y < size; y++) {
+            for (int z = 0; z < size; z++) {
+                point[x][y][z] = repa::Vec3d{ valueFor(i),valueFor(k),valueFor(j) };
+    }}}
 }
 
 template<int size>
@@ -227,7 +222,6 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
     auto rnd = Randgen{};
 
     PointArray<3> p;
-    p.randomize();
 
     std::array<repa::Vec3d, 8> corners[8] = {};
     index = 0;
