@@ -107,7 +107,7 @@ std::array<int, 9> ninside8Domains(std::array<repa::Vec3d, 8> corners[8], int N)
 template<int size>
 struct PointArray
 {
-    array<array<array<repa::Vec3d, size>, size>, size> point = {};
+    array<array<array<repa::Vec3d, size>, size>, size> point = { {{}} };
 
     Randgen rnd = Randgen{};
     int domains = size - 1;
@@ -130,12 +130,12 @@ PointArray<size>::PointArray()
     for (int x = 0; x < size; x++) {
         for (int y = 0; y < size; y++) {
             for (int z = 0; z < size; z++) {
-                point[x][y][z] = repa::Vec3d{ valueFor(i),valueFor(k),valueFor(j) };
+                point[x][y][z] = repa::Vec3d{ {valueFor(x),valueFor(y),valueFor(z)} };
     }}}
 }
 
 template<int size>
-std::array<Vec3d, 8> PointArray<size>::getVerticesAtPosition(int x, int y, int z)
+std::array<repa::Vec3d, 8> PointArray<size>::getVerticesAtPosition(int x, int y, int z)
 {
     return { point[0 + x][0 + y][0 + z],
              point[1 + x][0 + y][0 + z],

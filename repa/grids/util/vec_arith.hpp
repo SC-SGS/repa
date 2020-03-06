@@ -426,7 +426,7 @@ __REPA__EX_TMPL_EXPORT typename std::common_type<T1, T2>::type
 dot(const VecExpression<T1, N, Expr1> &v1,
     const VecExpression<T2, N, Expr2> &v2)
 {
-    typename std::common_type<T1, T2>::type result {};
+    typename std::common_type<T1, T2>::type result {0};
     for (size_t i = 0; i < N; ++i)
         result += v1[i] * v2[i];
     return result;
