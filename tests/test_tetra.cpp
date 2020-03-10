@@ -90,7 +90,7 @@ struct PointArray {
         if (i == 1) {
             return 0.25 + 0.5 * rnd();
         }
-        return double(i == 2); // map i={0|2} to {0|1}
+        return double(i) / 2; // map i={0|2} to return {0|1}
     };
     array<Vec3d, 8> getVerticesAtPosition(int x, int y, int z);
 };
@@ -213,4 +213,23 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
     for (int i = 2; i < 9; i++) {
         BOOST_CHECK(result[i] == 0);
     }
+}
+
+BOOST_AUTO_TEST_CASE(test_tetra_4)
+{
+    array<Vec3d, 8> cs = {{{0., 0., 0.},
+                           {1., 0., 0.},
+                           {0., 1., 0.},
+                           {1., 1., 0.},
+                           {0., 0., 1.},
+                           {1., 0., 1.},
+                           {0., 1., 1.},
+                           {1., 1., 1.}}};
+    tetra::Octagon o = tetra::Octagon(cs);
+    BOOST_CHECK(o.contains({0., .5, .5}));
+    BOOST_CHECK(o.contains({.5, 0., .5}));
+    BOOST_CHECK(o.contains({.5, .5, 0.}));
+    BOOST_CHECK(!o.contains({1., .5, .5}));
+    BOOST_CHECK(!o.contains({.5, 1., .5}));
+    BOOST_CHECK(!o.contains({.5, .5, 1.}));
 }
