@@ -104,6 +104,7 @@ PointArray::PointArray()
             }
         }
     }
+    point[1][1][1] = Vec3d{{0.5, 0.5, 0.5}};
 }
 
 array<Vec3d, 8> PointArray::getVerticesAtPosition(int x, int y, int z)
@@ -207,13 +208,9 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
     const int N = 10'000;
     array<int, 9> result = ninsideDomains<8>(corners, N);
     BOOST_CHECK(result[0] == 0);
-    BOOST_CHECK(result[1] > N / 2);
+    BOOST_CHECK(result[1] == N);
 
-    /* This is not true for i=2 and sometimes even for i=3.
-     * That means, a point was accepted 2 (/3) times.
-     * MUST be fixed!
     for (int i = 2; i < 9; i++) {
         BOOST_CHECK(result[i] == 0);
     }
-     */
 }
