@@ -67,16 +67,18 @@ int ninside(const tetra::Octagon &o, int N)
     return n;
 }
 
-std::array<int, 3> ninside2Domains(std::array<repa::Vec3d, 8> corner1, std::array<repa::Vec3d, 8> corner2, int N)
+std::array<int, 3> ninside2Domains(std::array<repa::Vec3d, 8> corner1,
+                                   std::array<repa::Vec3d, 8> corner2,
+                                   int N)
 {
     auto o1 = tetra::Octagon(corner1);
     auto o2 = tetra::Octagon(corner2);
     auto rnd = Randgen{};
 
-    std::array<int, 3> counter{ {0,0,0} };
+    std::array<int, 3> counter{{0, 0, 0}};
 
     for (int i = 0; i < N; ++i) {
-        repa::Vec3d p = { rnd(), rnd(), rnd() };
+        repa::Vec3d p = {rnd(), rnd(), rnd()};
         bool c1 = o1.contains(p);
         bool c2 = o2.contains(p);
         counter[c1 + c2]++;
@@ -92,62 +94,66 @@ std::array<int, 9> ninside8Domains(std::array<repa::Vec3d, 8> corners[8], int N)
     }
     auto rnd = Randgen{};
 
-    std::array<int, 9> counter{ {0,0,0,0,0,0,0,0,0} };
+    std::array<int, 9> counter{{0, 0, 0, 0, 0, 0, 0, 0, 0}};
     for (int i = 0; i < N; ++i) {
-        repa::Vec3d p = { rnd(), rnd(), rnd() };
+        repa::Vec3d p = {rnd(), rnd(), rnd()};
         int count = 0;
         for (int k = 0; k < 8; ++k) {
-            if (octs[k].contains(p)) { count++; }
+            if (octs[k].contains(p)) {
+                count++;
+            }
         }
         counter[count]++;
     }
     return counter;
 }
 
-template<int size>
-struct PointArray
-{
-    array<array<array<repa::Vec3d, size>, size>, size> point = { {{}} };
-
+template <int size>
+struct PointArray {
+    array<array<array<repa::Vec3d, size>, size>, size> point = {{{}}};
     Randgen rnd = Randgen{};
     int domains = size - 1;
     int ddom = double(size - 1);
     PointArray();
-    double valueFor(int i) 
+    double valueFor(int i)
     {
-        if (i == 0 || i == domains) { return double(range) * double(i) / ddom; }
+        if (i == 0 || i == domains) {
+            return double(range) * double(i) / ddom;
+        }
         return randomAround(i);
     };
-    double randomAround(int i) {
-        return (((double(i) * ddom) - 1) * range + 2 * rnd()) / std::pow(ddom, 2);
+    double randomAround(int i)
+    {
+        return (((double(i) * ddom) - 1) * range + 2 * rnd())
+               / std::pow(ddom, 2);
     }
     std::array<repa::Vec3d, 8> getVerticesAtPosition(int x, int y, int z);
-}
+};
 
-template<int size>
+template <int size>
 PointArray<size>::PointArray()
 {
     for (int x = 0; x < size; x++) {
         for (int y = 0; y < size; y++) {
             for (int z = 0; z < size; z++) {
-                point[x][y][z] = repa::Vec3d{ {valueFor(x),valueFor(y),valueFor(z)} };
-    }}}
+                point[x][y][z]
+                    = repa::Vec3d{{valueFor(x), valueFor(y), valueFor(z)}};
+            }
+        }
+    }
 }
 
-template<int size>
-std::array<repa::Vec3d, 8> PointArray<size>::getVerticesAtPosition(int x, int y, int z)
+template <int size>
+std::array<repa::Vec3d, 8>
+PointArray<size>::getVerticesAtPosition(int x, int y, int z)
 {
-    return { point[0 + x][0 + y][0 + z],
-             point[1 + x][0 + y][0 + z],
-             point[0 + x][1 + y][0 + z],
-             point[1 + x][1 + y][0 + z],
-             point[0 + x][0 + y][1 + z],
-             point[1 + x][0 + y][1 + z],
-             point[0 + x][1 + y][1 + z],
-             point[1 + x][1 + y][1 + z],
+    return {
+        point[0 + x][0 + y][0 + z], point[1 + x][0 + y][0 + z],
+        point[0 + x][1 + y][0 + z], point[1 + x][1 + y][0 + z],
+        point[0 + x][0 + y][1 + z], point[1 + x][0 + y][1 + z],
+        point[0 + x][1 + y][1 + z], point[1 + x][1 + y][1 + z],
     };
-}
-
+};
 
 BOOST_AUTO_TEST_CASE(test_tetra_1)
 {
@@ -188,26 +194,26 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
 BOOST_AUTO_TEST_CASE(test_tetra_2)
 {
     auto rnd = Randgen{};
-    repa::Vec3d p1 = { rnd(), 0., 0. };
-    repa::Vec3d p2 = { rnd(), 1., 0. };
-    repa::Vec3d p3 = { rnd(), 0., 1. };
-    repa::Vec3d p4 = { rnd(), 1., 1. };
-    std::array<repa::Vec3d, 8> corner1 = { { {0., 0., 0.},
-                                p1,
-                                {0., 1., 0.},
-                                p2,
-                                {0., 0., 1.},
-                                p3,
-                                {0., 1., 1.},
-                                p4}};
-    std::array<repa::Vec3d, 8> corner2 = {{ p1,
-                                {1., 0., 0.},
-                                p2,
-                                {1., 1., 0.},
-                                p3,
-                                {1., 0., 1.},
-                                p4,
-                                {1., 1., 1.}}};
+    repa::Vec3d p1 = {rnd(), 0., 0.};
+    repa::Vec3d p2 = {rnd(), 1., 0.};
+    repa::Vec3d p3 = {rnd(), 0., 1.};
+    repa::Vec3d p4 = {rnd(), 1., 1.};
+    std::array<repa::Vec3d, 8> corner1 = {{{0., 0., 0.},
+                                           p1,
+                                           {0., 1., 0.},
+                                           p2,
+                                           {0., 0., 1.},
+                                           p3,
+                                           {0., 1., 1.},
+                                           p4}};
+    std::array<repa::Vec3d, 8> corner2 = {{p1,
+                                           {1., 0., 0.},
+                                           p2,
+                                           {1., 1., 0.},
+                                           p3,
+                                           {1., 0., 1.},
+                                           p4,
+                                           {1., 1., 1.}}};
 
     const int N = 10'000;
     std::array<int, 3> result = ninside2Domains(corner1, corner2, N);
@@ -224,19 +230,21 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
     PointArray<3> p;
 
     std::array<repa::Vec3d, 8> corners[8] = {};
-    index = 0;
-    for (int x = 0; x < 2; x++;) {
+    int index = 0;
+    for (int x = 0; x < 2; x++) {
         for (int y = 0; y < 2; y++) {
             for (int z = 0; z < 2; z++) {
-                corners[index] = p->getVerticesAtPosition(x, y, z);
+                corners[index] = p.getVerticesAtPosition(x, y, z);
                 index++;
-    } } }
+            }
+        }
+    }
 
     const int N = 10'000;
     std::array<int, 9> result = ninside8Domains(corners, N);
     BOOST_CHECK(result[0] == 0);
-    BOOST_CHECK(result[1] > N/2);
-    
+    BOOST_CHECK(result[1] > N / 2);
+
     /* This is not true for i=2 and sometimes even for i=3.
      * That means, a point was accepted 2 (/3) times.
      * MUST be fixed!
