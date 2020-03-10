@@ -31,6 +31,7 @@
 #include <repa/grids/util/tetra.hpp>
 
 using namespace repa::util;
+using repa::Vec3d;
 using std::array;
 
 bool empty_oct_message(const std::runtime_error &e)
@@ -57,8 +58,7 @@ private:
 };
 
 template <int domains>
-array<int, domains + 1> ninsideDomains(array<repa::Vec3d, 8> corners[domains],
-                                       int N)
+array<int, domains + 1> ninsideDomains(array<Vec3d, 8> corners[domains], int N)
 {
     array<tetra::Octagon, domains> octs = {};
     for (int i = 0; i < domains; i++) {
@@ -68,7 +68,7 @@ array<int, domains + 1> ninsideDomains(array<repa::Vec3d, 8> corners[domains],
 
     array<int, domains + 1> counter{0};
     for (int i = 0; i < N; ++i) {
-        repa::Vec3d p = {rnd(), rnd(), rnd()};
+        Vec3d p = {rnd(), rnd(), rnd()};
         int count = 0;
         for (int k = 0; k < domains; ++k) {
             if (octs[k].contains(p)) {
@@ -82,7 +82,7 @@ array<int, domains + 1> ninsideDomains(array<repa::Vec3d, 8> corners[domains],
 
 template <int size>
 struct PointArray {
-    array<array<array<repa::Vec3d, size>, size>, size> point = {{{}}};
+    array<array<array<Vec3d, size>, size>, size> point = {{{}}};
     Randgen rnd = Randgen{};
     int domains = size - 1;
     int ddom = double(size - 1);
@@ -99,7 +99,7 @@ struct PointArray {
         return (((double(i) * ddom) - 1) * range + 2 * rnd())
                / std::pow(ddom, 2);
     }
-    array<repa::Vec3d, 8> getVerticesAtPosition(int x, int y, int z);
+    array<Vec3d, 8> getVerticesAtPosition(int x, int y, int z);
 };
 
 template <int size>
@@ -108,16 +108,14 @@ PointArray<size>::PointArray()
     for (int x = 0; x < size; x++) {
         for (int y = 0; y < size; y++) {
             for (int z = 0; z < size; z++) {
-                point[x][y][z]
-                    = repa::Vec3d{{valueFor(x), valueFor(y), valueFor(z)}};
+                point[x][y][z] = Vec3d{{valueFor(x), valueFor(y), valueFor(z)}};
             }
         }
     }
 }
 
 template <int size>
-array<repa::Vec3d, 8>
-PointArray<size>::getVerticesAtPosition(int x, int y, int z)
+array<Vec3d, 8> PointArray<size>::getVerticesAtPosition(int x, int y, int z)
 {
     return {
         point[0 + x][0 + y][0 + z], point[1 + x][0 + y][0 + z],
@@ -135,14 +133,14 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
                           empty_oct_message);
 
     // 50% of the volume of the unit cube
-    array<repa::Vec3d, 8> cs = {{{0., .5, 0.},
-                                 {0., 1., .5},
-                                 {0., 0., .5},
-                                 {0., .5, 1.},
-                                 {1., .5, 0.},
-                                 {1., 1., .5},
-                                 {1., 0., .5},
-                                 {1., .5, 1.}}};
+    array<Vec3d, 8> cs = {{{0., .5, 0.},
+                           {0., 1., .5},
+                           {0., 0., .5},
+                           {0., .5, 1.},
+                           {1., .5, 0.},
+                           {1., 1., .5},
+                           {1., 0., .5},
+                           {1., .5, 1.}}};
     auto o = tetra::Octagon{cs};
 
     BOOST_CHECK(o.contains({.5, .5, .5}));
@@ -159,7 +157,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
     BOOST_CHECK(!o.contains({.8, .8, .8}));
 
     const int N = 10'000;
-    array<repa::Vec3d, 8> cArray[1]{cs};
+    array<Vec3d, 8> cArray[1]{cs};
     auto acceptance = ninsideDomains<1>(cArray, N);
     double frac = static_cast<double>(acceptance[1]) / N;
     BOOST_CHECK((frac > .45 && frac < .55));
@@ -168,11 +166,11 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
 BOOST_AUTO_TEST_CASE(test_tetra_2)
 {
     auto rnd = Randgen{};
-    repa::Vec3d p1 = {rnd(), 0., 0.};
-    repa::Vec3d p2 = {rnd(), 1., 0.};
-    repa::Vec3d p3 = {rnd(), 0., 1.};
-    repa::Vec3d p4 = {rnd(), 1., 1.};
-    array<repa::Vec3d, 8> corners[2] = {};
+    Vec3d p1 = {rnd(), 0., 0.};
+    Vec3d p2 = {rnd(), 1., 0.};
+    Vec3d p3 = {rnd(), 0., 1.};
+    Vec3d p4 = {rnd(), 1., 1.};
+    array<Vec3d, 8> corners[2] = {};
     corners[0] = {{{0., 0., 0.},
                    p1,
                    {0., 1., 0.},
@@ -204,7 +202,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
 
     PointArray<3> p;
 
-    array<repa::Vec3d, 8> corners[8] = {};
+    array<Vec3d, 8> corners[8] = {};
     int index = 0;
     for (int x = 0; x < 2; x++) {
         for (int y = 0; y < 2; y++) {
