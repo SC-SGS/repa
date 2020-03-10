@@ -56,50 +56,21 @@ private:
     std::uniform_real_distribution<> d;
 };
 
-int ninside(const tetra::Octagon &o, int N)
+template <int domains>
+array<int, domains + 1> ninsideDomains(array<repa::Vec3d, 8> corners[domains],
+                                       int N)
 {
-    auto rnd = Randgen{};
-    int n = 0;
-
-    for (int i = 0; i < N; ++i) {
-        if (o.contains({rnd(), rnd(), rnd()}))
-            n++;
-    }
-    return n;
-}
-
-array<int, 3> ninside2Domains(array<repa::Vec3d, 8> corner1,
-                              array<repa::Vec3d, 8> corner2,
-                              int N)
-{
-    auto o1 = tetra::Octagon(corner1);
-    auto o2 = tetra::Octagon(corner2);
-    auto rnd = Randgen{};
-
-    array<int, 3> counter{{0, 0, 0}};
-
-    for (int i = 0; i < N; ++i) {
-        repa::Vec3d p = {rnd(), rnd(), rnd()};
-        bool c1 = o1.contains(p);
-        bool c2 = o2.contains(p);
-        counter[c1 + c2]++;
-    }
-    return counter;
-}
-
-array<int, 9> ninside8Domains(array<repa::Vec3d, 8> corners[8], int N)
-{
-    array<tetra::Octagon, 8> octs = {};
-    for (int i = 0; i < 8; i++) {
+    array<tetra::Octagon, domains> octs = {};
+    for (int i = 0; i < domains; i++) {
         octs[i] = tetra::Octagon(corners[i]);
     }
     auto rnd = Randgen{};
 
-    array<int, 9> counter{{0, 0, 0, 0, 0, 0, 0, 0, 0}};
+    array<int, domains + 1> counter{0};
     for (int i = 0; i < N; ++i) {
         repa::Vec3d p = {rnd(), rnd(), rnd()};
         int count = 0;
-        for (int k = 0; k < 8; ++k) {
+        for (int k = 0; k < domains; ++k) {
             if (octs[k].contains(p)) {
                 count++;
             }
@@ -188,7 +159,9 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
     BOOST_CHECK(!o.contains({.8, .8, .8}));
 
     const int N = 10'000;
-    double frac = static_cast<double>(ninside(o, N)) / N;
+    array<repa::Vec3d, 8> cArray[1]{cs};
+    auto acceptance = ninsideDomains<1>(cArray, N);
+    double frac = static_cast<double>(acceptance[1]) / N;
     BOOST_CHECK((frac > .45 && frac < .55));
 }
 
@@ -199,25 +172,26 @@ BOOST_AUTO_TEST_CASE(test_tetra_2)
     repa::Vec3d p2 = {rnd(), 1., 0.};
     repa::Vec3d p3 = {rnd(), 0., 1.};
     repa::Vec3d p4 = {rnd(), 1., 1.};
-    array<repa::Vec3d, 8> corner1 = {{{0., 0., 0.},
-                                      p1,
-                                      {0., 1., 0.},
-                                      p2,
-                                      {0., 0., 1.},
-                                      p3,
-                                      {0., 1., 1.},
-                                      p4}};
-    array<repa::Vec3d, 8> corner2 = {{p1,
-                                      {1., 0., 0.},
-                                      p2,
-                                      {1., 1., 0.},
-                                      p3,
-                                      {1., 0., 1.},
-                                      p4,
-                                      {1., 1., 1.}}};
+    array<repa::Vec3d, 8> corners[2] = {};
+    corners[0] = {{{0., 0., 0.},
+                   p1,
+                   {0., 1., 0.},
+                   p2,
+                   {0., 0., 1.},
+                   p3,
+                   {0., 1., 1.},
+                   p4}};
+    corners[1] = {{p1,
+                   {1., 0., 0.},
+                   p2,
+                   {1., 1., 0.},
+                   p3,
+                   {1., 0., 1.},
+                   p4,
+                   {1., 1., 1.}}};
 
     const int N = 10'000;
-    array<int, 3> result = ninside2Domains(corner1, corner2, N);
+    array<int, 3> result = ninsideDomains<2>(corners, N);
     BOOST_CHECK(result[0] == 0);
     BOOST_CHECK(result[1] == N);
     BOOST_CHECK(result[2] == 0);
@@ -242,7 +216,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
     }
 
     const int N = 10'000;
-    array<int, 9> result = ninside8Domains(corners, N);
+    array<int, 9> result = ninsideDomains<8>(corners, N);
     BOOST_CHECK(result[0] == 0);
     BOOST_CHECK(result[1] > N / 2);
 
