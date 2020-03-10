@@ -80,30 +80,22 @@ array<int, domains + 1> ninsideDomains(array<Vec3d, 8> corners[domains], int N)
     return counter;
 }
 
-template <int size>
 struct PointArray {
+    static const int size = 3;
     array<array<array<Vec3d, size>, size>, size> point = {{{}}};
     Randgen rnd = Randgen{};
-    int domains = size - 1;
-    int ddom = double(size - 1);
     PointArray();
     double valueFor(int i)
     {
-        if (i == 0 || i == domains) {
-            return double(range) * double(i) / ddom;
+        if (i == 1) {
+            return 0.25 + 0.5 * rnd();
         }
-        return randomAround(i);
+        return double(i == 2); // map i={0|2} to {0|1}
     };
-    double randomAround(int i)
-    {
-        return (((double(i) * ddom) - 1) * range + 2 * rnd())
-               / std::pow(ddom, 2);
-    }
     array<Vec3d, 8> getVerticesAtPosition(int x, int y, int z);
 };
 
-template <int size>
-PointArray<size>::PointArray()
+PointArray::PointArray()
 {
     for (int x = 0; x < size; x++) {
         for (int y = 0; y < size; y++) {
@@ -114,8 +106,7 @@ PointArray<size>::PointArray()
     }
 }
 
-template <int size>
-array<Vec3d, 8> PointArray<size>::getVerticesAtPosition(int x, int y, int z)
+array<Vec3d, 8> PointArray::getVerticesAtPosition(int x, int y, int z)
 {
     return {
         point[0 + x][0 + y][0 + z], point[1 + x][0 + y][0 + z],
@@ -200,7 +191,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
     using namespace repa;
     auto rnd = Randgen{};
 
-    PointArray<3> p;
+    PointArray p{};
 
     array<Vec3d, 8> corners[8] = {};
     int index = 0;
