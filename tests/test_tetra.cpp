@@ -117,6 +117,11 @@ array<Vec3d, 8> PointArray::getVerticesAtPosition(int x, int y, int z)
     };
 };
 
+/**
+ * Created one Octagon which covers 50% of a cube.
+ * Test acceptance of N random points in this cube.
+ * The number of accepted Points should be ~ 50%.
+ */
 BOOST_AUTO_TEST_CASE(test_tetra_1)
 {
 
@@ -155,13 +160,20 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
     BOOST_CHECK((frac > .45 && frac < .55));
 }
 
+/**
+ * Create two adjacent Octagons in a cube.
+ * The plane between the both Octagons is randomized.
+ * Every random point in this cube should be accepted by exactly one Octagon.
+ */
 BOOST_AUTO_TEST_CASE(test_tetra_2)
 {
     auto rnd = Randgen{};
+    // p1-p4 define the randomized adjacent side of the Octagons
     Vec3d p1 = {rnd(), 0., 0.};
     Vec3d p2 = {rnd(), 1., 0.};
     Vec3d p3 = {rnd(), 0., 1.};
     Vec3d p4 = {rnd(), 1., 1.};
+    // Create two Octagons
     array<Vec3d, 8> corners[2] = {};
     corners[0] = {{{0., 0., 0.},
                    p1,
@@ -182,18 +194,25 @@ BOOST_AUTO_TEST_CASE(test_tetra_2)
 
     const int N = 10'000;
     array<int, 3> result = ninsideDomains<2>(corners, N);
+    // All points should be accepted by exactly one Octagon.
     BOOST_CHECK(result[0] == 0);
     BOOST_CHECK(result[1] == N);
     BOOST_CHECK(result[2] == 0);
 }
 
+/**
+ * Creating a cube filled with 8 Octagons.
+ * Most of the points are randomized.
+ * Every random point in this cube should be accepted by exactly one Octagon.
+ */
 BOOST_AUTO_TEST_CASE(test_tetra_3)
 {
     using namespace repa;
-    auto rnd = Randgen{};
 
+    // Array with grid points of all Octagons.
     PointArray p{};
 
+    // Create the 8 Octagons
     array<Vec3d, 8> corners[8] = {};
     int index = 0;
     for (int x = 0; x < 2; x++) {
@@ -205,16 +224,25 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
         }
     }
 
+    // Test acceptance of N points
     const int N = 10'000;
     array<int, 9> result = ninsideDomains<8>(corners, N);
-    BOOST_CHECK(result[0] == 0);
-    BOOST_CHECK(result[1] == N);
 
-    for (int i = 2; i < 9; i++) {
-        BOOST_CHECK(result[i] == 0);
+    for (int i = 0; i < 9; i++) {
+        // All points should be accepted exactly once.
+        if (i == 1) {
+            BOOST_CHECK(result[i] == N);
+        }
+        else {
+            BOOST_CHECK(result[i] == 0);
+        }
     }
 }
 
+/**
+ * A Octagon should only accept points on 3 of its 6 sides.
+ * These sides are predefined as the sides adjacent to the first vertex.
+ */
 BOOST_AUTO_TEST_CASE(test_tetra_4)
 {
     array<Vec3d, 8> cs = {{{0., 0., 0.},
@@ -226,9 +254,12 @@ BOOST_AUTO_TEST_CASE(test_tetra_4)
                            {0., 1., 1.},
                            {1., 1., 1.}}};
     tetra::Octagon o = tetra::Octagon(cs);
+
+    // These sides should be accepted.
     BOOST_CHECK(o.contains({0., .5, .5}));
     BOOST_CHECK(o.contains({.5, 0., .5}));
     BOOST_CHECK(o.contains({.5, .5, 0.}));
+    // These sides shuldn't be accepted.
     BOOST_CHECK(!o.contains({1., .5, .5}));
     BOOST_CHECK(!o.contains({.5, 1., .5}));
     BOOST_CHECK(!o.contains({.5, .5, 1.}));
