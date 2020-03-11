@@ -68,7 +68,7 @@ array<int, domains + 1> ninsideDomains(array<Vec3d, 8> corners[domains], int N)
 
     array<int, domains + 1> counter{0};
     for (int i = 0; i < N; ++i) {
-        Vec3d p = {rnd(), rnd(), rnd()};
+        Vec3d p = {rnd() + 0.1, rnd() + 0.1, rnd() + 0.1};
         int count = 0;
         for (int k = 0; k < domains; ++k) {
             if (octs[k].contains(p)) {
@@ -110,10 +110,10 @@ PointArray::PointArray()
 array<Vec3d, 8> PointArray::getVerticesAtPosition(int x, int y, int z)
 {
     return {
-        point[0 + x][0 + y][0 + z], point[1 + x][0 + y][0 + z],
-        point[0 + x][1 + y][0 + z], point[1 + x][1 + y][0 + z],
-        point[0 + x][0 + y][1 + z], point[1 + x][0 + y][1 + z],
-        point[0 + x][1 + y][1 + z], point[1 + x][1 + y][1 + z],
+        point[1 + x][1 + y][1 + z], point[0 + x][1 + y][1 + z],
+        point[1 + x][0 + y][1 + z], point[0 + x][0 + y][1 + z],
+        point[1 + x][1 + y][0 + z], point[0 + x][1 + y][0 + z],
+        point[1 + x][0 + y][0 + z], point[0 + x][0 + y][0 + z],
     };
 }
 
@@ -130,14 +130,14 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
                           empty_oct_message);
 
     // 50% of the volume of the unit cube
-    array<Vec3d, 8> cs = {{{0., .5, 0.},
-                           {0., 1., .5},
-                           {0., 0., .5},
-                           {0., .5, 1.},
-                           {1., .5, 0.},
-                           {1., 1., .5},
-                           {1., 0., .5},
-                           {1., .5, 1.}}};
+    array<Vec3d, 8> cs = {{{0., .6, 0.},
+                           {0., 0., .6},
+                           {0., 1., .6},
+                           {0., .6, 1.},
+                           {1., .6, 0.},
+                           {1., 0., .6},
+                           {1., 1., .6},
+                           {1., .6, 1.}}};
     auto o = tetra::Octagon{cs};
 
     BOOST_CHECK(o.contains({.5, .5, .5}));
@@ -169,28 +169,28 @@ BOOST_AUTO_TEST_CASE(test_tetra_2)
 {
     auto rnd = Randgen{};
     // p1-p4 define the randomized adjacent side of the Octagons
-    Vec3d p1 = {rnd(), 0., 0.};
-    Vec3d p2 = {rnd(), 1., 0.};
-    Vec3d p3 = {rnd(), 0., 1.};
-    Vec3d p4 = {rnd(), 1., 1.};
+    Vec3d p1 = {rnd(), 1., 1.};
+    Vec3d p2 = {rnd(), 0., 1.};
+    Vec3d p3 = {rnd(), 1., 0.};
+    Vec3d p4 = {rnd(), 0., 0.};
     // Create two Octagons
     array<Vec3d, 8> corners[2] = {};
-    corners[0] = {{{0., 0., 0.},
+    corners[0] = {{{1., 1., 1.},
                    p1,
-                   {0., 1., 0.},
-                   p2,
-                   {0., 0., 1.},
-                   p3,
-                   {0., 1., 1.},
-                   p4}};
-    corners[1] = {{p1,
-                   {1., 0., 0.},
+                   {1., 0., 1.},
                    p2,
                    {1., 1., 0.},
                    p3,
-                   {1., 0., 1.},
+                   {1., 0., 0.},
+                   p4}};
+    corners[1] = {{p1,
+                   {0., 1., 1.},
+                   p2,
+                   {0., 0., 1.},
+                   p3,
+                   {0., 1., 0.},
                    p4,
-                   {1., 1., 1.}}};
+                   {0., 0., 0.}}};
 
     const int N = 10'000;
     array<int, 3> result = ninsideDomains<2>(corners, N);
@@ -245,22 +245,22 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
  */
 BOOST_AUTO_TEST_CASE(test_tetra_4)
 {
-    array<Vec3d, 8> cs = {{{0., 0., 0.},
-                           {1., 0., 0.},
-                           {0., 1., 0.},
-                           {1., 1., 0.},
-                           {0., 0., 1.},
-                           {1., 0., 1.},
+    array<Vec3d, 8> cs = {{{1., 1., 1.},
                            {0., 1., 1.},
-                           {1., 1., 1.}}};
+                           {1., 0., 1.},
+                           {0., 0., 1.},
+                           {1., 1., 0.},
+                           {0., 1., 0.},
+                           {1., 0., 0.},
+                           {0., 0., 0.}}};
     tetra::Octagon o = tetra::Octagon(cs);
 
+    // These sides should NOT be accepted.
+    BOOST_CHECK(!o.contains({0., .5, .5}));
+    BOOST_CHECK(!o.contains({.5, 0., .5}));
+    BOOST_CHECK(!o.contains({.5, .5, 0.}));
     // These sides should be accepted.
-    BOOST_CHECK(o.contains({0., .5, .5}));
-    BOOST_CHECK(o.contains({.5, 0., .5}));
-    BOOST_CHECK(o.contains({.5, .5, 0.}));
-    // These sides shuldn't be accepted.
-    BOOST_CHECK(!o.contains({1., .5, .5}));
-    BOOST_CHECK(!o.contains({.5, 1., .5}));
-    BOOST_CHECK(!o.contains({.5, .5, 1.}));
+    BOOST_CHECK(o.contains({1., .5, .5}));
+    BOOST_CHECK(o.contains({.5, 1., .5}));
+    BOOST_CHECK(o.contains({.5, .5, 1.}));
 }

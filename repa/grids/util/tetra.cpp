@@ -87,7 +87,7 @@ struct _Octagon_Impl {
         Vec3i64 last = corners[5];
         for (int i = 0; i < 6; i++) {
             Vec3i64 next = corners[cornerOrder[i]];
-            addTetra(i, {start, end, last, next});
+            addTetra(i, {start, end, next, last});
             last = next;
         }
     }
