@@ -115,7 +115,7 @@ array<Vec3d, 8> PointArray::getVerticesAtPosition(int x, int y, int z)
         point[0 + x][0 + y][1 + z], point[1 + x][0 + y][1 + z],
         point[0 + x][1 + y][1 + z], point[1 + x][1 + y][1 + z],
     };
-};
+}
 
 /**
  * Created one Octagon which covers 50% of a cube.
