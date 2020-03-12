@@ -88,28 +88,41 @@ array<int, domains + 1>
 struct PointArray {
     static const int size = 3;
     array<array<array<Vec3d, size>, size>, size> point = {{{}}};
-    Randgen rnd = Randgen{};
     PointArray();
-    double valueFor(int i)
-    {
-        if (i == 1) {
-            return 0.25 + 0.5 * rnd();
-        }
-        return double(i) / 2; // map i={0|2} to return {0|1}
-    };
+    Vec3d randomPoint();
     array<Vec3d, 8> getVerticesAtPosition(int x, int y, int z);
 };
+
+Vec3d PointArray::randomPoint()
+{
+    Randgen rnd = Randgen{};
+    Vec3d randVec = Vec3d{0, 0, 0};
+    double sum = 0;
+    for (int i = 0; i < 3; i++) {
+        randVec[i] = 2 * rnd() - 1;
+        sum += std::abs(randVec[i]);
+    }
+    double size = rnd();
+    for (int i = 0; i < 3; i++) {
+        // using 1-norm to prevent creating invalid Octagons.
+        double norm1 = size * randVec[i] / sum;
+        // cast from range (-1,1) to (0,1)
+        randVec[i] = .5 + norm1 / 2;
+    }
+    return randVec;
+}
 
 PointArray::PointArray()
 {
     for (int x = 0; x < size; x++) {
         for (int y = 0; y < size; y++) {
             for (int z = 0; z < size; z++) {
-                point[x][y][z] = Vec3d{{valueFor(x), valueFor(y), valueFor(z)}};
+                point[x][y][z]
+                    = Vec3d{{double(x) / 2, double(y) / 2, double(z) / 2}};
             }
         }
     }
-    point[1][1][1] = Vec3d{{0.5, 0.5, 0.5}};
+    point[1][1][1] = randomPoint();
 }
 
 array<Vec3d, 8> PointArray::getVerticesAtPosition(int x, int y, int z)
