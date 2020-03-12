@@ -71,7 +71,7 @@ array<int, domains + 1>
     for (int i = 0; i < N; ++i) {
         Vec3d p = {rnd(), rnd(), rnd()};
         if (add) {
-            double factor = 1 / tetra::precision;
+            double factor = 1. / tetra::precision;
             p = {rnd() + factor, rnd() + factor, rnd() + factor};
         }
         int count = 0;
