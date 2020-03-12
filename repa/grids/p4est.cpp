@@ -129,9 +129,10 @@ static global_cell_index_type cell_morton_idx(Vec3i idx)
            | _pdep_u32(idx[2], mask_z);
 #else
     global_cell_index_type res = 0;
-    int res_bit = 1;
+    global_cell_index_type res_bit = 1;
+    constexpr size_t max_nbits_per_dim = sizeof(global_cell_index_type) * 8 / 3;
 
-    for (int bit = 0; bit < 21; ++bit) {
+    for (size_t bit = 0; bit < max_nbits_per_dim; ++bit) {
         int mask = 1 << bit;
         for (int i = 0; i < 3; ++i) {
             if (idx[i] & mask)
