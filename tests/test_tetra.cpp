@@ -58,7 +58,8 @@ private:
 };
 
 template <int domains>
-array<int, domains + 1> ninsideDomains(array<Vec3d, 8> corners[domains], int N)
+array<int, domains + 1>
+    ninsideDomains(array<Vec3d, 8> corners[domains], int N, bool add)
 {
     array<tetra::Octagon, domains> octs = {};
     for (int i = 0; i < domains; i++) {
@@ -68,7 +69,11 @@ array<int, domains + 1> ninsideDomains(array<Vec3d, 8> corners[domains], int N)
 
     array<int, domains + 1> counter{0};
     for (int i = 0; i < N; ++i) {
-        Vec3d p = {rnd() + 0.1, rnd() + 0.1, rnd() + 0.1};
+        Vec3d p = {rnd(), rnd(), rnd()};
+        if (add) {
+            double factor = 1 / tetra::precision;
+            p = {rnd() + factor, rnd() + factor, rnd() + factor};
+        }
         int count = 0;
         for (int k = 0; k < domains; ++k) {
             if (octs[k].contains(p)) {
@@ -130,14 +135,14 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
                           empty_oct_message);
 
     // 50% of the volume of the unit cube
-    array<Vec3d, 8> cs = {{{0., .6, 0.},
-                           {0., 0., .6},
-                           {0., 1., .6},
-                           {0., .6, 1.},
-                           {1., .6, 0.},
-                           {1., 0., .6},
-                           {1., 1., .6},
-                           {1., .6, 1.}}};
+    array<Vec3d, 8> cs = {{{0., .5, 0.},
+                           {0., 0., .5},
+                           {0., 1., .5},
+                           {0., .5, 1.},
+                           {1., .5, 0.},
+                           {1., 0., .5},
+                           {1., 1., .5},
+                           {1., .5, 1.}}};
     auto o = tetra::Octagon{cs};
 
     BOOST_CHECK(o.contains({.5, .5, .5}));
@@ -155,7 +160,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
 
     const int N = 10'000;
     array<Vec3d, 8> cArray[1]{cs};
-    auto acceptance = ninsideDomains<1>(cArray, N);
+    auto acceptance = ninsideDomains<1>(cArray, N, false);
     double frac = static_cast<double>(acceptance[1]) / N;
     BOOST_CHECK((frac > .45 && frac < .55));
 }
@@ -193,7 +198,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_2)
                    {0., 0., 0.}}};
 
     const int N = 10'000;
-    array<int, 3> result = ninsideDomains<2>(corners, N);
+    array<int, 3> result = ninsideDomains<2>(corners, N, true);
     // All points should be accepted by exactly one Octagon.
     BOOST_CHECK(result[0] == 0);
     BOOST_CHECK(result[1] == N);
@@ -226,7 +231,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
 
     // Test acceptance of N points
     const int N = 10'000;
-    array<int, 9> result = ninsideDomains<8>(corners, N);
+    array<int, 9> result = ninsideDomains<8>(corners, N, true);
 
     for (int i = 0; i < 9; i++) {
         // All points should be accepted exactly once.
