@@ -33,6 +33,7 @@
 using namespace repa::util;
 using repa::Vec3d;
 using std::array;
+typedef array<Vec3d, 8> octaVertices;
 
 bool empty_oct_message(const std::runtime_error &e)
 {
@@ -59,7 +60,7 @@ private:
 
 template <int domains>
 array<int, domains + 1>
-    ninsideDomains(array<Vec3d, 8> corners[domains], int N, bool add)
+ninsideDomains(array<octaVertices, domains> corners, int N, bool add)
 {
     array<tetra::Octagon, domains> octs = {};
     for (int i = 0; i < domains; i++) {
@@ -90,7 +91,7 @@ struct PointArray {
     array<array<array<Vec3d, size>, size>, size> point = {{{}}};
     PointArray();
     Vec3d randomPoint();
-    array<Vec3d, 8> getVerticesAtPosition(int x, int y, int z);
+    octaVertices getVerticesAtPosition(int x, int y, int z);
 };
 
 Vec3d PointArray::randomPoint()
@@ -125,7 +126,7 @@ PointArray::PointArray()
     point[1][1][1] = randomPoint();
 }
 
-array<Vec3d, 8> PointArray::getVerticesAtPosition(int x, int y, int z)
+octaVertices PointArray::getVerticesAtPosition(int x, int y, int z)
 {
     return {
         point[1 + x][1 + y][1 + z], point[0 + x][1 + y][1 + z],
@@ -148,14 +149,14 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
                           empty_oct_message);
 
     // 50% of the volume of the unit cube
-    array<Vec3d, 8> cs = {{{0., .5, 0.},
-                           {0., 0., .5},
-                           {0., 1., .5},
-                           {0., .5, 1.},
-                           {1., .5, 0.},
-                           {1., 0., .5},
-                           {1., 1., .5},
-                           {1., .5, 1.}}};
+    octaVertices cs = {{{0., .5, 0.},
+                        {0., 0., .5},
+                        {0., 1., .5},
+                        {0., .5, 1.},
+                        {1., .5, 0.},
+                        {1., 0., .5},
+                        {1., 1., .5},
+                        {1., .5, 1.}}};
     auto o = tetra::Octagon{cs};
 
     BOOST_CHECK(o.contains({.5, .5, .5}));
@@ -172,7 +173,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
     BOOST_CHECK(!o.contains({.8, .8, .8}));
 
     const int N = 10'000;
-    array<Vec3d, 8> cArray[1]{cs};
+    array<octaVertices, 1> cArray{cs};
     auto acceptance = ninsideDomains<1>(cArray, N, false);
     double frac = static_cast<double>(acceptance[1]) / N;
     BOOST_CHECK((frac > .45 && frac < .55));
@@ -193,7 +194,7 @@ BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_1)
     Vec3d p3 = {rnd(), 1., 0.};
     Vec3d p4 = {rnd(), 0., 0.};
     // Create two Octagons
-    array<Vec3d, 8> corners[2] = {};
+    array<octaVertices, 2> corners = {};
     corners[0] = {{{1., 1., 1.},
                    p1,
                    {1., 0., 1.},
@@ -234,7 +235,7 @@ BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_2)
     Vec3d p3 = {1., rnd(), 0.};
     Vec3d p4 = {0., rnd(), 0.};
     // Create two Octagons
-    array<Vec3d, 8> corners[2] = {};
+    array<octaVertices, 2> corners = {};
     corners[0] = {{{1., 1., 1.},
                    {0., 1., 1.},
                    p1,
@@ -275,7 +276,7 @@ BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_3)
     Vec3d p3 = {1., 0., rnd()};
     Vec3d p4 = {0., 0., rnd()};
     // Create two Octagons
-    array<Vec3d, 8> corners[2] = {};
+    array<octaVertices, 2> corners = {};
     corners[0] = {{{1., 1., 1.},
                    {0., 1., 1.},
                    {1., 0., 1.},
@@ -314,7 +315,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
     PointArray p{};
 
     // Create the 8 Octagons
-    array<Vec3d, 8> corners[8] = {};
+    array<octaVertices, 8> corners = {};
     int index = 0;
     for (int x = 0; x < 2; x++) {
         for (int y = 0; y < 2; y++) {
@@ -346,14 +347,14 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
  */
 BOOST_AUTO_TEST_CASE(test_tetra_4)
 {
-    array<Vec3d, 8> cs = {{{1., 1., 1.},
-                           {0., 1., 1.},
-                           {1., 0., 1.},
-                           {0., 0., 1.},
-                           {1., 1., 0.},
-                           {0., 1., 0.},
-                           {1., 0., 0.},
-                           {0., 0., 0.}}};
+    octaVertices cs = {{{1., 1., 1.},
+                        {0., 1., 1.},
+                        {1., 0., 1.},
+                        {0., 0., 1.},
+                        {1., 1., 0.},
+                        {0., 1., 0.},
+                        {1., 0., 0.},
+                        {0., 0., 0.}}};
     tetra::Octagon o = tetra::Octagon(cs);
 
     // These sides should NOT be accepted.
