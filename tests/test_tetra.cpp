@@ -180,10 +180,11 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
 
 /**
  * Create two adjacent Octagons in a cube.
+ * The cube is split in the first dimension.
  * The plane between the both Octagons is randomized.
  * Every random point in this cube should be accepted by exactly one Octagon.
  */
-BOOST_AUTO_TEST_CASE(test_tetra_2)
+BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_1)
 {
     auto rnd = Randgen{};
     // p1-p4 define the randomized adjacent side of the Octagons
@@ -208,6 +209,88 @@ BOOST_AUTO_TEST_CASE(test_tetra_2)
                    p3,
                    {0., 1., 0.},
                    p4,
+                   {0., 0., 0.}}};
+
+    const int N = 10'000;
+    array<int, 3> result = ninsideDomains<2>(corners, N, true);
+    // All points should be accepted by exactly one Octagon.
+    BOOST_CHECK(result[0] == 0);
+    BOOST_CHECK(result[1] == N);
+    BOOST_CHECK(result[2] == 0);
+}
+
+/**
+ * Create two adjacent Octagons in a cube.
+ * The cube is split in the second dimension.
+ * The plane between the both Octagons is randomized.
+ * Every random point in this cube should be accepted by exactly one Octagon.
+ */
+BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_2)
+{
+    auto rnd = Randgen{};
+    // p1-p4 define the randomized adjacent side of the Octagons
+    Vec3d p1 = {1., rnd(), 1.};
+    Vec3d p2 = {0., rnd(), 1.};
+    Vec3d p3 = {1., rnd(), 0.};
+    Vec3d p4 = {0., rnd(), 0.};
+    // Create two Octagons
+    array<Vec3d, 8> corners[2] = {};
+    corners[0] = {{{1., 1., 1.},
+                   {0., 1., 1.},
+                   p1,
+                   p2,
+                   {1., 1., 0.},
+                   {0., 1., 0.},
+                   p3,
+                   p4}};
+    corners[1] = {{p1,
+                   p2,
+                   {1., 0., 1.},
+                   {0., 0., 1.},
+                   p3,
+                   p4,
+                   {1., 0., 0.},
+                   {0., 0., 0.}}};
+
+    const int N = 10'000;
+    array<int, 3> result = ninsideDomains<2>(corners, N, true);
+    // All points should be accepted by exactly one Octagon.
+    BOOST_CHECK(result[0] == 0);
+    BOOST_CHECK(result[1] == N);
+    BOOST_CHECK(result[2] == 0);
+}
+
+/**
+ * Create two adjacent Octagons in a cube.
+ * The cube is split in the third dimension.
+ * The plane between the both Octagons is randomized.
+ * Every random point in this cube should be accepted by exactly one Octagon.
+ */
+BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_3)
+{
+    auto rnd = Randgen{};
+    // p1-p4 define the randomized adjacent side of the Octagons
+    Vec3d p1 = {1., 1., rnd()};
+    Vec3d p2 = {0., 1., rnd()};
+    Vec3d p3 = {1., 0., rnd()};
+    Vec3d p4 = {0., 0., rnd()};
+    // Create two Octagons
+    array<Vec3d, 8> corners[2] = {};
+    corners[0] = {{{1., 1., 1.},
+                   {0., 1., 1.},
+                   {1., 0., 1.},
+                   {0., 0., 1.},
+                   p1,
+                   p2,
+                   p3,
+                   p4}};
+    corners[1] = {{p1,
+                   p2,
+                   p3,
+                   p4,
+                   {1., 1., 0.},
+                   {0., 1., 0.},
+                   {1., 0., 0.},
                    {0., 0., 0.}}};
 
     const int N = 10'000;
