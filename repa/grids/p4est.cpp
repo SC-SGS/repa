@@ -92,7 +92,9 @@ struct RepartState {
     inline void allreduce()
     {
         MPI_Allreduce(MPI_IN_PLACE, nquads_per_proc.data(), comm_cart.size(),
-                      P4EST_MPI_LOCIDX, MPI_SUM, comm_cart);
+                      boost::mpi::get_mpi_datatype<decltype(
+                          nquads_per_proc)::value_type>(),
+                      MPI_SUM, comm_cart);
     }
 };
 
