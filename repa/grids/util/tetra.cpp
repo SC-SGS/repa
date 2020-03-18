@@ -31,9 +31,10 @@ using Vec3i64 = Vec3<int64_t>;
 // Anonymous namespace for internal linkage
 namespace {
 
+using namespace vector_arithmetic;
+
 Vec3i64 integerize(const Vec3d &v)
 {
-    using namespace vector_arithmetic;
     return static_cast_vec<Vec3i64>(v * static_cast<double>(precision));
 }
 
@@ -54,20 +55,17 @@ struct Plane {
 
     Plane(const std::array<Vec3i64, 3> &vecs)
     {
-        using namespace vector_arithmetic;
         normVector = cross(vecs[0] - vecs[2], vecs[1] - vecs[0]);
         heightOfPlane = dot(normVector, vecs[0]);
     }
 
     bool isAboveOrEqual(Vec3i64 point)
     {
-        using vector_arithmetic::dot;
         return dot(point, normVector) >= heightOfPlane;
     }
 
     bool isAbove(Vec3i64 point)
     {
-        using vector_arithmetic::dot;
         return dot(point, normVector) > heightOfPlane;
     }
 };
