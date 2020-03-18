@@ -109,6 +109,9 @@ Vec3d PointArray::randomPoint()
         double norm1 = size * randVec[i] / sum;
         // cast from range (-1,1) to (0,1)
         randVec[i] = .5 + norm1 / 2;
+        if (randVec[i] < .5) {
+            randVec[i] += 1. / tetra::precision;
+        }
     }
     return randVec;
 }
