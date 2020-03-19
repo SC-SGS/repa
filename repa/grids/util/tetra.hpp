@@ -31,6 +31,7 @@ namespace tetra {
 struct _Octagon_Impl;
 
 const int16_t precision = 10;
+const Vec3d twoRc{0., 0., 0.};
 
 struct Octagon {
     Octagon();
@@ -38,6 +39,7 @@ struct Octagon {
     Octagon(const Octagon &o) = delete;
     Octagon(Octagon &&o);
     ~Octagon();
+    bool isValid;
     void operator=(Octagon o);
 
     bool contains(const Vec3d &p) const;

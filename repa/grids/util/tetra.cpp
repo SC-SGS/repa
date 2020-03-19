@@ -68,6 +68,12 @@ struct Plane {
     {
         return dot(point, normVector) > heightOfPlane;
     }
+
+    bool is2RcAbove(Vec3i64 point)
+    {
+        float height2Rc = sumOfAbs(twoRc * static_cast_vec<Vec3d>(normVector));
+        return dot(point, normVector) > heightOfPlane + height2Rc;
+    }
 };
 
 } // namespace
@@ -75,6 +81,7 @@ struct Plane {
 struct _Octagon_Impl {
     static const std::array<int, 6> cornerOrder;
     Plane tetras[6][4];
+    bool isValid = true;
 
     _Octagon_Impl() = delete;
 
@@ -96,6 +103,12 @@ struct _Octagon_Impl {
         tetras[index][1] = Plane({corners[0], corners[2], corners[3]});
         tetras[index][2] = Plane({corners[0], corners[3], corners[1]});
         tetras[index][3] = Plane({corners[1], corners[3], corners[2]});
+        if (isValid) {
+            isValid = isValid && tetras[index][0].is2RcAbove(corners[3]);
+            isValid = isValid && tetras[index][1].is2RcAbove(corners[1]);
+            isValid = isValid && tetras[index][2].is2RcAbove(corners[2]);
+            isValid = isValid && tetras[index][3].is2RcAbove(corners[0]);
+        }
     }
 
     bool contains(Vec3i64 point)
@@ -133,6 +146,7 @@ Octagon::Octagon(Octagon &&o) = default;
 Octagon::Octagon(const std::array<Vec3d, 8> &vertices)
     : oi(std::make_unique<_Octagon_Impl>(integerizedArray(vertices)))
 {
+    isValid = oi->isValid;
 }
 
 bool Octagon::contains(const Vec3d &p) const

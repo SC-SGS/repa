@@ -426,10 +426,22 @@ __REPA__EX_TMPL_EXPORT typename std::common_type<T1, T2>::type
 dot(const VecExpression<T1, N, Expr1> &v1,
     const VecExpression<T2, N, Expr2> &v2)
 {
-    typename std::common_type<T1, T2>::type result {0};
+    typename std::common_type<T1, T2>::type result{0};
     for (size_t i = 0; i < N; ++i)
         result += v1[i] * v2[i];
     return result;
+}
+
+/** Sum of the absoulte values of a Vector.
+ *  Can be used to compute the L1-norm of the vector.
+ */
+template <typename T1, size_t N, typename Expr1>
+T1 sumOfAbs(const VecExpression<T1, N, Expr1> &v)
+{
+    long result{0};
+    for (size_t i = 0; i < N; ++i)
+        result += std::labs(v[i]);
+    return static_cast<T1>(result);
 }
 
 } // namespace vector_arithmetic

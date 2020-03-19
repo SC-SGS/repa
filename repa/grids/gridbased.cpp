@@ -478,6 +478,10 @@ bool GridBasedGrid::repartition(CellMetric m,
 
     MPI_Allreduce(MPI_IN_PLACE, &nconflicts, 1, MPI_INT, MPI_SUM, comm_cart);
 
+    my_dom = util::tetra::Octagon(bounding_box(comm_cart.rank()));
+    bool isNotValid = !my_dom.isValid;
+    MPI_Allreduce(MPI_IN_PLACE, &isNotValid, 1, MPI_INT, MPI_SUM, comm_cart);
+
     if (nconflicts > 0) {
         std::cout << "Gridpoint update rejected because of node conflicts."
                   << std::endl;
