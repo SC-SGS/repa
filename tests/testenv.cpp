@@ -237,7 +237,7 @@ TEnv TEnv::default_test_env(repa::ExtraParams ep)
 }
 
 TEnv::~TEnv() = default;
-TEnv::TEnv(TEnv&&) = default;
+TEnv::TEnv(TEnv &&) = default;
 
 const boost::mpi::communicator &TEnv::comm() const
 {

@@ -26,16 +26,16 @@ namespace util {
 
 template <typename T, typename Size_type>
 void all_gatherv_displ(boost::mpi::communicator &comm,
-                 const std::vector<T> &sendbuf,
-                 const std::vector<Size_type> &prefix_per_proc,
-                 std::vector<T> &recvbuf)
+                       const std::vector<T> &sendbuf,
+                       const std::vector<Size_type> &prefix_per_proc,
+                       std::vector<T> &recvbuf)
 {
     // MPI expects integer recvcounts and displacements for MPI_Allgatherv.
     // Copy idx_t vector to int vector.
     std::vector<int> recvcount(comm.size()), displ(comm.size());
     for (int i = 0; i < comm.size(); ++i) {
-        recvcount[i] = static_cast<int>(prefix_per_proc[i + 1]
-                                        - prefix_per_proc[i]);
+        recvcount[i]
+            = static_cast<int>(prefix_per_proc[i + 1] - prefix_per_proc[i]);
         displ[i] = static_cast<int>(prefix_per_proc[i]);
     }
 

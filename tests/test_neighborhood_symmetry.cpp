@@ -28,7 +28,6 @@
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
-
 static bool has_neighbor(repa::grids::ParallelLCGrid *grid,
                          repa::local_cell_index_type d,
                          repa::local_cell_index_type c)

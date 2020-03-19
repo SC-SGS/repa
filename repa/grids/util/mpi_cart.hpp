@@ -47,7 +47,7 @@ inline Vec3i mpi_cart_get_coords(MPI_Comm comm, rank_type r)
     return coords;
 }
 
-inline rank_type mpi_cart_rank(MPI_Comm comm, const Vec3i& coord)
+inline rank_type mpi_cart_rank(MPI_Comm comm, const Vec3i &coord)
 {
     int r;
     MPI_Cart_rank(comm, coord.data(), &r);

@@ -21,7 +21,6 @@
 
 #pragma once
 
-
 #include "../pargrid.hpp"
 #include <memory>
 

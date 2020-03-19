@@ -86,7 +86,6 @@ typedef int local_or_ghost_cell_index_type;
  */
 typedef int global_cell_index_type;
 
-
 namespace grids {
 
 /** Describes a ghost exchange process.
