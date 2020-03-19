@@ -1,4 +1,4 @@
-image: "conni2461/ipvs"
+image: "hirschsn/repa"
 
 stages:
     - build
