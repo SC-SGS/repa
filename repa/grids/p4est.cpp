@@ -189,6 +189,7 @@ static Vec3d quadrant_to_coords(const p8est_quadrant_t *q,
                                 p8est_connectivity_t *p8est_conn)
 {
     Vec3d xyz;
+    assert(q->p.which_tree < p8est_conn->num_trees);
     p8est_qcoord_to_vertex(p8est_conn, q->p.which_tree, q->x, q->y, q->z,
                            xyz.data());
     return xyz;
