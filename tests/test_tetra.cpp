@@ -96,6 +96,10 @@ struct PointArray {
 
 Vec3d PointArray::randomPoint()
 {
+    // In the following, we assume that the midpoint (.5, .5, .5) of the domain
+    // [0,1]^3 can be represented exactly in tetra internally.
+    assert(std::floor(.5 * tetra::precision) == .5 * tetra::precision);
+
     Randgen rnd = Randgen{};
     Vec3d randVec = Vec3d{0, 0, 0};
     double sum = 0;
@@ -105,7 +109,7 @@ Vec3d PointArray::randomPoint()
     }
     double size = rnd();
     for (int i = 0; i < 3; i++) {
-        // using 1-norm to prevent creating invalid Octagons.
+        // using l1-norm to prevent creating invalid Octagons.
         double norm1 = size * randVec[i] / sum;
         // cast from range (-1,1) to (0,1)
         randVec[i] = .5 + norm1 / 2;
