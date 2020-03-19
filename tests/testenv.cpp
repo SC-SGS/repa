@@ -18,7 +18,6 @@
  */
 #include "testenv.hpp"
 #include <boost/test/unit_test.hpp>
-#include <optional>
 #include <random>
 
 static std::vector<double> get_random_vec(size_t n)

@@ -22,8 +22,6 @@
 
 #include "globox.hpp"
 #include "pargrid.hpp"
-#include <array>
-#include <parmetis.h>
 #include <unordered_map>
 
 namespace repa {
@@ -46,6 +44,12 @@ struct GloMethod : public ParallelLCGrid {
     std::vector<GhostExchangeDesc> get_boundary_info() override;
     local_cell_index_type position_to_cell_index(Vec3d pos) override;
     rank_type position_to_rank(Vec3d pos) override;
+    /**
+     * For diffusive method:
+     * @throws std::domain_error if "pos" is not in ghost layer.
+     * For graph partitioning method:
+     * @throws std::domain_error if "pos" is not on a neighboring process.
+     */
     rank_index_type position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
@@ -113,7 +117,7 @@ protected:
     //
     // @param idx cell index to resolve
     // @returns rank which is responsible for global cell index idx
-    virtual rank_type rank_of_cell(global_cell_index_type idx) = 0;
+    virtual rank_type rank_of_cell(global_cell_index_type idx) const = 0;
 
     // Reinitializes the subdomain and communication data structures
     // after repartitioning.

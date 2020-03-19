@@ -35,9 +35,9 @@ struct Graph : public GloMethod {
 private:
     friend struct HybridGPDiff; // Needs access to "partition" vector
 
-    virtual rank_type rank_of_cell(global_cell_index_type idx) override
+    virtual rank_type rank_of_cell(global_cell_index_type idx) const override
     {
-        t_assert(idx >= 0 && idx < gbox.ncells());
+        assert(idx >= 0 && idx < gbox.ncells());
         return partition[idx];
     }
 

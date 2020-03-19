@@ -1,6 +1,5 @@
 /**
- * Copyright 2017-2019 Steffen Hirschmann
- * Copyright 2017-2018 Maximilian Wildbrett
+ * Copyright 2017-2019 The repa authors
  *
  * This file is part of Repa.
  *
@@ -24,7 +23,6 @@
 #include "glomethod.hpp"
 #include "pargrid.hpp"
 #include <array>
-#include <mpi.h>
 #include <vector>
 
 namespace repa {
@@ -49,6 +47,30 @@ struct Diffusion : public GloMethod {
               double min_cell_size);
     ~Diffusion();
 
+protected:
+    /*
+     * Determines the status of each process (underloaded, overloaded)
+     * in the neighborhood given the local load and returns the volume of load
+     * to send to each neighbor. On underloaded processes, returns a vector of
+     * zeros.
+     *
+     * This call is collective on neighcomm.
+     *
+     * Default implementation follows [Willebeek Le Mair and Reeves, IEEE Tr.
+     * Par. Distr. Sys. 4(9), Sep 1993] propose
+     *
+     * @param neighcomm Graph communicator which reflects the neighbor
+     * relationship amongst processes (undirected edges), without edges to the
+     *                  process itself.
+     * @param load The load of the calling process.
+     * @returns Vector of load values ordered according to the neighborhood
+     *          ordering in neighcomm.
+     */
+    virtual std::vector<double> compute_send_volume(double load) const;
+
+    // Neighborhood communicator
+    boost::mpi::communicator neighcomm;
+
 private:
     friend struct HybridGPDiff; // Needs access to "partition" vector
 
@@ -58,9 +80,9 @@ private:
                                global_cell_index_type foreigncell,
                                rank_type owner) override;
 
-    virtual rank_type rank_of_cell(global_cell_index_type idx) override
+    virtual rank_type rank_of_cell(global_cell_index_type idx) const override
     {
-        t_assert(idx >= 0 && idx < gbox.ncells());
+        assert(idx >= 0 && idx < gbox.ncells());
         return partition[idx];
     }
 
@@ -77,9 +99,6 @@ private:
     // Key is the local cell ID and value a set of ranks
     std::map<local_cell_index_type, std::vector<rank_type>>
         borderCellsNeighbors;
-
-    // Neighborhood communicator
-    MPI_Comm neighcomm;
 
     // Stores the global partitioning. One rank per cell. Index via global
     // index.
@@ -102,17 +121,23 @@ private:
      */
     using GlobalCellIndices = std::vector<global_cell_index_type>;
 
-    // Computes vector of vectors of cells which has to be send to neighbours
+    /** Computes vector of vectors of cells to be sent to neighboring processes
+     * based on the send volume passed in "send_volume".
+     */
     PerNeighbor<GlobalCellIndices>
-    compute_send_list(std::vector<double> &&sendLoads,
-                      const std::vector<double> &weights);
+    compute_send_list(std::vector<double> &&send_volume,
+                      const std::vector<double> &weights) const;
 
-    // Send message with neighbourhood of received cells in "sendCells"
+    /** Generate neighborhood information to send to processes that received
+     * the cells in "cells_to_send".
+     */
     PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
-    sendNeighbourhood(const PerNeighbor<GlobalCellIndices> &toSend);
+    get_neighborhood_information(const PerNeighbor<GlobalCellIndices> &cells_to_send) const;
 
-    // Update partition array
-    void updateReceivedNeighbourhood(
+    /** Update "partition" vector based on cell neighborhood information
+     * from neighboring processes.
+     */
+    void update_partitioning_from_received_neighbourhood(
         const PerNeighbor<__diff_impl::CellNeighborhoodPerCell> &neighbourhood);
 };
 } // namespace grids

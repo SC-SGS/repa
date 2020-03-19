@@ -53,6 +53,9 @@ struct GridBasedGrid : public ParallelLCGrid {
                         fs_neighidx neigh) override;
     std::vector<GhostExchangeDesc> get_boundary_info() override;
     local_cell_index_type position_to_cell_index(Vec3d pos) override;
+    /**
+     * @throws std::domain_error if "pos" is not on a neighboring process.
+     */
     rank_type position_to_rank(Vec3d pos) override;
     rank_index_type position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
@@ -116,7 +119,7 @@ private:
     std::array<Vec3d, 8> bounding_box(rank_type r);
 
     // Neighborhood communicator for load exchange during repart
-    MPI_Comm neighcomm;
+    boost::mpi::communicator neighcomm;
 
     // Global cell index to rank mapping
     rank_type gloidx_to_rank(global_cell_index_type idx);
