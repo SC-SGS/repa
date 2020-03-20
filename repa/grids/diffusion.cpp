@@ -85,8 +85,7 @@ static bool is_ghost_layer_fully_known(
     const std::vector<repa::rank_type> &partition,
     const boost::mpi::communicator &comm,
     const repa::grids::globox::GlobalBox<repa::global_cell_index_type,
-                                         repa::global_cell_index_type>
-        &gbox)
+                                         repa::global_cell_index_type> &gbox)
 {
     // Check that the neighborhood of every owned cell is known.
     for (repa::global_cell_index_type i = 0; i < partition.size(); ++i) {

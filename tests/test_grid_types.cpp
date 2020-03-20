@@ -27,13 +27,13 @@
 #include <boost/test/included/unit_test.hpp>
 #include <repa/repa.hpp>
 
-
 /**
  * Relative distance between a and b.
  * Only meaningfully defined for floating point types.
  */
 template <typename T,
-          typename = typename std::enable_if<std::is_floating_point<T>::value>::type>
+          typename
+          = typename std::enable_if<std::is_floating_point<T>::value>::type>
 T relative_distance(T a, T b)
 {
     return std::fabs((a - b) / std::min(a, b));
@@ -43,7 +43,8 @@ T relative_distance(T a, T b)
  * Returns true if the relative distance between a and b is smaller than eps.
  */
 template <typename T,
-          typename = typename std::enable_if<std::is_floating_point<T>::value>::type>
+          typename
+          = typename std::enable_if<std::is_floating_point<T>::value>::type>
 bool is_close(T a, T b, T eps = T{1e-14})
 {
     return relative_distance(a, b) < eps;

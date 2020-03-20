@@ -32,10 +32,9 @@ namespace __impl {
  * Corresponds to a MPI_Alltoall among "neighbors".
  */
 template <typename T>
-std::vector<T>
-mpi_subset_alltoall(const boost::mpi::communicator &comm,
-                    const std::vector<rank_type> &neighbors,
-                    const std::vector<T> &data)
+std::vector<T> mpi_subset_alltoall(const boost::mpi::communicator &comm,
+                                   const std::vector<rank_type> &neighbors,
+                                   const std::vector<T> &data)
 {
     std::vector<boost::mpi::request> sreq_cells(neighbors.size());
     std::vector<boost::mpi::request> rreq_cells(neighbors.size());
@@ -55,7 +54,7 @@ mpi_subset_alltoall(const boost::mpi::communicator &comm,
     return gathered_data;
 }
 
-} // namespace _impl
+} // namespace __impl
 
 /** MPI_Neighbor_alltoall.
  */

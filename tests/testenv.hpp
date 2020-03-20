@@ -47,7 +47,7 @@ struct TEnv {
     static testenv::TEnv default_test_env(repa::ExtraParams ep
                                           = repa::ExtraParams{});
     ~TEnv();
-    TEnv(TEnv&&);
+    TEnv(TEnv &&);
 
     const boost::mpi::communicator &comm() const;
     double mings() const;

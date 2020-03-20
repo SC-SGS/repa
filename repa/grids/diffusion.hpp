@@ -132,7 +132,8 @@ private:
      * the cells in "cells_to_send".
      */
     PerNeighbor<__diff_impl::CellNeighborhoodPerCell>
-    get_neighborhood_information(const PerNeighbor<GlobalCellIndices> &cells_to_send) const;
+    get_neighborhood_information(
+        const PerNeighbor<GlobalCellIndices> &cells_to_send) const;
 
     /** Update "partition" vector based on cell neighborhood information
      * from neighboring processes.

@@ -260,7 +260,7 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
       subdomain_midpoint(ep.subdomain_midpoint
                              ? ep.subdomain_midpoint
                              : decltype(subdomain_midpoint){std::bind(
-                                   &GridBasedGrid::get_subdomain_center, this)})
+                                 &GridBasedGrid::get_subdomain_center, this)})
 {
     init_partitioning();
     reinit();

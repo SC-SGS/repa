@@ -30,7 +30,6 @@
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
-
 using CVBIt = std::vector<bool>::const_iterator;
 static bool all_true(const CVBIt &first, const CVBIt &last)
 {

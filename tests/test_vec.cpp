@@ -28,9 +28,9 @@
 #include <random>
 #include <sstream>
 
-#include <boost/test/included/unit_test.hpp>
-#include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/test/included/unit_test.hpp>
 #include <repa/repa.hpp>
 
 BOOST_AUTO_TEST_CASE(test_vec)

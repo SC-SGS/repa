@@ -52,7 +52,7 @@ namespace __ensure_impl {
 #define ensure(expr, msg)                                                      \
     (static_cast<bool>(expr) ? (void)0                                         \
                              : __ensure_impl::__ensure_fail(                   \
-                                   #expr, __FILE__, __LINE__, __func__, msg))
+                                 #expr, __FILE__, __LINE__, __func__, msg))
 
 /** Base type for Expression Templates in vec_arith.hpp
  */
