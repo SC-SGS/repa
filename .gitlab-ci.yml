@@ -69,15 +69,6 @@ test-debug:
     stage: test
     script:
         - cd build
-        - make test
-    dependencies:
-        - build-debug
-    needs: ["build-debug"]
-
-test-debug-16proc:
-    stage: test
-    script:
-        - cd build
         - cmake .. -DTEST_MAX_NPROC=16
         - make test
     dependencies:
