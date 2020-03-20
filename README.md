@@ -4,6 +4,8 @@ Repa is a library for *load-balanced*, regular grids.
 
 ## Dependencies
 
+For CI purposes, etc. a working Docker container with all dependencies as well as its Dockerfile can be found on [Docker Hub](https://hub.docker.com/r/hirschsn/repa).
+
 ### Required
 
 - MPI distribution (e.g. [OpenMPI](https://www.open-mpi.org/))
