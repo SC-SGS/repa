@@ -21,6 +21,7 @@
 
 #include "tetra.hpp"
 #include "vec_arith.hpp"
+#include <math.h>
 
 namespace repa {
 namespace util {
@@ -69,9 +70,10 @@ struct Plane {
         return dot(point, normVector) > heightOfPlane;
     }
 
-    bool is2RcAbove(Vec3i64 point)
+    bool is2RcAbove(Vec3i64 point, double twoRc)
     {
-        float height2Rc = sumOfAbs(twoRc * static_cast_vec<Vec3d>(normVector));
+        int height2Rc = std::static_cast<int>(
+            std::ceil(twoRc * std::static_cast<double>(sumOfAbs(normVector))));
         return dot(point, normVector) > heightOfPlane + height2Rc;
     }
 };
@@ -81,12 +83,14 @@ struct Plane {
 struct _Octagon_Impl {
     static const std::array<int, 6> cornerOrder;
     Plane tetras[6][4];
+    double twoRc{0.};
     bool isValid = true;
 
     _Octagon_Impl() = delete;
 
-    _Octagon_Impl(const std::array<Vec3i64, 8> &corners)
+    _Octagon_Impl(const std::array<Vec3i64, 8> &corners, double max_cutoff)
     {
+        twoRc = 2. * sqrt(3.) * max_cutoff;
         Vec3i64 start = corners[0];
         Vec3i64 end = corners[7];
         Vec3i64 last = corners[5];
@@ -103,11 +107,11 @@ struct _Octagon_Impl {
         tetras[index][1] = Plane({corners[0], corners[2], corners[3]});
         tetras[index][2] = Plane({corners[0], corners[3], corners[1]});
         tetras[index][3] = Plane({corners[1], corners[3], corners[2]});
-        if (isValid) {
-            isValid = isValid && tetras[index][0].is2RcAbove(corners[3]);
-            isValid = isValid && tetras[index][1].is2RcAbove(corners[1]);
-            isValid = isValid && tetras[index][2].is2RcAbove(corners[2]);
-            isValid = isValid && tetras[index][3].is2RcAbove(corners[0]);
+        if (twoRc > 0 && isValid) {
+            isValid = isValid && tetras[index][0].is2RcAbove(corners[3], twoRc);
+            isValid = isValid && tetras[index][1].is2RcAbove(corners[1], twoRc);
+            isValid = isValid && tetras[index][2].is2RcAbove(corners[2], twoRc);
+            isValid = isValid && tetras[index][3].is2RcAbove(corners[0], twoRc);
         }
     }
 
@@ -144,9 +148,13 @@ Octagon::~Octagon() = default;
 Octagon::Octagon(Octagon &&o) = default;
 
 Octagon::Octagon(const std::array<Vec3d, 8> &vertices)
-    : oi(std::make_unique<_Octagon_Impl>(integerizedArray(vertices)))
+    : oi(std::make_unique<_Octagon_Impl>(integerizedArray(vertices), 0.0))
 {
-    isValid = oi->isValid;
+}
+
+Octagon::Octagon(const std::array<Vec3d, 8> &vertices, double &max_cs)
+    : oi(std::make_unique<_Octagon_Impl>(integerizedArray(vertices), max_cs))
+{
 }
 
 bool Octagon::contains(const Vec3d &p) const

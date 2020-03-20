@@ -31,11 +31,11 @@ namespace tetra {
 struct _Octagon_Impl;
 
 const int16_t precision = 10;
-const Vec3d twoRc{0., 0., 0.};
 
 struct Octagon {
     Octagon();
     Octagon(const std::array<Vec3d, 8> &vertices);
+    Octagon(const std::array<Vec3d, 8> &vertices, double &max_cutoff);
     Octagon(const Octagon &o) = delete;
     Octagon(Octagon &&o);
     ~Octagon();
