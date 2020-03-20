@@ -438,10 +438,10 @@ dot(const VecExpression<T1, N, Expr1> &v1,
 template <typename T1, size_t N, typename Expr1>
 T1 sumOfAbs(const VecExpression<T1, N, Expr1> &v)
 {
-    long result{0};
+    T1 result{0};
     for (size_t i = 0; i < N; ++i)
-        result += std::labs(v[i]);
-    return static_cast<T1>(result);
+        result += std::abs(v[i]);
+    return result;
 }
 
 } // namespace vector_arithmetic
