@@ -72,8 +72,8 @@ struct Plane {
 
     bool is2RcAbove(Vec3i64 point, double twoRc)
     {
-        int height2Rc = std::static_cast<int>(
-            std::ceil(twoRc * std::static_cast<double>(sumOfAbs(normVector))));
+        int height2Rc = static_cast<int>(
+            ceil(twoRc * static_cast<double>(sumOfAbs(normVector))));
         return dot(point, normVector) > heightOfPlane + height2Rc;
     }
 };
