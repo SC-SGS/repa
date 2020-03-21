@@ -24,15 +24,11 @@ namespace repa {
 
 namespace {
 
-static const std::unordered_map<std::string, GridType> grid_type_registry
-    = {{"p4est", GridType::P4EST},
-       {"cart", GridType::CART},
-       {"graph", GridType::GRAPH},
-       {"diff", GridType::DIFF},
-       {"psdiff", GridType::PSDIFF},
-       {"hybrid_gp_diff", GridType::HYB_GP_DIFF},
-       {"kd_tree", GridType::KD_TREE},
-       {"gridbased", GridType::GRIDBASED}};
+static const std::unordered_map<std::string, GridType> grid_type_registry = {
+    {"p4est", GridType::P4EST},     {"cart", GridType::CART},
+    {"graph", GridType::GRAPH},     {"diff", GridType::DIFF},
+    {"psdiff", GridType::PSDIFF},   {"hybrid_gp_diff", GridType::HYB_GP_DIFF},
+    {"kd_tree", GridType::KD_TREE}, {"gridbased", GridType::GRIDBASED}};
 
 #ifdef HAVE_KDPART
 #define KDPART_AVAIL true
