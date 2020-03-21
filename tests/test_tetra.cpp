@@ -373,3 +373,36 @@ BOOST_AUTO_TEST_CASE(test_tetra_4)
     BOOST_CHECK(o.contains({.5, 1., .5}));
     BOOST_CHECK(o.contains({.5, .5, 1.}));
 }
+
+/**
+ * A Octagon should only accept points on 3 of its 6 sides.
+ * These sides are predefined as the sides adjacent to the first vertex.
+ */
+BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
+{
+    double max_cutoff = 2.;
+
+    // This Octagon should NOT be accepted.
+    octaVertices cs = {{{1., 1., 1.},
+                        {0., 1., 1.},
+                        {1., 0., 1.},
+                        {0., 0., 1.},
+                        {1., 1., 0.},
+                        {0., 1., 0.},
+                        {1., 0., 0.},
+                        {0., 0., 0.}}};
+    tetra::Octagon o = tetra::Octagon(cs, max_cutoff);
+    BOOST_CHECK(!o.isValid());
+
+    // This Octagon should be accepted.
+    cs = {{{20., 20., 20.},
+           {0., 20., 20.},
+           {20., 0., 20.},
+           {0., 0., 20.},
+           {20., 20., 0.},
+           {0., 20., 0.},
+           {20., 0., 0.},
+           {0., 0., 0.}}};
+    o = tetra::Octagon(cs, max_cutoff);
+    BOOST_CHECK(o.isValid());
+}
