@@ -37,7 +37,7 @@ find_library(PARMETIS_LIBRARIES
              PATH_SUFFIXES lib)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(PARMETIS
+find_package_handle_standard_args(ParMETIS
                                   DEFAULT_MSG
                                   PARMETIS_LIBRARIES
                                   PARMETIS_INCLUDE_DIR)

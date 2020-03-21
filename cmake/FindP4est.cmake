@@ -40,7 +40,7 @@ list(APPEND P4EST_LIBRARIES ${SC_LIBRARIES})
 
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(P4EST
+find_package_handle_standard_args(P4est
                                   DEFAULT_MSG
                                   P4EST_LIBRARIES
                                   P4EST_INCLUDE_DIR)
