@@ -30,11 +30,7 @@ struct NeighborOffsets3D {
     static const std::array<Vec3i, 27> raw;
 };
 
-enum class NeighborCellType {
-    SELF,
-    HALF_SHELL,
-    FULL_SHELL
-};
+enum class NeighborCellType { SELF, HALF_SHELL, FULL_SHELL };
 
 /** Returns the cell type of the neighbor cell index encoded by "n".
  */
@@ -42,9 +38,11 @@ inline NeighborCellType neighbor_type(fs_neighidx n)
 {
     if (n == 0) {
         return NeighborCellType::SELF;
-    } else if (n > 0 && n < 14) {
+    }
+    else if (n > 0 && n < 14) {
         return NeighborCellType::HALF_SHELL;
-    } else {
+    }
+    else {
         return NeighborCellType::FULL_SHELL;
     }
 }

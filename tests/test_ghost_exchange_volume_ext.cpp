@@ -30,7 +30,6 @@
 #include <boost/serialization/vector.hpp>
 #include <repa/repa.hpp>
 
-
 // Serialization for GhostExchangeDesc in order to gather and check them.
 namespace boost {
 namespace serialization {
@@ -82,7 +81,7 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
     boost::mpi::all_gather(comm, gexds, gexdss);
 
     auto find_comm = [](const std::vector<repa::grids::GhostExchangeDesc> &gs,
-                        int rank) -> const repa::grids::GhostExchangeDesc& {
+                        int rank) -> const repa::grids::GhostExchangeDesc & {
         auto it
             = std::find_if(std::begin(gs), std::end(gs),
                            [rank](const auto &g) { return g.dest == rank; });

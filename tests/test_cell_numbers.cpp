@@ -29,7 +29,6 @@
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
-
 static bool if_then(bool a, bool b)
 {
     return !a || b;

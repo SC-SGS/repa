@@ -23,7 +23,6 @@
 
 #define BOOST_TEST_MODULE integral_range
 
-
 #include <boost/test/included/unit_test.hpp>
 #include <repa/repa.hpp>
 

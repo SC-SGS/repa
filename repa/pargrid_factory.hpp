@@ -27,13 +27,13 @@ namespace repa {
 
 /** Grid factory method.
  * To be called on every node.
- * 
+ *
  * @param gt Grid type to instantiate
  * @param comm Communicator to use
  * @param box_size Domain
  * @param min_cell_size Minimum cell size
  * @param paramq optional pointer to ParamQuery object
- * 
+ *
  * @throws UnknwonGridTypeError if grid type is unknown.
  */
 std::unique_ptr<grids::ParallelLCGrid>

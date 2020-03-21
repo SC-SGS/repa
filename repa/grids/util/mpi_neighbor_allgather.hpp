@@ -31,10 +31,9 @@ namespace __impl {
  *
  */
 template <typename T, typename U = T>
-std::vector<T>
-mpi_subset_allgather(const boost::mpi::communicator &comm,
-                     const std::vector<rank_type> &neighbors,
-                     const U &data)
+std::vector<T> mpi_subset_allgather(const boost::mpi::communicator &comm,
+                                    const std::vector<rank_type> &neighbors,
+                                    const U &data)
 {
     std::vector<boost::mpi::request> sreq_cells(neighbors.size());
     std::vector<boost::mpi::request> rreq_cells(neighbors.size());
@@ -85,7 +84,6 @@ std::vector<T> mpi_neighbor_allgather(const boost::mpi::communicator &neighcomm,
         neighcomm, mpi_undirected_neighbors(neighcomm), data);
 }
 
-
 /** MPI_Neighbor_allgather.
  *
  * Overload specifically to send std::pairs that hold references.
@@ -97,11 +95,11 @@ template <typename T1,
           typename = typename std::enable_if<!__impl::is_pair_v<T1>>::type>
 std::vector<std::pair<T1, T2>>
 mpi_neighbor_allgather(const boost::mpi::communicator &neighcomm,
-                     const std::pair<const T1 &, const T2 &> &data)
+                       const std::pair<const T1 &, const T2 &> &data)
 {
     return mpi_neighbor_allgather<std::pair<T1, T2>,
-                                std::pair<const T1 &, const T2 &>>(
-        neighcomm, data);
+                                  std::pair<const T1 &, const T2 &>>(neighcomm,
+                                                                     data);
 }
 
 } // namespace util

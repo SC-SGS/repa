@@ -1,0 +1,94 @@
+image: "hirschsn/repa"
+
+stages:
+    - check
+    - build
+    - test
+
+check-style:
+    stage: check
+    script:
+        - find . -iname "*.[ch]pp" -exec clang-format --style=file -i {} \;
+        - git diff > style-patch.diff
+        - if [ -s style-patch.diff ]; then echo "Download the style patch as artifact and apply it."; false; fi
+    needs: []
+    artifacts:
+        paths:
+            - style-patch.diff
+        expire_in: 7 day
+
+build-debug:
+    stage: build
+    script:
+        - mkdir build && cd build
+        - cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_COVERAGE=off -DMPIEXEC_PREFLAGS="--oversubscribe;--bind-to;none"
+        - make -j4
+    artifacts:
+        paths:
+            - build/CMakeCache.txt
+            - build/CTestTestfile.cmake
+            - build/tests/CTestTestfile.cmake
+            - build/Makefile
+            - build/repa/librepa.so
+            - build/tests/test_*
+        expire_in: 1 day
+
+build-relwithdebinfo:
+    stage: build
+    script:
+        - mkdir build && cd build
+        - cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_COVERAGE=off -DMPIEXEC_PREFLAGS="--oversubscribe;--bind-to;none"
+        - make -j4
+    artifacts:
+        paths:
+            - build/CMakeCache.txt
+            - build/CTestTestfile.cmake
+            - build/tests/CTestTestfile.cmake
+            - build/Makefile
+            - build/repa/librepa.so
+            - build/tests/test_*
+        expire_in: 1 day
+
+build-release:
+    stage: build
+    script:
+        - mkdir build && cd build
+        - cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_COVERAGE=off -DMPIEXEC_PREFLAGS="--oversubscribe;--bind-to;none"
+        - make -j4
+    artifacts:
+        paths:
+            - build/CMakeCache.txt
+            - build/CTestTestfile.cmake
+            - build/tests/CTestTestfile.cmake
+            - build/Makefile
+            - build/repa/librepa.so
+            - build/tests/test_*
+        expire_in: 1 day
+
+test-debug:
+    stage: test
+    script:
+        - cd build
+        - cmake .. -DTEST_MAX_NPROC=16
+        - make test
+    dependencies:
+        - build-debug
+    needs: ["build-debug"]
+
+test-relwithdebinfo:
+    stage: test
+    script:
+        - cd build
+        - make test
+    dependencies:
+        - build-relwithdebinfo
+    needs: ["build-relwithdebinfo"]
+
+test-release:
+    stage: test
+    script:
+        - cd build
+        - make test
+    dependencies:
+        - build-release
+    needs: ["build-release"]
