@@ -39,9 +39,9 @@ struct Octagon {
     Octagon(const Octagon &o) = delete;
     Octagon(Octagon &&o);
     ~Octagon();
-    bool isValid;
     void operator=(Octagon o);
 
+    bool isValid();
     bool contains(const Vec3d &p) const;
 
 private:

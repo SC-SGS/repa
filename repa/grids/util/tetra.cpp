@@ -157,6 +157,16 @@ Octagon::Octagon(const std::array<Vec3d, 8> &vertices, double &max_cs)
 {
 }
 
+bool Octagon::isValid()
+{
+    if (!oi)
+        throw std::runtime_error("contains() on empty octagon");
+    if (oi->twoRc <= 0.)
+        throw std::runtime_error(
+            "The validity of this octagon wasn't checked on initialization");
+    return oi->isValid;
+}
+
 bool Octagon::contains(const Vec3d &p) const
 {
     if (!oi)
