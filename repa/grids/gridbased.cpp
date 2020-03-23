@@ -466,8 +466,7 @@ bool GridBasedGrid::repartition(CellMetric m,
 
     const auto cs = cell_size();
     auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
-    my_dom = util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs);
-    int hasConflict = my_dom.is_valid() ? 0 : 1;
+    int hasConflict = util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs).is_valid() ? 0 : 1;
     MPI_Allreduce(MPI_IN_PLACE, &hasConflict, 1, MPI_INT, MPI_SUM, comm_cart);
 
     if (hasConflict > 0) {
