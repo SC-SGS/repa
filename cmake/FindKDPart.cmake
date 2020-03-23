@@ -31,8 +31,7 @@ find_library(KDPART_LIBRARIES
              PATH_SUFFIXES lib)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(KDPART
+find_package_handle_standard_args(KDPart
                                   DEFAULT_MSG
                                   KDPART_LIBRARIES
                                   KDPART_INCLUDE_DIR)
-
