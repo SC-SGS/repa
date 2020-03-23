@@ -392,7 +392,7 @@ BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
                         {1., 0., 0.},
                         {0., 0., 0.}}};
     tetra::Octagon o = tetra::Octagon(cs, max_cutoff);
-    BOOST_CHECK(!o.isValid());
+    BOOST_CHECK(!o.is_valid());
 
     // This Octagon should be accepted.
     cs = {{{20., 20., 20.},
@@ -404,5 +404,5 @@ BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
            {20., 0., 0.},
            {0., 0., 0.}}};
     o = tetra::Octagon(cs, max_cutoff);
-    BOOST_CHECK(o.isValid());
+    BOOST_CHECK(o.is_valid());
 }

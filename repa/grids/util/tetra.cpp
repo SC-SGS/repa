@@ -21,7 +21,7 @@
 
 #include "tetra.hpp"
 #include "vec_arith.hpp"
-#include <math.h>
+#include <cmath>
 
 namespace repa {
 namespace util {
@@ -81,16 +81,17 @@ struct Plane {
 } // namespace
 
 struct _Octagon_Impl {
+private:
     static const std::array<int, 6> cornerOrder;
     Plane tetras[6][4];
-    double twoRc{0.};
-    bool isValid = true;
+    double min_height;
+    bool isValid;
 
+public:
     _Octagon_Impl() = delete;
 
-    _Octagon_Impl(const std::array<Vec3i64, 8> &corners, double max_cutoff)
+    _Octagon_Impl(const std::array<Vec3i64, 8> &corners, double max_cutoff): min_height(2. * std::sqrt(3.) * max_cutoff), isValid(true)
     {
-        twoRc = 2. * sqrt(3.) * max_cutoff;
         Vec3i64 start = corners[0];
         Vec3i64 end = corners[7];
         Vec3i64 last = corners[5];
@@ -107,11 +108,11 @@ struct _Octagon_Impl {
         tetras[index][1] = Plane({corners[0], corners[2], corners[3]});
         tetras[index][2] = Plane({corners[0], corners[3], corners[1]});
         tetras[index][3] = Plane({corners[1], corners[3], corners[2]});
-        if (twoRc > 0 && isValid) {
-            isValid = isValid && tetras[index][0].is2RcAbove(corners[3], twoRc);
-            isValid = isValid && tetras[index][1].is2RcAbove(corners[1], twoRc);
-            isValid = isValid && tetras[index][2].is2RcAbove(corners[2], twoRc);
-            isValid = isValid && tetras[index][3].is2RcAbove(corners[0], twoRc);
+        if (has_validity_check() && isValid) {
+            isValid = isValid && tetras[index][0].is2RcAbove(corners[3], min_height);
+            isValid = isValid && tetras[index][1].is2RcAbove(corners[1], min_height);
+            isValid = isValid && tetras[index][2].is2RcAbove(corners[2], min_height);
+            isValid = isValid && tetras[index][3].is2RcAbove(corners[0], min_height);
         }
     }
 
@@ -137,6 +138,16 @@ struct _Octagon_Impl {
         }
         return false;
     }
+
+    bool has_validity_check() const
+    {
+        return min_height > 0.0;
+    }
+
+    bool is_valid() const
+    {
+        return isValid;
+    }
 };
 
 const std::array<int, 6> _Octagon_Impl::cornerOrder = {{1, 3, 2, 6, 4, 5}};
@@ -157,14 +168,14 @@ Octagon::Octagon(const std::array<Vec3d, 8> &vertices, double max_cs)
 {
 }
 
-bool Octagon::isValid()
+bool Octagon::is_valid() const
 {
     if (!oi)
-        throw std::runtime_error("contains() on empty octagon");
-    if (oi->twoRc <= 0.)
+        throw std::runtime_error("is_valid() on empty octagon");
+    if (!oi->has_validity_check())
         throw std::runtime_error(
             "The validity of this octagon wasn't checked on initialization");
-    return oi->isValid;
+    return oi->is_valid();
 }
 
 bool Octagon::contains(const Vec3d &p) const

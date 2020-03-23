@@ -41,7 +41,7 @@ struct Octagon {
     ~Octagon();
     void operator=(Octagon o);
 
-    bool isValid();
+    bool is_valid() const;
     bool contains(const Vec3d &p) const;
 
 private:
