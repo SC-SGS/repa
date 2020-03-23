@@ -60,17 +60,17 @@ struct Plane {
         heightOfPlane = dot(normVector, vecs[0]);
     }
 
-    bool isAboveOrEqual(Vec3i64 point)
+    bool isAboveOrEqual(Vec3i64 point) const noexcept
     {
         return dot(point, normVector) >= heightOfPlane;
     }
 
-    bool isAbove(Vec3i64 point)
+    bool isAbove(Vec3i64 point) const noexcept
     {
         return dot(point, normVector) > heightOfPlane;
     }
 
-    bool is2RcAbove(Vec3i64 point, double twoRc)
+    bool is2RcAbove(Vec3i64 point, double twoRc) const noexcept
     {
         int height2Rc = static_cast<int>(
             ceil(twoRc * static_cast<double>(sumOfAbs(normVector))));
@@ -121,7 +121,7 @@ public:
         }
     }
 
-    bool contains(Vec3i64 point)
+    bool contains(Vec3i64 point) const noexcept
     {
         // Iterate over all tetrahedrons of the domain
         for (int tetra = 0; tetra < 6; tetra++) {
@@ -144,7 +144,7 @@ public:
         return false;
     }
 
-    bool has_validity_check() const
+    bool has_validity_check() const noexcept
     {
         return min_height > 0.0;
     }
