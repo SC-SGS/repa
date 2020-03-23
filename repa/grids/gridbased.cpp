@@ -314,7 +314,8 @@ rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
 {
     using namespace util::vector_arithmetic;
     Vec3i grid_coord
-        = vec_clamp(static_cast_vec<Vec3i>(pos / (box_l / node_grid)),
+        = vec_clamp(static_cast_vec<Vec3i>((pos - 1. / util::tetra::precision)
+                                           / (box_l / node_grid)),
                     constant_vec3(0), node_grid - 1);
     return util::mpi_cart_rank(comm_cart, grid_coord);
 }
