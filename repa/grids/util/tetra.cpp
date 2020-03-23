@@ -209,12 +209,6 @@ void swap(Octagon &a, Octagon &b)
     std::swap(a.oi, b.oi);
 }
 
-Vec3d map_to_grid(Vec3d point)
-{
-    return static_cast_vec<Vec3d>(integerize(point))
-           / static_cast<double>(precision);
-}
-
 } // namespace tetra
 } // namespace util
 } // namespace repa

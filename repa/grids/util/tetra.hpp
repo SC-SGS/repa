@@ -54,8 +54,6 @@ private:
     friend void swap(Octagon &, Octagon &);
 };
 
-Vec3d map_to_grid(Vec3d point);
-
 } // namespace tetra
 } // namespace util
 } // namespace repa
