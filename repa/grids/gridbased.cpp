@@ -460,10 +460,6 @@ bool GridBasedGrid::repartition(CellMetric m,
     assert(gridpoints.size() == comm_cart.size());
 
     // Check for admissibility of new grid.
-    // We do not constrain the grid cells to be convex.
-    // But the bare minimum that we have to enforce is that grid points do
-    // not collide with each other.
-
     const auto cs = cell_size();
     const auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
     int hasConflict = util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs).is_valid() ? 0 : 1;
