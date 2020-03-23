@@ -59,9 +59,9 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
     // (c0 - 1, c1 - 1, c2 - 1) lower left front corner
     // In total the set: {c0, c0 - 1} x {c1, c1 - 1} x {c2, c2 - 1}
     Vec3i off;
-    for (off[0] = 0; off[0] <= 1; ++off[0]) {
+    for (off[2] = 0; off[2] <= 1; ++off[2]) {
         for (off[1] = 0; off[1] <= 1; ++off[1]) {
-            for (off[2] = 0; off[2] <= 1; ++off[2]) {
+            for (off[0] = 0; off[0] <= 1; ++off[0]) {
                 using namespace util::vector_arithmetic;
                 Vec3i nc = (coord - off) % dims;
                 rank_type proc = util::mpi_cart_rank(comm_cart, nc);
