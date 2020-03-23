@@ -460,6 +460,8 @@ bool GridBasedGrid::repartition(CellMetric m,
     assert(gridpoints.size() == comm_cart.size());
 
     // Check for admissibility of new grid.
+    // Note: Don't change "my_dom" here in case we decide to reset to the
+    // current state and return false (or, also reset if afterwards).
     const auto cs = cell_size();
     const auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
     int hasConflict
