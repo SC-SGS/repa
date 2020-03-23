@@ -260,7 +260,7 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
       subdomain_midpoint(ep.subdomain_midpoint
                              ? ep.subdomain_midpoint
                              : decltype(subdomain_midpoint){std::bind(
-                                   &GridBasedGrid::get_subdomain_center, this)})
+                                 &GridBasedGrid::get_subdomain_center, this)})
 {
     init_partitioning();
     reinit();
@@ -462,7 +462,11 @@ bool GridBasedGrid::repartition(CellMetric m,
     // Check for admissibility of new grid.
     const auto cs = cell_size();
     const auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
-    int hasConflict = util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs).is_valid() ? 0 : 1;
+    int hasConflict
+        = util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs)
+                  .is_valid()
+              ? 0
+              : 1;
     MPI_Allreduce(MPI_IN_PLACE, &hasConflict, 1, MPI_INT, MPI_SUM, comm_cart);
 
     if (hasConflict > 0) {
