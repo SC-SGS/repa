@@ -465,28 +465,14 @@ bool GridBasedGrid::repartition(CellMetric m,
     // not collide with each other.
 
     const auto cs = cell_size();
-    auto min_cell_size = std::min(std::min(cs[0], cs[1]), cs[2]);
-
-    int nconflicts = 0;
-
-    auto bb = bounding_box(comm_cart.rank());
-
-    for (size_t i = 0; i < bb.size(); ++i)
-        for (size_t j = i + 1; j < bb.size(); ++j)
-            if (util::dist2(bb[i], bb[j]) < 2 * min_cell_size)
-                nconflicts++;
-
-    MPI_Allreduce(MPI_IN_PLACE, &nconflicts, 1, MPI_INT, MPI_SUM, comm_cart);
-
     auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
     my_dom = util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs);
     int hasConflict = my_dom.is_valid() ? 0 : 1;
     MPI_Allreduce(MPI_IN_PLACE, &hasConflict, 1, MPI_INT, MPI_SUM, comm_cart);
 
-    if (nconflicts > 0) {
+    if (hasConflict > 0) {
         std::cout << "Gridpoint update rejected because of node conflicts."
                   << std::endl;
-        assert(0);
         gridpoints = old_gridpoints;
         gridpoint = gridpoints[comm_cart.rank()];
         return false;
