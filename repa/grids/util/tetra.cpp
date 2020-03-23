@@ -52,7 +52,7 @@ struct Plane {
     Vec3i64 normVector;
     int64_t heightOfPlane;
 
-    Plane(){};
+    Plane(){}
 
     Plane(const std::array<Vec3i64, 3> &vecs)
         : normVector(cross(vecs[0] - vecs[2], vecs[1] - vecs[0])),
