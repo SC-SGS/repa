@@ -52,7 +52,9 @@ struct Plane {
     Vec3i64 normVector;
     int64_t heightOfPlane;
 
-    Plane(){}
+    Plane()
+    {
+    }
 
     Plane(const std::array<Vec3i64, 3> &vecs)
         : normVector(cross(vecs[0] - vecs[2], vecs[1] - vecs[0])),
@@ -77,6 +79,15 @@ struct Plane {
         return dot(point, normVector) > heightOfPlane + int_dist;
     }
 };
+
+std::array<Plane, 4>
+planes_of_tetrahedron(const std::array<Vec3i64, 4> &corners)
+{
+    return {Plane({corners[0], corners[1], corners[2]}),
+            Plane({corners[0], corners[2], corners[3]}),
+            Plane({corners[0], corners[3], corners[1]}),
+            Plane({corners[1], corners[3], corners[2]})};
+}
 
 } // namespace
 
@@ -105,19 +116,14 @@ public:
 
     void addTetra(int index, const std::array<Vec3i64, 4> &corners)
     {
-        tetrahedron_planes[index][0] = Plane({corners[0], corners[1], corners[2]});
-        tetrahedron_planes[index][1] = Plane({corners[0], corners[2], corners[3]});
-        tetrahedron_planes[index][2] = Plane({corners[0], corners[3], corners[1]});
-        tetrahedron_planes[index][3] = Plane({corners[1], corners[3], corners[2]});
+        tetrahedron_planes[index] = planes_of_tetrahedron(corners);
+
         if (has_validity_check() && isValid) {
-            isValid = isValid
-                      && tetrahedron_planes[index][0].isXAbove(corners[3], min_height);
-            isValid = isValid
-                      && tetrahedron_planes[index][1].isXAbove(corners[1], min_height);
-            isValid = isValid
-                      && tetrahedron_planes[index][2].isXAbove(corners[2], min_height);
-            isValid = isValid
-                      && tetrahedron_planes[index][3].isXAbove(corners[0], min_height);
+            const auto &cur_tetra = tetrahedron_planes[index];
+            isValid = isValid && cur_tetra[0].isXAbove(corners[3], min_height)
+                      && cur_tetra[1].isXAbove(corners[1], min_height)
+                      && cur_tetra[2].isXAbove(corners[2], min_height)
+                      && cur_tetra[3].isXAbove(corners[0], min_height);
         }
     }
 
@@ -133,7 +139,8 @@ public:
                 if (!tetraContainsP) {
                     break;
                 }
-                tetraContainsP = tetrahedron_planes[tetra][plane].isAboveOrEqual(point);
+                tetraContainsP
+                    = tetrahedron_planes[tetra][plane].isAboveOrEqual(point);
             }
             // The point is accepted when it lies within a tetrahedron of the
             // domain
