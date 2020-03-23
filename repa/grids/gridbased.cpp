@@ -164,14 +164,7 @@ void GridBasedGrid::reinit()
     for (global_cell_index_type i = 0; i < gbox.ncells(); ++i) {
         auto midpoint = gbox.midpoint(i);
 
-        // We use "position_to_rank" here.
-        // Note that .contains() can be true for several octagons (see
-        // comment in "position_to_rank"). Hence, we use position_to_rank
-        // as tie-breaker.
-        // We, however, use my_dom.contains() here as a guard so
-        // "position_to_rank" does not throw.
-        if (my_dom.contains(midpoint)
-            && position_to_rank(midpoint) == comm.rank()) {
+        if (my_dom.contains(midpoint)) {
             cells.push_back(i);
             global_to_local[i] = nlocalcells;
             nlocalcells++;
