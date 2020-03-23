@@ -90,7 +90,8 @@ private:
 public:
     _Octagon_Impl() = delete;
 
-    _Octagon_Impl(const std::array<Vec3i64, 8> &corners, double max_cutoff): min_height(2. * std::sqrt(3.) * max_cutoff), isValid(true)
+    _Octagon_Impl(const std::array<Vec3i64, 8> &corners, double max_cutoff)
+        : min_height(2. * std::sqrt(3.) * max_cutoff), isValid(true)
     {
         Vec3i64 start = corners[0];
         Vec3i64 end = corners[7];
@@ -109,10 +110,14 @@ public:
         tetras[index][2] = Plane({corners[0], corners[3], corners[1]});
         tetras[index][3] = Plane({corners[1], corners[3], corners[2]});
         if (has_validity_check() && isValid) {
-            isValid = isValid && tetras[index][0].is2RcAbove(corners[3], min_height);
-            isValid = isValid && tetras[index][1].is2RcAbove(corners[1], min_height);
-            isValid = isValid && tetras[index][2].is2RcAbove(corners[2], min_height);
-            isValid = isValid && tetras[index][3].is2RcAbove(corners[0], min_height);
+            isValid = isValid
+                      && tetras[index][0].is2RcAbove(corners[3], min_height);
+            isValid = isValid
+                      && tetras[index][1].is2RcAbove(corners[1], min_height);
+            isValid = isValid
+                      && tetras[index][2].is2RcAbove(corners[2], min_height);
+            isValid = isValid
+                      && tetras[index][3].is2RcAbove(corners[0], min_height);
         }
     }
 
