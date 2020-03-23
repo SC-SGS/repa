@@ -41,6 +41,10 @@ struct Octagon {
     ~Octagon();
     void operator=(Octagon o);
 
+    /** Returns if this Octagon is valid and can be handled internally by this
+     * module. Can only be called if a "max_cutoff" was passed to the
+     * destructor. Otherwise, will throw a runtime_error.
+     */
     bool is_valid() const;
     bool contains(const Vec3d &p) const;
 
