@@ -109,22 +109,24 @@ public:
         Vec3i64 last = corners[5];
         for (int i = 0; i < 6; i++) {
             Vec3i64 next = corners[cornerOrder[i]];
-            addTetra(i, {start, end, next, last});
+            tetrahedron_planes[i] = generate_tetra({start, end, next, last});
             last = next;
         }
     }
 
-    void addTetra(int index, const std::array<Vec3i64, 4> &corners)
+    /** Returns 4 planes that represent the faces of a tetrahedron.
+     * Additionally, updates isValid.
+     */
+    inline std::array<Plane, 4>
+    generate_tetra(const std::array<Vec3i64, 4> &corners)
     {
-        tetrahedron_planes[index] = planes_of_tetrahedron(corners);
-
-        if (has_validity_check() && isValid) {
-            const auto &cur_tetra = tetrahedron_planes[index];
+        auto cur_tetra = planes_of_tetrahedron(corners);
+        if (has_validity_check())
             isValid = isValid && cur_tetra[0].isXAbove(corners[3], min_height)
                       && cur_tetra[1].isXAbove(corners[1], min_height)
                       && cur_tetra[2].isXAbove(corners[2], min_height)
                       && cur_tetra[3].isXAbove(corners[0], min_height);
-        }
+        return cur_tetra;
     }
 
     bool contains(Vec3i64 point) const noexcept
