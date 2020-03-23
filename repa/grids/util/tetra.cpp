@@ -83,7 +83,7 @@ struct Plane {
 struct _Octagon_Impl {
 private:
     static const std::array<int, 6> cornerOrder;
-    Plane tetras[6][4];
+    std::array<std::array<Plane, 4>, 6> tetras;
     double min_height;
     bool isValid;
 
