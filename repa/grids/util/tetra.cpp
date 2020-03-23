@@ -55,9 +55,9 @@ struct Plane {
     Plane(){};
 
     Plane(const std::array<Vec3i64, 3> &vecs)
+        : normVector(cross(vecs[0] - vecs[2], vecs[1] - vecs[0])),
+          heightOfPlane(dot(normVector, vecs[0]))
     {
-        normVector = cross(vecs[0] - vecs[2], vecs[1] - vecs[0]);
-        heightOfPlane = dot(normVector, vecs[0]);
     }
 
     bool isAboveOrEqual(Vec3i64 point) const noexcept
@@ -70,11 +70,11 @@ struct Plane {
         return dot(point, normVector) > heightOfPlane;
     }
 
-    bool is2RcAbove(Vec3i64 point, double twoRc) const noexcept
+    bool isXAbove(Vec3i64 point, double dist) const noexcept
     {
-        int height2Rc = static_cast<int>(
-            ceil(twoRc * static_cast<double>(sumOfAbs(normVector))));
-        return dot(point, normVector) > heightOfPlane + height2Rc;
+        int64_t int_dist = static_cast<int64_t>(
+            ceil(dist * static_cast<double>(sumOfAbs(normVector))));
+        return dot(point, normVector) > heightOfPlane + int_dist;
     }
 };
 
@@ -111,13 +111,13 @@ public:
         tetras[index][3] = Plane({corners[1], corners[3], corners[2]});
         if (has_validity_check() && isValid) {
             isValid = isValid
-                      && tetras[index][0].is2RcAbove(corners[3], min_height);
+                      && tetras[index][0].isXAbove(corners[3], min_height);
             isValid = isValid
-                      && tetras[index][1].is2RcAbove(corners[1], min_height);
+                      && tetras[index][1].isXAbove(corners[1], min_height);
             isValid = isValid
-                      && tetras[index][2].is2RcAbove(corners[2], min_height);
+                      && tetras[index][2].isXAbove(corners[2], min_height);
             isValid = isValid
-                      && tetras[index][3].is2RcAbove(corners[0], min_height);
+                      && tetras[index][3].isXAbove(corners[0], min_height);
         }
     }
 
