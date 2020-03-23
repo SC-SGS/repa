@@ -312,20 +312,28 @@ local_cell_index_type GridBasedGrid::position_to_cell_index(Vec3d pos)
 
 rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
 {
-    using namespace util::vector_arithmetic;
-    const Vec3d subdomain_width = util::tetra::map_to_grid(box_l / node_grid);
-    Vec3i grid_coord = vec_clamp(static_cast_vec<Vec3i>(pos / subdomain_width),
-                                 constant_vec3(0), node_grid - 1);
-    return util::mpi_cart_rank(comm_cart, grid_coord);
+    // Cache the octagons for each process.
+    // They become invalid after the first repartitioning.
+    // DO NOT CALL this function then.
+    assert(is_regular_grid);
+
+    static std::map<rank_type, util::tetra::Octagon> all_octs;
+    for (rank_type i = 0; i < comm_cart.size(); ++i) {
+        if (all_octs.find(i) == std::end(all_octs))
+            all_octs[i] = util::tetra::Octagon(bounding_box(i));
+
+        if (all_octs[i].contains(pos))
+            return i;
+    }
+
+    throw std::domain_error(
+        "Position globally unknown. This is a bug, please report it.");
 }
 
 rank_type GridBasedGrid::position_to_rank(Vec3d pos)
 {
     // Cell ownership is based on the cell midpoint.
     const auto mp = gbox.midpoint(gbox.cell_at_pos(pos));
-
-    if (is_regular_grid)
-        return cart_topology_position_to_rank(mp);
 
     // .contains() is mutually exclusive. The expectation is that most queried
     // positions belong to this node, so check it first. The order of the
@@ -337,6 +345,9 @@ rank_type GridBasedGrid::position_to_rank(Vec3d pos)
         if (neighbor_doms[i].contains(mp))
             return neighbor_ranks[i];
     }
+
+    if (is_regular_grid)
+        return cart_topology_position_to_rank(pos);
 
     throw std::domain_error("Position unknown. Possibly a position outside of "
                             "the neighborhood of this process.");
