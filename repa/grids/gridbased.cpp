@@ -347,7 +347,7 @@ rank_type GridBasedGrid::position_to_rank(Vec3d pos)
     }
 
     if (is_regular_grid)
-        return cart_topology_position_to_rank(pos);
+        return cart_topology_position_to_rank(mp);
 
     throw std::domain_error("Position unknown. Possibly a position outside of "
                             "the neighborhood of this process.");
