@@ -35,7 +35,7 @@ const int16_t precision = 10;
 struct Octagon {
     Octagon();
     Octagon(const std::array<Vec3d, 8> &vertices);
-    Octagon(const std::array<Vec3d, 8> &vertices, double &max_cutoff);
+    Octagon(const std::array<Vec3d, 8> &vertices, double max_cutoff);
     Octagon(const Octagon &o) = delete;
     Octagon(Octagon &&o);
     ~Octagon();
