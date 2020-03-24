@@ -383,27 +383,40 @@ BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
 {
     double max_cutoff = 2.;
 
-    // This Octagon should NOT be accepted.
-    octaVertices cs = {{{1., 1., 1.},
-                        {0., 1., 1.},
-                        {1., 0., 1.},
-                        {0., 0., 1.},
-                        {1., 1., 0.},
-                        {0., 1., 0.},
-                        {1., 0., 0.},
-                        {0., 0., 0.}}};
-    tetra::Octagon o = tetra::Octagon(cs, max_cutoff);
-    BOOST_CHECK(!o.is_valid());
-
-    // This Octagon should be accepted.
-    cs = {{{20., 20., 20.},
-           {0., 20., 20.},
-           {20., 0., 20.},
-           {0., 0., 20.},
-           {20., 20., 0.},
-           {0., 20., 0.},
-           {20., 0., 0.},
-           {0., 0., 0.}}};
-    o = tetra::Octagon(cs, max_cutoff);
-    BOOST_CHECK(o.is_valid());
+    {
+        // This Octagon should NOT be accepted.
+        const octaVertices cs = {{{1., 1., 1.},
+                                  {0., 1., 1.},
+                                  {1., 0., 1.},
+                                  {0., 0., 1.},
+                                  {1., 1., 0.},
+                                  {0., 1., 0.},
+                                  {1., 0., 0.},
+                                  {0., 0., 0.}}};
+        BOOST_CHECK(!tetra::Octagon(cs, max_cutoff).is_valid());
+    }
+    {
+        // This Octagon should NOT be accepted.
+        const octaVertices cs2 = {{{12., 15., 15.},
+                                   {0., 15., 15.},
+                                   {15., 0., 15.},
+                                   {0., 0., 15.},
+                                   {15., 15., 0.},
+                                   {0., 15., 0.},
+                                   {15., 0., 0.},
+                                   {0., 0., 0.}}};
+        BOOST_CHECK(!tetra::Octagon(cs2, max_cutoff).is_valid());
+    }
+    {
+        // This Octagon should be accepted.
+        const octaVertices cs3 = {{{15., 15., 15.},
+                                  {0., 15., 15.},
+                                  {15., 0., 15.},
+                                  {0., 0., 15.},
+                                  {15., 15., 0.},
+                                  {0., 15., 0.},
+                                  {15., 0., 0.},
+                                  {0., 0., 0.}}};
+        BOOST_CHECK(tetra::Octagon(cs3, max_cutoff).is_valid());
+    }
 }
