@@ -177,8 +177,8 @@ Octagon::Octagon(const std::array<Vec3d, 8> &vertices)
 {
 }
 
-Octagon::Octagon(const std::array<Vec3d, 8> &vertices, double max_cs)
-    : oi(std::make_unique<_Octagon_Impl>(integerizedArray(vertices), max_cs))
+Octagon::Octagon(const std::array<Vec3d, 8> &vertices, double max_cutoff)
+    : oi(std::make_unique<_Octagon_Impl>(integerizedArray(vertices), max_cutoff))
 {
 }
 
