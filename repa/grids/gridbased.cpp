@@ -1,6 +1,7 @@
 
 /**
- * Copyright 2017-2019 Steffen Hirschmann
+ * Copyright 2017-2020 Steffen Hirschmann
+ * Copyright 2020 Benjamin Vier
  *
  * This file is part of Repa.
  *
