@@ -335,22 +335,27 @@ rank_type GridBasedGrid::position_to_rank(Vec3d pos)
     // Cell ownership is based on the cell midpoint.
     const auto mp = gbox.midpoint(gbox.cell_at_pos(pos));
 
-    // .contains() is mutually exclusive. The expectation is that most queried
-    // positions belong to this node, so check it first. The order of the
-    // neighbors is not relevant.
-    if (my_dom.contains(mp))
-        return comm.rank();
+    // Directly invoked lambda expression to prohibit use of "pos" in future
+    // changes. Resolving must be done for "mp".
+    return [this](Vec3d mp) {
+        // .contains() is mutually exclusive. The expectation is that most
+        // queried positions belong to this node, so check it first. The order
+        // of the neighbors is not relevant.
+        if (my_dom.contains(mp))
+            return comm.rank();
 
-    for (rank_index_type i = 0; i < n_neighbors(); ++i) {
-        if (neighbor_doms[i].contains(mp))
-            return neighbor_ranks[i];
-    }
+        for (rank_index_type i = 0; i < n_neighbors(); ++i) {
+            if (neighbor_doms[i].contains(mp))
+                return neighbor_ranks[i];
+        }
 
-    if (is_regular_grid)
-        return cart_topology_position_to_rank(mp);
+        if (is_regular_grid)
+            return cart_topology_position_to_rank(mp);
 
-    throw std::domain_error("Position unknown. Possibly a position outside of "
-                            "the neighborhood of this process.");
+        throw std::domain_error(
+            "Position unknown. Possibly a position outside of "
+            "the neighborhood of this process.");
+    }(mp);
 }
 
 rank_index_type GridBasedGrid::position_to_neighidx(Vec3d pos)
