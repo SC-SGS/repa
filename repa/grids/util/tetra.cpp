@@ -75,7 +75,7 @@ struct Plane {
     bool isXAbove(Vec3i64 point, double dist) const noexcept
     {
         int64_t int_dist = static_cast<int64_t>(
-            ceil(dist * static_cast<double>(sumOfAbs(normVector))));
+            ceil(dist * precision * static_cast<double>(sumOfAbs(normVector))));
         return dot(point, normVector) > heightOfPlane + int_dist;
     }
 };
