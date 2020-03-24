@@ -172,11 +172,6 @@ Octagon::Octagon() = default;
 Octagon::~Octagon() = default;
 Octagon::Octagon(Octagon &&o) = default;
 
-Octagon::Octagon(const std::array<Vec3d, 8> &vertices)
-    : oi(std::make_unique<_Octagon_Impl>(integerizedArray(vertices), 0.0))
-{
-}
-
 Octagon::Octagon(const std::array<Vec3d, 8> &vertices, double max_cutoff)
     : oi(std::make_unique<_Octagon_Impl>(integerizedArray(vertices), max_cutoff))
 {
