@@ -1,6 +1,7 @@
 
 /**
- * Copyright 2017-2019 Steffen Hirschmann
+ * Copyright 2017-2020 Steffen Hirschmann
+ * Copyright 2020 Benjamin Vier
  *
  * This file is part of Repa.
  *
@@ -18,51 +19,152 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#define CGAL_DISABLE_ROUNDING_MATH_CHECK
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Triangulation_3.h>
-#include <boost/iterator/transform_iterator.hpp>
-
 #include "tetra.hpp"
+#include "vec_arith.hpp"
+#include <cmath>
 
 namespace repa {
 namespace util {
 namespace tetra {
 
-namespace __detail {
+using Vec3i64 = Vec3<int64_t>;
 
-typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-typedef CGAL::Triangulation_3<K> Triangulation;
-typedef Triangulation::Point Point;
-typedef Triangulation::Locate_type Locate_type;
+// Anonymous namespace for internal linkage
+namespace {
 
-static Point vec2point(const Vec3d &v)
+using namespace vector_arithmetic;
+
+Vec3i64 integerize(const Vec3d &v)
 {
-    return Point(v[0], v[1], v[2]);
+    return static_cast_vec<Vec3i64>(v * static_cast<double>(precision));
 }
 
-struct _Octagon_Impl {
-    _Octagon_Impl(const std::array<Vec3d, 8> &vertices);
-    const Triangulation T;
+std::array<Vec3i64, 8> integerizedArray(const std::array<Vec3d, 8> &vertices)
+{
+    std::array<Vec3i64, 8> intVert;
+    for (int i = 0; i < 8; i++) {
+        intVert[i] = integerize(vertices[i]);
+    }
+    return intVert;
+}
+
+struct Plane {
+    Vec3i64 normVector;
+    int64_t heightOfPlane;
+
+    Plane()
+    {
+    }
+
+    Plane(const std::array<Vec3i64, 3> &vecs)
+        : normVector(cross(vecs[0] - vecs[2], vecs[1] - vecs[0])),
+          heightOfPlane(dot(normVector, vecs[0]))
+    {
+    }
+
+    bool isAboveOrEqual(Vec3i64 point) const noexcept
+    {
+        return dot(point, normVector) >= heightOfPlane;
+    }
+
+    bool isAbove(Vec3i64 point) const noexcept
+    {
+        return dot(point, normVector) > heightOfPlane;
+    }
+
+    bool isXAbove(Vec3i64 point, double dist) const noexcept
+    {
+        int64_t int_dist = static_cast<int64_t>(
+            ceil(dist * precision * static_cast<double>(sumOfAbs(normVector))));
+        return dot(point, normVector) > heightOfPlane + int_dist;
+    }
 };
 
-_Octagon_Impl::_Octagon_Impl(const std::array<Vec3d, 8> &vertices)
-    : T(boost::make_transform_iterator(vertices.begin(), vec2point),
-        boost::make_transform_iterator(vertices.end(), vec2point))
+std::array<Plane, 4>
+planes_of_tetrahedron(const std::array<Vec3i64, 4> &corners)
 {
+    return {Plane({corners[0], corners[1], corners[2]}),
+            Plane({corners[0], corners[2], corners[3]}),
+            Plane({corners[0], corners[3], corners[1]}),
+            Plane({corners[1], corners[3], corners[2]})};
 }
 
-static bool contains(const _Octagon_Impl &oi, const Vec3d &v)
-{
-    Point p = vec2point(v);
-    Locate_type lt;
-    int li, lj;
-    oi.T.locate(p, lt, li, lj);
-    // Also accepts corners, edges of the polygon
-    return lt <= Triangulation::CELL;
-}
+} // namespace
 
-} // namespace __detail
+struct _Octagon_Impl {
+private:
+    static const std::array<int, 6> cornerOrder;
+    std::array<std::array<Plane, 4>, 6> tetrahedron_planes;
+    double min_height;
+    bool isValid;
+
+public:
+    _Octagon_Impl() = delete;
+
+    _Octagon_Impl(const std::array<Vec3i64, 8> &corners, double max_cutoff)
+        : min_height(2. * std::sqrt(3.) * max_cutoff), isValid(true)
+    {
+        Vec3i64 start = corners[0];
+        Vec3i64 end = corners[7];
+        Vec3i64 last = corners[5];
+        for (int i = 0; i < 6; i++) {
+            Vec3i64 next = corners[cornerOrder[i]];
+            tetrahedron_planes[i] = generate_tetra({start, end, next, last});
+            last = next;
+        }
+    }
+
+    /** Returns 4 planes that represent the faces of a tetrahedron.
+     * Additionally, updates isValid.
+     */
+    inline std::array<Plane, 4>
+    generate_tetra(const std::array<Vec3i64, 4> &corners)
+    {
+        auto cur_tetra = planes_of_tetrahedron(corners);
+        if (has_validity_check())
+            isValid = isValid && cur_tetra[0].isXAbove(corners[3], min_height)
+                      && cur_tetra[1].isXAbove(corners[1], min_height)
+                      && cur_tetra[2].isXAbove(corners[2], min_height)
+                      && cur_tetra[3].isXAbove(corners[0], min_height);
+        return cur_tetra;
+    }
+
+    bool contains(Vec3i64 point) const noexcept
+    {
+        // Iterate over all tetrahedrons of the domain
+        for (int tetra = 0; tetra < 6; tetra++) {
+            // Points which are exactly on this plane of the tetrahedron
+            // are not accepted to avoid that they are assigned to two domains.
+            bool tetraContainsP = tetrahedron_planes[tetra][3].isAbove(point);
+            // Iterate over all other sides
+            for (int plane = 0; plane < 3; plane++) {
+                if (!tetraContainsP) {
+                    break;
+                }
+                tetraContainsP
+                    = tetrahedron_planes[tetra][plane].isAboveOrEqual(point);
+            }
+            // The point is accepted when it lies within a tetrahedron of the
+            // domain
+            if (tetraContainsP) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool has_validity_check() const noexcept
+    {
+        return min_height > 0.0;
+    }
+
+    bool is_valid() const
+    {
+        return isValid;
+    }
+};
+
+const std::array<int, 6> _Octagon_Impl::cornerOrder = {{1, 3, 2, 6, 4, 5}};
 
 // These are declared here because _Octagon_Impl is an imcomplete type in the
 // header.
@@ -70,16 +172,26 @@ Octagon::Octagon() = default;
 Octagon::~Octagon() = default;
 Octagon::Octagon(Octagon &&o) = default;
 
-Octagon::Octagon(const std::array<Vec3d, 8> &vertices)
-    : oi(std::make_unique<__detail::_Octagon_Impl>(vertices))
+Octagon::Octagon(const std::array<Vec3d, 8> &vertices, double max_cutoff)
+    : oi(std::make_unique<_Octagon_Impl>(integerizedArray(vertices), max_cutoff))
 {
+}
+
+bool Octagon::is_valid() const
+{
+    if (!oi)
+        throw std::runtime_error("is_valid() on empty octagon");
+    if (!oi->has_validity_check())
+        throw std::runtime_error(
+            "The validity of this octagon wasn't checked on initialization");
+    return oi->is_valid();
 }
 
 bool Octagon::contains(const Vec3d &p) const
 {
     if (!oi)
         throw std::runtime_error("contains() on empty octagon");
-    return __detail::contains(*oi, p);
+    return oi->contains(integerize(p));
 }
 
 void Octagon::operator=(Octagon o)

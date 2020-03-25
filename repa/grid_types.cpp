@@ -51,12 +51,6 @@ static const std::unordered_map<std::string, GridType> grid_type_registry
 #define PARMETIS_AVAIL false
 #endif
 
-#ifdef HAVE_CGAL
-#define CGAL_AVAIL true
-#else
-#define CGAL_AVAIL false
-#endif
-
 // Note: Enum hash compatibility functor for gcc-5.x support.
 // To be removed in the future.
 struct enum_hash_compat {
@@ -75,7 +69,7 @@ static const std::unordered_map<GridType, bool, enum_hash_compat>
                               {GridType::DIFF, true},
                               {GridType::HYB_GP_DIFF, PARMETIS_AVAIL},
                               {GridType::KD_TREE, KDPART_AVAIL},
-                              {GridType::GRIDBASED, CGAL_AVAIL}};
+                              {GridType::GRIDBASED, true}};
 
 } // namespace
 
