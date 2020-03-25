@@ -410,13 +410,13 @@ BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
     {
         // This Octagon should be accepted.
         const octaVertices cs3 = {{{15., 15., 15.},
-                                  {0., 15., 15.},
-                                  {15., 0., 15.},
-                                  {0., 0., 15.},
-                                  {15., 15., 0.},
-                                  {0., 15., 0.},
-                                  {15., 0., 0.},
-                                  {0., 0., 0.}}};
+                                   {0., 15., 15.},
+                                   {15., 0., 15.},
+                                   {0., 0., 15.},
+                                   {15., 15., 0.},
+                                   {0., 15., 0.},
+                                   {15., 0., 0.},
+                                   {0., 0., 0.}}};
         BOOST_CHECK(tetra::Octagon(cs3, max_cutoff).is_valid());
     }
 }
