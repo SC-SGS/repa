@@ -20,7 +20,6 @@ For CI purposes, etc. a working Docker container with all dependencies as well a
 
 - [Boost](https://www.boost.org/) (unit_test) for tests
 - [KDPart](https://github.com/hirschsn/kdpart) for kd-tree-based load-balancing method
-- [CGAL](https://www.cgal.org/) for grid-based load-balancing method
 - [ParMETIS](http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview) for graph-partitioning-based load-balancing method
 - [lahnerml's p4est](https://github.com/lahnerml/p4est/tree/p4est-ESPResSo-integration) for SFC-based grid
 
@@ -31,7 +30,7 @@ Same note as above goes for KDPart and ParMETIS.
 MPI, Boost, ParMETIS and CGAL can be installed e.g. on Debian/Ubuntu using:
 
 ```sh
-apt-get install openmpi-bin libboost-all-dev libparmetis-dev libcgal-dev cmake
+apt-get install openmpi-bin libboost-all-dev libparmetis-dev cmake
 ```
 
 Note for manual ParMETIS installations: ParMETIS's `make install` does *not* install metis.h from metis/include/. Copy this file manually to the appropriate prefix/include directory.
