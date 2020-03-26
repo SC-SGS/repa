@@ -1,0 +1,3 @@
+# Ignore spack-related files/folders:
+.spack-env/
+spack.lock

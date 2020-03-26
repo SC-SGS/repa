@@ -1,0 +1,12 @@
+spack:
+  repos:
+    - hirschsn
+  specs:
+    - cmake
+    - mpi
+    - boost+serialization+mpi@1.67.0
+    - p4est-lahnerml
+    - kdpart
+    - cgal^boost+serialization+mpi@1.67.0
+    - parmetis+shared
+  view: true
