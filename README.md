@@ -25,6 +25,20 @@ For CI purposes, etc. a working Docker container with all dependencies as well a
 
 Same note as above goes for KDPart and ParMETIS.
 
+### Spack
+
+Using [spack](https://github.com/spack/spack), you can install all necessary dependencies easily.
+First, add the [spack repo spack-hirschsn](https://github.com/hirschsn/spack-hirschsn/) with recipes for repa dependencies.
+Then:
+
+```sh
+git clone https://github.com/hirschsn/repa
+cd repa
+spack install
+# Wait...
+spack env activate .
+```
+
 ### Linux Distributions
 
 MPI, Boost, ParMETIS and CGAL can be installed e.g. on Debian/Ubuntu using:
