@@ -1,6 +1,4 @@
 spack:
-  repos:
-    - hirschsn
   specs:
     - cmake
     - mpi
