@@ -434,15 +434,6 @@ bool GridBasedGrid::repartition(CellMetric m,
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
     const rank_type proc = util::mpi_cart_rank(comm_cart, coords);
 
-    Vec3d new_c = gridpoint;
-    for (int d = 0; d < 3; ++d) {
-        // Shift only non-boundary coordinates
-        if (coords[d] == dims[d] - 1)
-            continue;
-        for (rank_index_type i = 0; i < nneigh; ++i)
-            new_c[d] += mu * r[i][d];
-    }
-
     // Note: Since we do not shift gridpoints over periodic boundaries,
     // f values from periodic neighbors are not considered.
     // (See if condition in above loop.)
@@ -464,9 +455,16 @@ bool GridBasedGrid::repartition(CellMetric m,
     // Update gridpoint and gridpoints
     // Currently allgather. Can be done in 64 process neighborhood.
 
+    double factor = 1.;
     for (rank_type i = 0; i < 8; i++) {
         if (proc % 8 == i) {
-            gridpoint = new_c;
+            for (int d = 0; d < 3; ++d) {
+                // Shift only non-boundary coordinates
+                if (coords[d] == dims[d] - 1)
+                    continue;
+                for (rank_index_type i = 0; i < nneigh; ++i)
+                    gridpoint[d] += factor * mu * r[i][d];
+            }
         }
         auto old_gridpoints = gridpoints;
 
@@ -492,7 +490,16 @@ bool GridBasedGrid::repartition(CellMetric m,
                       << std::endl;
             gridpoints = old_gridpoints;
             gridpoint = gridpoints[comm_cart.rank()];
-            return false;
+            if (factor > 0.24) {
+                i--;
+                factor /= 2.;
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            factor = 1.;
         }
     }
     is_regular_grid = false;
