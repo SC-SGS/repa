@@ -42,5 +42,8 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 BOOST_AUTO_TEST_CASE(test_small_grid)
 {
     boost::mpi::environment env;
-    testenv::TEnv::custom_test_env({1.0, 1.0, 1.0}, 0.162).without_repart().all_grids().run(test);
+    testenv::TEnv::custom_test_env({1.0, 1.0, 1.0}, 0.162)
+        .without_repart()
+        .all_grids()
+        .run(test);
 }
