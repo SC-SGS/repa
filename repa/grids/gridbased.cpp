@@ -462,13 +462,7 @@ bool GridBasedGrid::repartition(CellMetric m,
         // Check for admissibility of new grid.
         // Note: Don't change "my_dom" here in case we decide to reset to the
         // current state and return false (or, also reset if afterwards).
-        const auto cs = cell_size();
-        const auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
-        int hasConflict
-            = util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs)
-                      .is_valid()
-                  ? 0
-                  : 1;
+        int hasConflict = check_validity() ? 0 : 1;
         MPI_Allreduce(MPI_IN_PLACE, &hasConflict, 1, MPI_INT, MPI_SUM,
                       comm_cart);
 
@@ -477,13 +471,6 @@ bool GridBasedGrid::repartition(CellMetric m,
                       << std::endl;
             gridpoints = old_gridpoints;
             gridpoint = gridpoints[comm_cart.rank()];
-            if (factor > 0.24) {
-                i--;
-                factor /= 2.;
-            }
-            else {
-                return false;
-            }
         }
         else {
             factor = 1.;
@@ -499,15 +486,15 @@ bool GridBasedGrid::repartition(CellMetric m,
 }
 
 bool GridBasedGrid::shift_gridpoint(Vec3d shift_vector,
-                                   double factor,
-                                   int iteration)
+                                    double factor,
+                                    int iteration)
 {
     const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
     const rank_type proc = util::mpi_cart_rank(comm_cart, coords);
 
     if (proc % 8 != iteration) {
-        return;
+        return true;
     }
 
     auto old_gp = gridpoint;
@@ -523,6 +510,28 @@ bool GridBasedGrid::shift_gridpoint(Vec3d shift_vector,
     std::cout << "[" << comm_cart.rank() << "] New c: " << gridpoint[0] << ","
               << gridpoint[1] << "," << gridpoint[2] << std::endl;
 #endif
+
+    bool valid = check_validity();
+    if (!valid) {
+        if (factor > 0.24) {
+            valid = shift_gridpoint(shift_vector, factor / 2., iteration);
+        }
+    }
+    if (!valid) {
+        gridpoint = old_gp;
+    }
+    return valid;
+}
+
+bool GridBasedGrid::check_validity()
+{
+    const auto cs = cell_size();
+    const auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
+
+    // TODO: check the validity of all 8 Octagons which include the gridpoint.
+    return util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs)
+                     .is_valid();
+
 }
 
 void GridBasedGrid::command(std::string s)
