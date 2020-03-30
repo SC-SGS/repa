@@ -445,18 +445,12 @@ bool GridBasedGrid::repartition(CellMetric m,
     // appears twice in the neighborhood, all do.
     // So we can safely neglect multiple neighbors.
 
-#ifdef GRID_DEBUG
-    std::cout << "[" << comm_cart.rank() << "] Old c: " << gridpoint[0] << ","
-              << gridpoint[1] << "," << gridpoint[2] << std::endl;
-    std::cout << "[" << comm_cart.rank() << "] New c: " << new_c[0] << ","
-              << new_c[1] << "," << new_c[2] << std::endl;
-#endif
-
     // Update gridpoint and gridpoints
     // Currently allgather. Can be done in 64 process neighborhood.
 
     double factor = 1.;
     for (rank_type i = 0; i < 8; i++) {
+        auto old_gp = gridpoint;
         if (proc % 8 == i) {
             for (int d = 0; d < 3; ++d) {
                 // Shift only non-boundary coordinates
@@ -465,6 +459,13 @@ bool GridBasedGrid::repartition(CellMetric m,
                 for (rank_index_type i = 0; i < nneigh; ++i)
                     gridpoint[d] += factor * mu * r[i][d];
             }
+#ifdef GRID_DEBUG
+    std::cout << "[" << comm_cart.rank() << "] Old c: " << old_gp[0] << ","
+              << old_gp[1] << "," << old_gp[2] << std::endl;
+    std::cout << "[" << comm_cart.rank() << "] New c: " << gridpoint[0] << ","
+              << gridpoint[1] << "," << gridpoint[2] << std::endl;
+#endif
+
         }
         auto old_gridpoints = gridpoints;
 
