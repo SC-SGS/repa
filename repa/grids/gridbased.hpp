@@ -139,6 +139,9 @@ private:
     // Returns the center of this subdomain
     Vec3d get_subdomain_center();
 
+    // Checks if the gridpoint should be shifted and shifts it
+    void shiftGridpoint(std::vector<Vec3d> r, double factor, int iteration);
+
     rank_type cart_topology_position_to_rank(Vec3d pos);
 
     // Function returning the subdomain midpoint.

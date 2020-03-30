@@ -430,10 +430,6 @@ bool GridBasedGrid::repartition(CellMetric m,
         r[i] *= (lambda_hat[i] - 1) / len;
     }
 
-    const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
-    const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
-    const rank_type proc = util::mpi_cart_rank(comm_cart, coords);
-
     // Note: Since we do not shift gridpoints over periodic boundaries,
     // f values from periodic neighbors are not considered.
     // (See if condition in above loop.)
@@ -450,23 +446,7 @@ bool GridBasedGrid::repartition(CellMetric m,
 
     double factor = 1.;
     for (rank_type i = 0; i < 8; i++) {
-        auto old_gp = gridpoint;
-        if (proc % 8 == i) {
-            for (int d = 0; d < 3; ++d) {
-                // Shift only non-boundary coordinates
-                if (coords[d] == dims[d] - 1)
-                    continue;
-                for (rank_index_type i = 0; i < nneigh; ++i)
-                    gridpoint[d] += factor * mu * r[i][d];
-            }
-#ifdef GRID_DEBUG
-    std::cout << "[" << comm_cart.rank() << "] Old c: " << old_gp[0] << ","
-              << old_gp[1] << "," << old_gp[2] << std::endl;
-    std::cout << "[" << comm_cart.rank() << "] New c: " << gridpoint[0] << ","
-              << gridpoint[1] << "," << gridpoint[2] << std::endl;
-#endif
-
-        }
+        shift_gridpoint(r, factor, i);
         auto old_gridpoints = gridpoints;
 
         gridpoints.clear();
@@ -510,6 +490,34 @@ bool GridBasedGrid::repartition(CellMetric m,
     reinit();
 
     return true;
+}
+
+void GridBasedGrid::shift_gridpoint(std::vector<Vec3d> r,
+                                   double factor,
+                                   int iteration)
+{
+    const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
+    const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
+    const rank_type proc = util::mpi_cart_rank(comm_cart, coords);
+
+    if (proc % 8 != iteration) {
+        return;
+    }
+
+    auto old_gp = gridpoint;
+    for (int d = 0; d < 3; ++d) {
+        // Shift only non-boundary coordinates
+        if (coords[d] == dims[d] - 1)
+            continue;
+        for (int i = 0; i < r.size(); i++)
+            gridpoint[d] += factor * mu * r[i][d];
+    }
+#ifdef GRID_DEBUG
+    std::cout << "[" << comm_cart.rank() << "] Old c: " << old_gp[0] << ","
+              << old_gp[1] << "," << old_gp[2] << std::endl;
+    std::cout << "[" << comm_cart.rank() << "] New c: " << gridpoint[0] << ","
+              << gridpoint[1] << "," << gridpoint[2] << std::endl;
+#endif
 }
 
 void GridBasedGrid::command(std::string s)
