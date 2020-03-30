@@ -46,6 +46,10 @@ struct TEnv {
 
     static testenv::TEnv default_test_env(repa::ExtraParams ep
                                           = repa::ExtraParams{});
+    static testenv::TEnv custom_test_env(repa::Vec3d box,
+                                         double min_gs,
+                                         repa::ExtraParams ep
+                                         = repa::ExtraParams{});
     ~TEnv();
     TEnv(TEnv &&);
 
@@ -55,6 +59,7 @@ struct TEnv {
 
 private:
     TEnv(repa::ExtraParams ep);
+    TEnv(repa::Vec3d box, double min_gs, repa::ExtraParams ep);
 
     struct TEnv_impl;
     std::unique_ptr<TEnv_impl> te_impl;

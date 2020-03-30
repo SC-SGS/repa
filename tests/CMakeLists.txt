@@ -31,6 +31,7 @@ define_test(NAME test_tetra SRC test_tetra.cpp SINGLEPROC)
 
 
 # Integration tests
+define_test(NAME test_small_grid SRC test_small_grid.cpp SINGLEPROC LIBRARIES testenv)
 define_test(NAME test_grid_types SRC test_grid_types.cpp LIBRARIES testenv)
 define_test(NAME test_repart SRC test_repart.cpp LIBRARIES testenv)
 define_test(NAME test_extra_params SRC test_extra_params.cpp LIBRARIES testenv)

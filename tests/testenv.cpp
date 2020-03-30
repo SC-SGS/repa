@@ -61,6 +61,7 @@ struct TEnv::TEnv_impl {
               repa::Vec3d box,
               double mings,
               repa::ExtraParams ep);
+    TEnv_impl(repa::Vec3d box, double mings, repa::ExtraParams ep);
     TEnv_impl(repa::ExtraParams ep);
 
     void with_repart();
@@ -85,6 +86,11 @@ TEnv::TEnv_impl::TEnv_impl(const boost::mpi::communicator &comm,
       box(std::move(box)),
       mings(mings),
       ep(ep)
+{
+}
+
+TEnv::TEnv_impl::TEnv_impl(repa::Vec3d box, double mings, repa::ExtraParams ep)
+    : box(std::move(box)), mings(mings), ep(ep)
 {
 }
 
@@ -231,9 +237,19 @@ TEnv::TEnv(repa::ExtraParams ep) : te_impl(new TEnv_impl(ep))
 {
 }
 
+TEnv::TEnv(repa::Vec3d box, double min_gs, repa::ExtraParams ep)
+    : te_impl(new TEnv_impl(box, min_gs, ep))
+{
+}
+
 TEnv TEnv::default_test_env(repa::ExtraParams ep)
 {
     return testenv::TEnv{ep};
+}
+
+TEnv TEnv::custom_test_env(repa::Vec3d box, double min_gs, repa::ExtraParams ep)
+{
+    return testenv::TEnv{box, min_gs, ep};
 }
 
 TEnv::~TEnv() = default;
