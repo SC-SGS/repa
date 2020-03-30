@@ -432,6 +432,7 @@ bool GridBasedGrid::repartition(CellMetric m,
 
     const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
+    const rank_type proc = util::mpi_cart_rank(comm_cart, coords);
 
     Vec3d new_c = gridpoint;
     for (int d = 0; d < 3; ++d) {
@@ -462,33 +463,38 @@ bool GridBasedGrid::repartition(CellMetric m,
 
     // Update gridpoint and gridpoints
     // Currently allgather. Can be done in 64 process neighborhood.
-    gridpoint = new_c;
 
-    auto old_gridpoints = gridpoints;
-    gridpoints.clear();
-    boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
-    assert(gridpoints.size() == comm_cart.size());
+    for (rank_type i = 0; i < 8; i++) {
+        if (proc % 8 == i) {
+            gridpoint = new_c;
+        }
+        auto old_gridpoints = gridpoints;
 
-    // Check for admissibility of new grid.
-    // Note: Don't change "my_dom" here in case we decide to reset to the
-    // current state and return false (or, also reset if afterwards).
-    const auto cs = cell_size();
-    const auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
-    int hasConflict
-        = util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs)
-                  .is_valid()
-              ? 0
-              : 1;
-    MPI_Allreduce(MPI_IN_PLACE, &hasConflict, 1, MPI_INT, MPI_SUM, comm_cart);
+        gridpoints.clear();
+        boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
+        assert(gridpoints.size() == comm_cart.size());
 
-    if (hasConflict > 0) {
-        std::cout << "Gridpoint update rejected because of node conflicts."
-                  << std::endl;
-        gridpoints = old_gridpoints;
-        gridpoint = gridpoints[comm_cart.rank()];
-        return false;
+        // Check for admissibility of new grid.
+        // Note: Don't change "my_dom" here in case we decide to reset to the
+        // current state and return false (or, also reset if afterwards).
+        const auto cs = cell_size();
+        const auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
+        int hasConflict
+            = util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs)
+                      .is_valid()
+                  ? 0
+                  : 1;
+        MPI_Allreduce(MPI_IN_PLACE, &hasConflict, 1, MPI_INT, MPI_SUM,
+                      comm_cart);
+
+        if (hasConflict > 0) {
+            std::cout << "Gridpoint update rejected because of node conflicts."
+                      << std::endl;
+            gridpoints = old_gridpoints;
+            gridpoint = gridpoints[comm_cart.rank()];
+            return false;
+        }
     }
-
     is_regular_grid = false;
 
     init_octagons();
