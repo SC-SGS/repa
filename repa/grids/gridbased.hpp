@@ -140,7 +140,7 @@ private:
     Vec3d get_subdomain_center();
 
     // Checks if the gridpoint should be shifted and shifts it
-    void shiftGridpoint(std::vector<Vec3d> r, double factor, int iteration);
+    void shift_gridpoint(Vec3d shift_vector, double factor, int iteration);
 
     rank_type cart_topology_position_to_rank(Vec3d pos);
 

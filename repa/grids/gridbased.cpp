@@ -430,6 +430,12 @@ bool GridBasedGrid::repartition(CellMetric m,
         r[i] *= (lambda_hat[i] - 1) / len;
     }
 
+    Vec3d shift_vector={0.,0.,0.};
+    for (int i = 0; i < nneigh; i++) {
+        shift_vector += r[i];
+    }
+    shift_vector *= mu;
+
     // Note: Since we do not shift gridpoints over periodic boundaries,
     // f values from periodic neighbors are not considered.
     // (See if condition in above loop.)
@@ -446,7 +452,7 @@ bool GridBasedGrid::repartition(CellMetric m,
 
     double factor = 1.;
     for (rank_type i = 0; i < 8; i++) {
-        shift_gridpoint(r, factor, i);
+        shift_gridpoint(shift_vector, factor, i);
         auto old_gridpoints = gridpoints;
 
         gridpoints.clear();
@@ -492,7 +498,7 @@ bool GridBasedGrid::repartition(CellMetric m,
     return true;
 }
 
-void GridBasedGrid::shift_gridpoint(std::vector<Vec3d> r,
+bool GridBasedGrid::shift_gridpoint(Vec3d shift_vector,
                                    double factor,
                                    int iteration)
 {
@@ -509,8 +515,7 @@ void GridBasedGrid::shift_gridpoint(std::vector<Vec3d> r,
         // Shift only non-boundary coordinates
         if (coords[d] == dims[d] - 1)
             continue;
-        for (int i = 0; i < r.size(); i++)
-            gridpoint[d] += factor * mu * r[i][d];
+        gridpoint[d] += shift_vector[d];
     }
 #ifdef GRID_DEBUG
     std::cout << "[" << comm_cart.rank() << "] Old c: " << old_gp[0] << ","
