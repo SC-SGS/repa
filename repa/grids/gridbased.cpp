@@ -256,6 +256,7 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                              : decltype(subdomain_midpoint){std::bind(
                                  &GridBasedGrid::get_subdomain_center, this)})
 {
+    util::tetra::precision = static_cast<int16_t>(10. / min_cell_size);
     init_partitioning();
     reinit();
 }

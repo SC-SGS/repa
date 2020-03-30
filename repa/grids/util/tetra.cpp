@@ -27,6 +27,8 @@ namespace repa {
 namespace util {
 namespace tetra {
 
+int16_t precision = 10;
+
 using Vec3i64 = Vec3<int64_t>;
 
 // Anonymous namespace for internal linkage
