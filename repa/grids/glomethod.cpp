@@ -168,11 +168,6 @@ void GloMethod::init(bool firstcall)
         }
     }
 
-    if (localCells == 0) {
-        throw std::runtime_error(
-            "Bad initial partitioning: No local cells on this process.");
-    }
-
     // Temporary storage for exchange descriptors.
     // Will be filled only for neighbors
     // and moved from later.
