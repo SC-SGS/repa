@@ -116,15 +116,15 @@ void init_part_cartesian1d(
     const auto nglobalcells = gbox.ncells();
     const auto cellgrid = gbox.grid_size();
 
-    Vec3i dims{comm.size(), 1, 1};
-    const __cart_impl::Cart_CellProcessIndexConverter to_procidx{cellgrid,
-                                                                 dims};
+    const double layers_per_proc = cellgrid[0] / comm.size();
 
     for (global_cell_index_type i = 0; i < nglobalcells; ++i) {
-        const auto procidx = to_procidx(util::unlinearize(i, gbox.grid_size()));
-        // 1d partitioning, thus, rank is procidx[0].
-        // Do not use MPI_Cart_rank here, as it is a 3d Cartesian communicator.
-        assign_cell(i, procidx[0]);
+        const int xindex = util::unlinearize(i, gbox.grid_size())[0];
+        // Use std::round to get a more equal distribution.
+        const int procidx
+            = std::min(static_cast<int>(std::round(xindex / layers_per_proc)),
+                       comm.size() - 1);
+        assign_cell(i, procidx);
     }
 }
 
