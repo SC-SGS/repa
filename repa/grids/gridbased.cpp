@@ -430,7 +430,7 @@ bool GridBasedGrid::repartition(CellMetric m,
         r[i] *= (lambda_hat[i] - 1) / len;
     }
 
-    Vec3d shift_vector={0.,0.,0.};
+    Vec3d shift_vector = {0., 0., 0.};
     for (int i = 0; i < nneigh; i++) {
         shift_vector += r[i];
     }
@@ -530,8 +530,7 @@ bool GridBasedGrid::check_validity()
 
     // TODO: check the validity of all 8 Octagons which include the gridpoint.
     return util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs)
-                     .is_valid();
-
+        .is_valid();
 }
 
 void GridBasedGrid::command(std::string s)
