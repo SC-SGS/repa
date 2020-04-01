@@ -511,9 +511,22 @@ bool GridBasedGrid::check_validity()
     const auto cs = cell_size();
     const auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
 
-    // TODO: check the validity of all 8 Octagons which include the gridpoint.
-    return util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs)
-        .is_valid();
+    rank_type dom_r = comm.rank();
+    auto tmp = gridpoints[dom_r];
+    gridpoints[dom_r] = gridpoint;
+
+    bool dom_valid
+        = util::tetra::Octagon(bounding_box(dom_r), max_cs).is_valid();
+    bool n_valid = std::all_of(
+        std::begin(neighbor_ranks), std::end(neighbor_ranks),
+        [this](rank_type r) {
+            auto cs = cell_size();
+            auto max = std::max(std::max(cs[0], cs[1]), cs[2]);
+            return util::tetra::Octagon(bounding_box(r), max).is_valid();
+        });
+    
+    gridpoints[dom_r] = tmp;
+    return dom_valid && n_valid;
 }
 
 void GridBasedGrid::command(std::string s)
