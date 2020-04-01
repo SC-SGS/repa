@@ -479,9 +479,9 @@ bool GridBasedGrid::shift_gridpoint(Vec3d gp,
 {
     const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
-    const rank_type proc = util::mpi_cart_rank(comm_cart, coords);
 
-    if (proc % 8 != iteration) {
+    if (coords[0] % 2 != (iteration & 0x1) || coords[1] % 2 != (iteration & 0x2)
+        || coords[2] % 2 != (iteration & 0x4)) {
         return true;
     }
 
