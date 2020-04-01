@@ -436,11 +436,6 @@ bool GridBasedGrid::repartition(CellMetric m,
     }
     shift_vector *= mu;
 
-    // Note: Since we do not shift gridpoints over periodic boundaries,
-    // f values from periodic neighbors are not considered.
-    // (See if condition in above loop.)
-    // Therefore, they do not need periodic mirroring.
-
     // Note 2: We do not need to consider neighbors multiple times even
     // if two processes neighbor themselves along multiple boundaries.
     // We have a Cartesian grid. That means that if a process
@@ -452,29 +447,21 @@ bool GridBasedGrid::repartition(CellMetric m,
 
     double factor = 1.;
     for (rank_type i = 0; i < 8; i++) {
-        shift_gridpoint(shift_vector, factor, i);
         auto old_gridpoints = gridpoints;
+
+        auto old_gp = gridpoint;
+        bool hasConflict = !shift_gridpoint(old_gp, shift_vector, factor, i);
+        while (hasConflict && (factor > 0.2)) {
+            factor /= 2.;
+            hasConflict = !shift_gridpoint(old_gp, shift_vector, factor, i);
+        }
+        if (hasConflict) {
+            gridpoint = old_gp;
+        }
 
         gridpoints.clear();
         boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
         assert(gridpoints.size() == comm_cart.size());
-
-        // Check for admissibility of new grid.
-        // Note: Don't change "my_dom" here in case we decide to reset to the
-        // current state and return false (or, also reset if afterwards).
-        int hasConflict = check_validity() ? 0 : 1;
-        MPI_Allreduce(MPI_IN_PLACE, &hasConflict, 1, MPI_INT, MPI_SUM,
-                      comm_cart);
-
-        if (hasConflict > 0) {
-            std::cout << "Gridpoint update rejected because of node conflicts."
-                      << std::endl;
-            gridpoints = old_gridpoints;
-            gridpoint = gridpoints[comm_cart.rank()];
-        }
-        else {
-            factor = 1.;
-        }
     }
     is_regular_grid = false;
 
@@ -485,7 +472,8 @@ bool GridBasedGrid::repartition(CellMetric m,
     return true;
 }
 
-bool GridBasedGrid::shift_gridpoint(Vec3d shift_vector,
+bool GridBasedGrid::shift_gridpoint(Vec3d gp,
+                                    Vec3d shift_vector,
                                     double factor,
                                     int iteration)
 {
@@ -497,30 +485,25 @@ bool GridBasedGrid::shift_gridpoint(Vec3d shift_vector,
         return true;
     }
 
-    auto old_gp = gridpoint;
+    // Note: Since we do not shift gridpoints over periodic boundaries,
+    // f values from periodic neighbors are not considered.
+    // Therefore, they do not need periodic mirroring.
     for (int d = 0; d < 3; ++d) {
         // Shift only non-boundary coordinates
         if (coords[d] == dims[d] - 1)
             continue;
-        gridpoint[d] += shift_vector[d];
+        gp[d] += shift_vector[d];
     }
+
 #ifdef GRID_DEBUG
-    std::cout << "[" << comm_cart.rank() << "] Old c: " << old_gp[0] << ","
-              << old_gp[1] << "," << old_gp[2] << std::endl;
-    std::cout << "[" << comm_cart.rank() << "] New c: " << gridpoint[0] << ","
+    std::cout << "[" << comm_cart.rank() << "] Old c: " << gridpoint[0] << ","
               << gridpoint[1] << "," << gridpoint[2] << std::endl;
+    std::cout << "[" << comm_cart.rank() << "] New c: " << gp[0] << "," << gp[1]
+              << "," << gp[2] << std::endl;
 #endif
 
-    bool valid = check_validity();
-    if (!valid) {
-        if (factor > 0.24) {
-            valid = shift_gridpoint(shift_vector, factor / 2., iteration);
-        }
-    }
-    if (!valid) {
-        gridpoint = old_gp;
-    }
-    return valid;
+    gridpoint = gp;
+    return check_validity();
 }
 
 bool GridBasedGrid::check_validity()
