@@ -481,6 +481,9 @@ bool GridBasedGrid::repartition(CellMetric m,
     const std::vector<rank_type> domains_to_check
         = util::mpi_directed_neighbors(neighcomm).first;
 
+    // Colored shifting scheme to avoid multiple node conflicts at once,
+    // according to:
+    // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
     for (int color = 0; color < 8; color++) {
         if (coords[0] % 2 == (color & 0x1) && coords[1] % 2 == (color & 0x2)
             && coords[2] % 2 == (color & 0x4)) {
