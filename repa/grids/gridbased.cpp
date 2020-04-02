@@ -524,7 +524,7 @@ bool GridBasedGrid::check_validity()
             auto max = std::max(std::max(cs[0], cs[1]), cs[2]);
             return util::tetra::Octagon(bounding_box(r), max).is_valid();
         });
-    
+
     gridpoints[dom_r] = tmp;
     return dom_valid && n_valid;
 }
