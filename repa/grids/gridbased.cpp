@@ -390,9 +390,10 @@ Vec3d GridBasedGrid::get_subdomain_center()
     return c / static_cast<double>(n_local_cells());
 }
 
-bool GridBasedGrid::repartition(CellMetric m,
-                                CellCellMetric ccm,
-                                Thunk exchange_start_callback)
+static Vec3d calc_shift(double local_load,
+                        Vec3d subdomain_midpoint,
+                        Vec3d cur_gridpoint,
+                        MPI_Comm neighcomm)
 {
     using namespace util::vector_arithmetic;
 
@@ -400,12 +401,8 @@ bool GridBasedGrid::repartition(CellMetric m,
     // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
     const rank_index_type nneigh
         = util::mpi_undirected_neighbor_count(neighcomm);
-    const auto weights = m();
-    assert(weights.size() == n_local_cells());
-
-    const double lambda_p
-        = std::accumulate(std::begin(weights), std::end(weights), 0.0);
-    const auto r_p = this->subdomain_midpoint();
+    const double lambda_p = local_load;
+    const auto r_p = subdomain_midpoint;
 
     std::vector<double> lambda(nneigh);
     MPI_Neighbor_allgather(&lambda_p, 1, MPI_DOUBLE, lambda.data(), 1,
@@ -424,23 +421,43 @@ bool GridBasedGrid::repartition(CellMetric m,
 
     for (rank_index_type i = 0; i < nneigh; ++i) {
         // Form "u"
-        r[i] -= gridpoint;
+        r[i] -= cur_gridpoint;
         const double len = util::norm2(r[i]);
         // Form "f"
         r[i] *= (lambda_hat[i] - 1) / len;
     }
 
-    Vec3d shift_vector = {0., 0., 0.};
-    for (int i = 0; i < nneigh; i++) {
-        shift_vector += r[i];
-    }
-    shift_vector *= mu;
-
-    // Note 2: We do not need to consider neighbors multiple times even
+    // Note: We do not need to consider neighbors multiple times even
     // if two processes neighbor themselves along multiple boundaries.
     // We have a Cartesian grid. That means that if a process
     // appears twice in the neighborhood, all do.
     // So we can safely neglect multiple neighbors.
+
+    Vec3d shift_vector = {0., 0., 0.};
+    for (int i = 0; i < nneigh; i++) {
+        shift_vector += r[i];
+    }
+
+    return shift_vector;
+}
+
+bool GridBasedGrid::repartition(CellMetric m,
+                                CellCellMetric ccm,
+                                Thunk exchange_start_callback)
+{
+    using namespace util::vector_arithmetic;
+
+    // The node displacement is calculated according to
+    // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
+    const auto weights = m();
+    assert(weights.size() == n_local_cells());
+
+    const double lambda_p
+        = std::accumulate(std::begin(weights), std::end(weights), 0.0);
+    const auto r_p = this->subdomain_midpoint();
+
+    auto shift_vector = calc_shift(lambda_p, r_p, gridpoint, neighcomm);
+    shift_vector *= mu;
 
     // Update gridpoint and gridpoints
     // Currently allgather. Can be done in 64 process neighborhood.
