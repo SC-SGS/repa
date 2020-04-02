@@ -517,8 +517,19 @@ bool GridBasedGrid::check_validity()
 
     bool dom_valid
         = util::tetra::Octagon(bounding_box(dom_r), max_cs).is_valid();
+
+    std::vector<rank_type> iterate_over_n {};
+    if(n_neighbors()==26){
+        std::array<rank_type,7> indices_we_want{{14,16,17,22,23,25,26}};
+        for (const rank_type index : indices_we_want)
+        {
+            iterate_over_n.push_back(neighbor_idx[index]);
+        }
+    } else {
+        iterate_over_n = neighbor_ranks;
+    }
     bool n_valid = std::all_of(
-        std::begin(neighbor_ranks), std::end(neighbor_ranks),
+        std::begin(iterate_over_n), std::end(iterate_over_n),
         [this](rank_type r) {
             auto cs = cell_size();
             auto max = std::max(std::max(cs[0], cs[1]), cs[2]);
