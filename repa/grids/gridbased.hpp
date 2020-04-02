@@ -139,11 +139,8 @@ private:
     // Returns the center of this subdomain
     Vec3d get_subdomain_center();
 
-    // Checks if the gridpoint should be shifted and shifts it
-    bool shift_gridpoint(Vec3d gp, Vec3d shift_vector, double factor, int iter);
-
     // Check if shifted gridpoint is valid
-    bool check_validity();
+    bool check_validity_of_subdomains(const std::vector<rank_type>&);
 
     rank_type cart_topology_position_to_rank(Vec3d pos);
 

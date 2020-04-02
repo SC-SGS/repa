@@ -441,66 +441,13 @@ static Vec3d calc_shift(double local_load,
     return shift_vector;
 }
 
-bool GridBasedGrid::repartition(CellMetric m,
-                                CellCellMetric ccm,
-                                Thunk exchange_start_callback)
-{
-    using namespace util::vector_arithmetic;
-
-    // The node displacement is calculated according to
-    // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
-    const auto weights = m();
-    assert(weights.size() == n_local_cells());
-
-    const double lambda_p
-        = std::accumulate(std::begin(weights), std::end(weights), 0.0);
-    const auto r_p = this->subdomain_midpoint();
-
-    auto shift_vector = calc_shift(lambda_p, r_p, gridpoint, neighcomm);
-    shift_vector *= mu;
-
-    // Update gridpoint and gridpoints
-    // Currently allgather. Can be done in 64 process neighborhood.
-
-    double factor = 1.;
-    for (rank_type i = 0; i < 8; i++) {
-        auto old_gridpoints = gridpoints;
-
-        auto old_gp = gridpoint;
-        bool hasConflict = !shift_gridpoint(old_gp, shift_vector, factor, i);
-        while (hasConflict && (factor > 0.2)) {
-            factor /= 2.;
-            hasConflict = !shift_gridpoint(old_gp, shift_vector, factor, i);
-        }
-        if (hasConflict) {
-            gridpoint = old_gp;
-        }
-
-        gridpoints.clear();
-        boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
-        assert(gridpoints.size() == comm_cart.size());
-    }
-    is_regular_grid = false;
-
-    init_octagons();
-    exchange_start_callback();
-    reinit();
-
-    return true;
-}
-
-bool GridBasedGrid::shift_gridpoint(Vec3d gp,
-                                    Vec3d shift_vector,
-                                    double factor,
-                                    int iteration)
+static Vec3d shift_gridpoint(Vec3d gp,
+                             Vec3d shift_vector,
+                             double factor,
+                             const boost::mpi::communicator &comm_cart)
 {
     const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
-
-    if (coords[0] % 2 != (iteration & 0x1) || coords[1] % 2 != (iteration & 0x2)
-        || coords[2] % 2 != (iteration & 0x4)) {
-        return true;
-    }
 
     // Note: Since we do not shift gridpoints over periodic boundaries,
     // f values from periodic neighbors are not considered.
@@ -512,49 +459,74 @@ bool GridBasedGrid::shift_gridpoint(Vec3d gp,
         gp[d] += shift_vector[d];
     }
 
-#ifdef GRID_DEBUG
-    std::cout << "[" << comm_cart.rank() << "] Old c: " << gridpoint[0] << ","
-              << gridpoint[1] << "," << gridpoint[2] << std::endl;
-    std::cout << "[" << comm_cart.rank() << "] New c: " << gp[0] << "," << gp[1]
-              << "," << gp[2] << std::endl;
-#endif
-
-    gridpoint = gp;
-    return check_validity();
+    return gp;
 }
 
-bool GridBasedGrid::check_validity()
+bool GridBasedGrid::repartition(CellMetric m,
+                                CellCellMetric ccm,
+                                Thunk exchange_start_callback)
+{
+    using namespace util::vector_arithmetic;
+
+    const auto weights = m();
+    assert(weights.size() == n_local_cells());
+
+    const double lambda_p
+        = std::accumulate(std::begin(weights), std::end(weights), 0.0);
+    const auto r_p = this->subdomain_midpoint();
+
+    auto shift_vector = calc_shift(lambda_p, r_p, gridpoint, neighcomm);
+
+    const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
+    const std::vector<rank_type> domains_to_check
+        = util::mpi_directed_neighbors(neighcomm).first;
+
+    for (int color = 0; color < 8; color++) {
+        if (coords[0] % 2 == (color & 0x1) && coords[1] % 2 == (color & 0x2)
+            && coords[2] % 2 == (color & 0x4)) {
+
+            double neighborhood_valid = false;
+            for (double factor = 1.0; !neighborhood_valid && factor > .2;
+                 factor /= 2.) {
+                gridpoints[comm_cart.rank()] = shift_gridpoint(
+                    gridpoint, shift_vector, mu * factor, comm_cart);
+                neighborhood_valid
+                    = check_validity_of_subdomains(domains_to_check);
+            }
+            // Restore old info in "gridpoints" vector or accept new gridpoint
+            if (neighborhood_valid)
+                gridpoint = gridpoints[comm_cart.rank()];
+            else
+                gridpoints[comm_cart.rank()] = gridpoint;
+        }
+
+        // Update gridpoint and gridpoints
+        // Currently allgather. Structly, only the changed gridpoints need to be
+        // communicated
+        gridpoints.clear();
+        boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
+        assert(gridpoints.size() == comm_cart.size());
+    }
+
+    is_regular_grid = false;
+
+    init_octagons();
+    exchange_start_callback();
+    reinit();
+
+    return true;
+}
+
+bool GridBasedGrid::check_validity_of_subdomains(
+    const std::vector<rank_type> &ranks)
 {
     const auto cs = cell_size();
     const auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
 
-    rank_type dom_r = comm.rank();
-    auto tmp = gridpoints[dom_r];
-    gridpoints[dom_r] = gridpoint;
-
-    bool dom_valid
-        = util::tetra::Octagon(bounding_box(dom_r), max_cs).is_valid();
-
-    std::vector<rank_type> iterate_over_n{};
-    if (n_neighbors() == 26) {
-        std::array<rank_type, 7> indices_we_want{{14, 16, 17, 22, 23, 25, 26}};
-        for (const rank_type index : indices_we_want) {
-            iterate_over_n.push_back(neighbor_idx[index]);
-        }
-    }
-    else {
-        iterate_over_n = neighbor_ranks;
-    }
-    bool n_valid = std::all_of(
-        std::begin(iterate_over_n), std::end(iterate_over_n),
-        [this](rank_type r) {
-            auto cs = cell_size();
-            auto max = std::max(std::max(cs[0], cs[1]), cs[2]);
-            return util::tetra::Octagon(bounding_box(r), max).is_valid();
+    return std::all_of(
+        std::begin(ranks), std::end(ranks), [max_cs, this](rank_type r) {
+            return util::tetra::Octagon(bounding_box(r), max_cs).is_valid();
         });
-
-    gridpoints[dom_r] = tmp;
-    return dom_valid && n_valid;
 }
 
 void GridBasedGrid::command(std::string s)
