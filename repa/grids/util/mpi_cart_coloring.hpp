@@ -51,7 +51,7 @@ struct independent_process_sets {
             if (_coords[0] % 2 == !!(color & 0x1)
                 && _coords[1] % 2 == !!(color & 0x2)
                 && _coords[2] % 2 == !!(color & 0x4)) {
-                    _round_func();
+                _round_func();
             }
             _after_func();
         }

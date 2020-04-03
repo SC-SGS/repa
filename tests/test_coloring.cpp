@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE(test_coloring)
 
     if (comm_cart.rank() == 0) {
         std::cout << "Colors:";
-        for (auto c: colors)
+        for (auto c : colors)
             std::cout << " " << c;
         std::cout << std::endl;
     }

@@ -478,7 +478,7 @@ bool GridBasedGrid::repartition(CellMetric m,
 
     auto shift_vector = calc_shift(lambda_p, r_p, gridpoint, neighcomm);
 
-    //const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
+    // const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
     const std::vector<rank_type> domains_to_check
         = util::mpi_directed_neighbors(neighcomm).first;
 
