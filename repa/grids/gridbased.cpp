@@ -26,6 +26,7 @@
 #include <regex>
 
 #include "util/mpi_cart.hpp"
+#include "util/mpi_cart_coloring.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/push_back_unique.hpp"
 #include "util/vdist.hpp"
@@ -477,13 +478,38 @@ bool GridBasedGrid::repartition(CellMetric m,
 
     auto shift_vector = calc_shift(lambda_p, r_p, gridpoint, neighcomm);
 
-    const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
+    //const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
     const std::vector<rank_type> domains_to_check
         = util::mpi_directed_neighbors(neighcomm).first;
 
     // Colored shifting scheme to avoid multiple node conflicts at once,
     // according to:
     // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
+    util::independent_process_sets(comm_cart)
+        .for_each([&]() {
+            double neighborhood_valid = false;
+            for (double factor = 1.0; !neighborhood_valid && factor > .2;
+                 factor /= 2.) {
+                gridpoints[comm_cart.rank()] = shift_gridpoint(
+                    gridpoint, shift_vector, mu * factor, comm_cart);
+                neighborhood_valid
+                    = check_validity_of_subdomains(domains_to_check);
+            }
+            // Restore old info in "gridpoints" vector or accept new gridpoint
+            if (neighborhood_valid)
+                gridpoint = gridpoints[comm_cart.rank()];
+            else
+                gridpoints[comm_cart.rank()] = gridpoint;
+        })
+        .for_all_after_each_round([&]() {
+            // Update gridpoint and gridpoints
+            // Currently allgather. Structly, only the changed gridpoints need
+            // to be communicated
+            gridpoints.clear();
+            boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
+            assert(gridpoints.size() == comm_cart.size());
+        })();
+/*
     for (int color = 0; color < 8; color++) {
         if (coords[0] % 2 == (color & 0x1) && coords[1] % 2 == (color & 0x2)
             && coords[2] % 2 == (color & 0x4)) {
@@ -510,7 +536,7 @@ bool GridBasedGrid::repartition(CellMetric m,
         boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
         assert(gridpoints.size() == comm_cart.size());
     }
-
+*/
     is_regular_grid = false;
 
     init_octagons();
