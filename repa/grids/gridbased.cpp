@@ -509,34 +509,7 @@ bool GridBasedGrid::repartition(CellMetric m,
             boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
             assert(gridpoints.size() == comm_cart.size());
         })();
-/*
-    for (int color = 0; color < 8; color++) {
-        if (coords[0] % 2 == (color & 0x1) && coords[1] % 2 == (color & 0x2)
-            && coords[2] % 2 == (color & 0x4)) {
 
-            double neighborhood_valid = false;
-            for (double factor = 1.0; !neighborhood_valid && factor > .2;
-                 factor /= 2.) {
-                gridpoints[comm_cart.rank()] = shift_gridpoint(
-                    gridpoint, shift_vector, mu * factor, comm_cart);
-                neighborhood_valid
-                    = check_validity_of_subdomains(domains_to_check);
-            }
-            // Restore old info in "gridpoints" vector or accept new gridpoint
-            if (neighborhood_valid)
-                gridpoint = gridpoints[comm_cart.rank()];
-            else
-                gridpoints[comm_cart.rank()] = gridpoint;
-        }
-
-        // Update gridpoint and gridpoints
-        // Currently allgather. Structly, only the changed gridpoints need to be
-        // communicated
-        gridpoints.clear();
-        boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
-        assert(gridpoints.size() == comm_cart.size());
-    }
-*/
     is_regular_grid = false;
 
     init_octagons();
