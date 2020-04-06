@@ -1,6 +1,7 @@
 
 /**
- * Copyright 2017-2019 Steffen Hirschmann
+ * Copyright 2017-2020 Steffen Hirschmann
+ * Copyright 2020 Benjamin Vier
  *
  * This file is part of Repa.
  *
@@ -59,9 +60,9 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
     // (c0 - 1, c1 - 1, c2 - 1) lower left front corner
     // In total the set: {c0, c0 - 1} x {c1, c1 - 1} x {c2, c2 - 1}
     Vec3i off;
-    for (off[0] = 0; off[0] <= 1; ++off[0]) {
+    for (off[2] = 0; off[2] <= 1; ++off[2]) {
         for (off[1] = 0; off[1] <= 1; ++off[1]) {
-            for (off[2] = 0; off[2] <= 1; ++off[2]) {
+            for (off[0] = 0; off[0] <= 1; ++off[0]) {
                 using namespace util::vector_arithmetic;
                 Vec3i nc = (coord - off) % dims;
                 rank_type proc = util::mpi_cart_rank(comm_cart, nc);
@@ -164,14 +165,7 @@ void GridBasedGrid::reinit()
     for (global_cell_index_type i = 0; i < gbox.ncells(); ++i) {
         auto midpoint = gbox.midpoint(i);
 
-        // We use "position_to_rank" here.
-        // Note that .contains() can be true for several octagons (see
-        // comment in "position_to_rank"). Hence, we use position_to_rank
-        // as tie-breaker.
-        // We, however, use my_dom.contains() here as a guard so
-        // "position_to_rank" does not throw.
-        if (my_dom.contains(midpoint)
-            && position_to_rank(midpoint) == comm.rank()) {
+        if (my_dom.contains(midpoint)) {
             cells.push_back(i);
             global_to_local[i] = nlocalcells;
             nlocalcells++;
@@ -262,6 +256,7 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                              : decltype(subdomain_midpoint){std::bind(
                                  &GridBasedGrid::get_subdomain_center, this)})
 {
+    util::tetra::precision = static_cast<int16_t>(10. / min_cell_size);
     init_partitioning();
     reinit();
 }
@@ -319,11 +314,22 @@ local_cell_index_type GridBasedGrid::position_to_cell_index(Vec3d pos)
 
 rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
 {
-    using namespace util::vector_arithmetic;
-    Vec3i grid_coord
-        = vec_clamp(static_cast_vec<Vec3i>(pos / (box_l / node_grid)),
-                    constant_vec3(0), node_grid - 1);
-    return util::mpi_cart_rank(comm_cart, grid_coord);
+    // Cache the octagons for each process.
+    // They become invalid after the first repartitioning.
+    // DO NOT CALL this function then.
+    assert(is_regular_grid);
+
+    static std::map<rank_type, util::tetra::Octagon> all_octs;
+    for (rank_type i = 0; i < comm_cart.size(); ++i) {
+        if (all_octs.find(i) == std::end(all_octs))
+            all_octs[i] = util::tetra::Octagon(bounding_box(i));
+
+        if (all_octs[i].contains(pos))
+            return i;
+    }
+
+    throw std::domain_error(
+        "Position globally unknown. This is a bug, please report it.");
 }
 
 rank_type GridBasedGrid::position_to_rank(Vec3d pos)
@@ -331,32 +337,27 @@ rank_type GridBasedGrid::position_to_rank(Vec3d pos)
     // Cell ownership is based on the cell midpoint.
     const auto mp = gbox.midpoint(gbox.cell_at_pos(pos));
 
-    if (is_regular_grid)
-        return cart_topology_position_to_rank(mp);
+    // Directly invoked lambda expression to prohibit use of "pos" in future
+    // changes. Resolving must be done for "mp".
+    return [this](Vec3d mp) {
+        // .contains() is mutually exclusive. The expectation is that most
+        // queried positions belong to this node, so check it first. The order
+        // of the neighbors is not relevant.
+        if (my_dom.contains(mp))
+            return comm.rank();
 
-    // Cell ownerership is not uniquely determined by .contains()
-    // because this function also accepts points on the boundary of an octagon.
-    //
-    // We simply define the owner to be the one with the lowest rank
-    // among all processes where .contains() evaluates to true.
-    //
-    // Note, that neighbor_ranks is ordered by rank.
-    rank_index_type i;
-    for (i = 0; i < n_neighbors() && neighbor_ranks[i] < comm.rank(); ++i) {
-        if (neighbor_doms[i].contains(mp))
-            return neighbor_ranks[i];
-    }
+        for (rank_index_type i = 0; i < n_neighbors(); ++i) {
+            if (neighbor_doms[i].contains(mp))
+                return neighbor_ranks[i];
+        }
 
-    if (my_dom.contains(mp))
-        return comm.rank();
+        if (is_regular_grid)
+            return cart_topology_position_to_rank(mp);
 
-    for (; i < n_neighbors(); ++i) {
-        if (neighbor_doms[i].contains(mp))
-            return neighbor_ranks[i];
-    }
-
-    throw std::domain_error("Position unknown. Possibly a position outside of "
-                            "the neighborhood of this process.");
+        throw std::domain_error(
+            "Position unknown. Possibly a position outside of "
+            "the neighborhood of this process.");
+    }(mp);
 }
 
 rank_index_type GridBasedGrid::position_to_neighidx(Vec3d pos)
@@ -470,28 +471,20 @@ bool GridBasedGrid::repartition(CellMetric m,
     assert(gridpoints.size() == comm_cart.size());
 
     // Check for admissibility of new grid.
-    // We do not constrain the grid cells to be convex.
-    // But the bare minimum that we have to enforce is that grid points do
-    // not collide with each other.
-
+    // Note: Don't change "my_dom" here in case we decide to reset to the
+    // current state and return false (or, also reset if afterwards).
     const auto cs = cell_size();
-    auto min_cell_size = std::min(std::min(cs[0], cs[1]), cs[2]);
+    const auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
+    int hasConflict
+        = util::tetra::Octagon(bounding_box(comm_cart.rank()), max_cs)
+                  .is_valid()
+              ? 0
+              : 1;
+    MPI_Allreduce(MPI_IN_PLACE, &hasConflict, 1, MPI_INT, MPI_SUM, comm_cart);
 
-    int nconflicts = 0;
-
-    auto bb = bounding_box(comm_cart.rank());
-
-    for (size_t i = 0; i < bb.size(); ++i)
-        for (size_t j = i + 1; j < bb.size(); ++j)
-            if (util::dist2(bb[i], bb[j]) < 2 * min_cell_size)
-                nconflicts++;
-
-    MPI_Allreduce(MPI_IN_PLACE, &nconflicts, 1, MPI_INT, MPI_SUM, comm_cart);
-
-    if (nconflicts > 0) {
+    if (hasConflict > 0) {
         std::cout << "Gridpoint update rejected because of node conflicts."
                   << std::endl;
-        assert(0);
         gridpoints = old_gridpoints;
         gridpoint = gridpoints[comm_cart.rank()];
         return false;

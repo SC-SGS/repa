@@ -1,6 +1,7 @@
 
 /**
- * Copyright 2017-2019 Steffen Hirschmann
+ * Copyright 2017-2020 Steffen Hirschmann
+ * Copyright 2020 Benjamin Vier
  *
  * This file is part of Repa.
  *
@@ -27,23 +28,28 @@ namespace repa {
 namespace util {
 namespace tetra {
 
-namespace __detail {
 // Opaque struct to reduce compile times on inclusion site
 struct _Octagon_Impl;
-} // namespace __detail
+
+extern int16_t precision;
 
 struct Octagon {
     Octagon();
-    Octagon(const std::array<Vec3d, 8> &vertices);
+    Octagon(const std::array<Vec3d, 8> &vertices, double max_cutoff = 0.0);
     Octagon(const Octagon &o) = delete;
     Octagon(Octagon &&o);
     ~Octagon();
     void operator=(Octagon o);
 
+    /** Returns if this Octagon is valid and can be handled internally by this
+     * module. Can only be called if a "max_cutoff" was passed to the
+     * destructor. Otherwise, will throw a runtime_error.
+     */
+    bool is_valid() const;
     bool contains(const Vec3d &p) const;
 
 private:
-    std::unique_ptr<__detail::_Octagon_Impl> oi;
+    std::unique_ptr<_Octagon_Impl> oi;
 
     friend void swap(Octagon &, Octagon &);
 };

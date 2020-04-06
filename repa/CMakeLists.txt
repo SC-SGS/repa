@@ -22,7 +22,9 @@ set(repa_SRC
     grids/psdiffusion.cpp
     grids/diff_variants.cpp
     grids/cart.cpp
+    grids/gridbased.cpp
     grids/util/neighbor_offsets.cpp
+    grids/util/tetra.cpp
     grid_types.cpp
     pargrid_factory.cpp
     pargrid.cpp
@@ -33,13 +35,6 @@ if(WITH_KDPART AND KDPART_FOUND)
       ${repa_SRC}
       grids/kd_tree.cpp)
 endif(WITH_KDPART AND KDPART_FOUND)
-
-if(WITH_CGAL AND CGAL_FOUND)
-  set(repa_SRC
-      ${repa_SRC}
-      grids/util/tetra.cpp
-      grids/gridbased.cpp)
-endif(WITH_CGAL AND CGAL_FOUND)
 
 if(WITH_P4EST AND P4EST_FOUND)
   set(repa_SRC
@@ -69,12 +64,6 @@ if(WITH_KDPART AND KDPART_FOUND)
   target_link_libraries(repa PRIVATE ${KDPART_LIBRARIES})
   add_definitions(-DHAVE_KDPART)
 endif(WITH_KDPART AND KDPART_FOUND)
-
-if(WITH_CGAL AND CGAL_FOUND)
-  target_include_directories(repa PRIVATE ${CGAL_INCLUDE_DIR})
-  target_link_libraries(repa PRIVATE CGAL::CGAL)
-  add_definitions(-DHAVE_CGAL)
-endif(WITH_CGAL AND CGAL_FOUND)
 
 if(WITH_P4EST AND P4EST_FOUND)
   target_include_directories(repa PRIVATE ${P4EST_INCLUDE_DIR})

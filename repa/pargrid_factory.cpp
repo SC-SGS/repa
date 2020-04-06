@@ -21,12 +21,10 @@
 #include "grids/cart.hpp"
 #include "grids/diffusion.hpp"
 #include "grids/psdiffusion.hpp"
+#include "grids/gridbased.hpp"
 #ifdef HAVE_PARMETIS
 #include "grids/graph.hpp"
 #include "grids/hybrid-gp-diff.hpp"
-#endif
-#ifdef HAVE_CGAL
-#include "grids/gridbased.hpp"
 #endif
 #ifdef HAVE_KDPART
 #include "grids/kd_tree.hpp"
@@ -95,11 +93,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         break;
 
     case GridType::GRIDBASED:
-#ifdef HAVE_CGAL
         r = new GridBasedGrid(comm, box_size, min_cell_size, ep);
-#else
-        throw std::invalid_argument("Librepa not compiled with CGAL support");
-#endif
         break;
 
     default:
