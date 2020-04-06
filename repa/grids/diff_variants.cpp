@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2019 The repa authors
+ * Copyright 2017-2020 The repa authors
  *
  * This file is part of Repa.
  *
@@ -161,7 +161,7 @@ SOFVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
 
     std::vector<double> deficiency(nneigh);
 
-    double alpha = 1. / nneigh;
+    double alpha = 1.0 / nneigh;
 
     // Exchange load in local neighborhood
     std::vector<double> neighloads(nneigh);

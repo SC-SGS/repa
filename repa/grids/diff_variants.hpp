@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2019 The repa authors
+ * Copyright 2017-2020 The repa authors
  *
  * This file is part of Repa.
  *
@@ -43,9 +43,26 @@ template <typename T>
 using PerNeighbor = std::vector<T>;
 
 struct FlowCalculator {
-    virtual PerNeighbor<double> compute_flow(boost::mpi::communicator,
-                                             const std::vector<rank_type> &,
-                                             double) const = 0;
+    /*
+     * Determines the status of each process (underloaded, overloaded)
+     * in the neighborhood given the local load and returns the volume of load
+     * to send to each neighbor. On underloaded processes, returns a vector of
+     * zeros.
+     *
+     * This call is collective on neighcomm.
+     *
+     * @param neighcomm Graph communicator which reflects the neighbor
+     * relationship amongst processes (undirected edges), without edges to the
+     *                  process itself.
+     * @param neighbors The ranks of the neighbors of the calling process.
+     * @param load The load of the calling process.
+     * @returns Vector of load values ordered according to the neighborhood
+     *          ordering in neighcomm.
+     */
+    virtual PerNeighbor<double>
+    compute_flow(boost::mpi::communicator neighcomm,
+                 const std::vector<rank_type> &neighbors,
+                 double load) const = 0;
 };
 
 struct FlowIterSetter {
@@ -65,29 +82,26 @@ struct BetaValueSetter {
         ->set_beta_value(beta_value)
 
 /*
- * Determines the status of each process (underloaded, overloaded)
- * in the neighborhood given the local load and returns the volume of load
- * to send to each neighbor. On underloaded processes, returns a vector of
- * zeros.
- *
- * This call is collective on neighcomm.
- *
- * Default implementation follows [Willebeek Le Mair and Reeves, IEEE Tr.
- * Par. Distr. Sys. 4(9), Sep 1993] propose
- *
- * @param neighcomm Graph communicator which reflects the neighbor
- * relationship amongst processes (undirected edges), without edges to the
- *                  process itself.
- * @param load The load of the calling process.
- * @returns Vector of load values ordered according to the neighborhood
- *          ordering in neighcomm.
+ * This implementation follows [Willebeek Le Mair and Reeves, IEEE Tr. Par.
+ * Distr. Sys. 4(9), Sep 1993] propose.
  */
 struct WLMVolumeComputation : public FlowCalculator {
-    PerNeighbor<double> compute_flow(boost::mpi::communicator neighcomm,
-                                     const std::vector<rank_type> &neighbors,
-                                     double load) const override;
+    virtual PerNeighbor<double>
+    compute_flow(boost::mpi::communicator neighcomm,
+                 const std::vector<rank_type> &neighbors,
+                 double load) const override;
 };
 
+/*
+ * This implementation follows [Florian Schornbaum and Ulrich Rüde, SIAM J. Sci.
+ * Comput., 40(3), C358–C387.] propose.
+ *
+ * Flow will be set with set_n_flow_iter(uint32_t nflow_iter), by using
+ * dd.command("set flow_count 15")
+ * Flow Default is 1. (results in using [Cybenko, Journal of Parallel and
+ * Distributed Computing Volume 7, Issue 2, October 1989, Pages 279-301]
+ * propose.)
+ */
 struct SchornVolumeComputation : public FlowCalculator, public FlowIterSetter {
     virtual PerNeighbor<double>
     compute_flow(boost::mpi::communicator neighcomm,
@@ -99,6 +113,14 @@ protected:
     uint32_t _nflow_iter = 1;
 };
 
+/*
+ * This implementation follows [Muthukrishnan, Ghosh and Schultz, Theory of
+ * Computing Systems volume 31, pages331–354(1998)] propose.
+ *
+ * Beta will be set with set_beta_value(double beta_value), by using
+ * dd.command("set beta <value>")
+ * Beta Default: 1.8
+ */
 struct SOVolumeComputation : public FlowCalculator, public BetaValueSetter {
     virtual PerNeighbor<double>
     compute_flow(boost::mpi::communicator neighcomm,
@@ -114,6 +136,19 @@ private:
     mutable std::unordered_map<rank_type, double> _prev_deficiency;
 };
 
+/*
+ * This implementation follows [Muthukrishnan, Ghosh and Schultz, Theory of
+ * Computing Systems volume 31, pages331–354(1998)] propose with a minor change.
+ *
+ * Beta will be set with set_beta_value(double beta_value), by using
+ * dd.command("set beta <value>")
+ * Beta Default: 1.8
+ *
+ * The change is that in each repartition step the flow calculation can be
+ * iterated by setting the flow variable using the method set_n_flow_iter.
+ * This method will be called when using dd.command("set flow_count 15").
+ * Flow Default is 1.
+ */
 struct SOFVolumeComputation : public FlowCalculator,
                               public FlowIterSetter,
                               public BetaValueSetter {

@@ -72,7 +72,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         r = new Diffusion(comm, box_size, min_cell_size);
         break;
 
-    case GridType::PSDIFF:
+    case GridType::PS_DIFF:
         r = new PSDiffusion(comm, box_size, min_cell_size);
         break;
 

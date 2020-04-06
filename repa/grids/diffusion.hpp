@@ -99,7 +99,7 @@ private:
     friend struct HybridGPDiff; // Needs access to "partition" vector
 
     std::unique_ptr<diff_variants::FlowCalculator> flow_calc;
-    bool profitCheck = true;
+    double profit_percentage_pass_through = 1.0;
 
     void pre_init(bool firstcall) override;
     void init_new_foreign_cell(local_cell_index_type localcell,

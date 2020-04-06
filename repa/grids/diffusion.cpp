@@ -221,7 +221,7 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
     // Initial partitioning
     partition.resize(gbox.ncells());
     util::InitPartitioning{gbox, comm_cart}(
-        util::InitialPartitionType::CARTESIAN3D,
+        util::InitialPartitionType::CARTESIAN1D,
         [this](global_cell_index_type idx, rank_type r) {
             assert(r >= 0 && r < this->comm.size());
             this->partition[idx] = r;
@@ -262,11 +262,11 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
         assert(nadditional_comm < 27);
 #endif
 
-        if (profit > 0 || !profitCheck)
-            plist.emplace_back(27 - nadditional_comm, profit, borderCells[i]);
+        plist.emplace_back(27 - nadditional_comm, profit, borderCells[i]);
     }
 
     PerNeighbor<GlobalCellIndices> to_send(send_loads.size());
+    double load = std::accumulate(weights.begin(), weights.end(), 0.0);
 
     // Use a maxheap: Always draw the maximum element
     // (1. least new border cells, 2. most profit)
@@ -284,6 +284,10 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
                 = std::distance(std::begin(neighbors),
                                 std::find(std::begin(neighbors),
                                           std::end(neighbors), neighrank));
+
+            if (weights[cidx] <= 0
+                && send_loads[neighidx] < profit_percentage_pass_through * load)
+                continue;
 
             if (weights[cidx] <= send_loads[neighidx]) {
                 to_send[neighidx].push_back(cells[cidx]);
@@ -365,11 +369,13 @@ void Diffusion::command(std::string s)
 {
     std::smatch m;
 
-    static const std::regex profit_re("(disable) (profit) (check)");
+    static const std::regex profit_re(
+        "(set) (profit) (pass) (through) (([[:digit:]]*[.])?[[:digit:]]+)");
     if (std::regex_match(s, m, profit_re)) {
+        double ppt = std::stod(m[5].str().c_str(), NULL);
         if (comm_cart.rank() == 0)
-            std::cout << "Disabling profit check" << std::endl;
-        profitCheck = false;
+            std::cout << "Setting profit pass through = " << ppt << std::endl;
+        profit_percentage_pass_through = ppt;
         return;
     }
 
