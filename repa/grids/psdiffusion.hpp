@@ -24,6 +24,14 @@
 namespace repa {
 namespace grids {
 
+/** Diffusively load-balanced grid based on Diffusion class.
+ * Ensures that the structure of the grid remains constant
+ *
+ * The implementation prevents new neighbours from being added.
+ * But it is allowed to lose neighbors if no process gets a new neighbor
+ * (this is possible via the corners).
+ * These lost neighbours can be recovered in later operations.
+ */
 struct PSDiffusion : public Diffusion {
     PSDiffusion(const boost::mpi::communicator &comm,
                 Vec3d box_size,
@@ -43,12 +51,6 @@ private:
     Vec3i comm_dims;
 
 #ifndef NDEBUG
-    bool rank_based_allow_sending(local_cell_index_type c,
-                                  rank_type neighrank) const;
-
-    std::vector<rank_type> neighborhood_ranks;
-    mutable std::unordered_map<int, rank_type *> nr_mappings;
-
     std::vector<rank_type> initial_neighborhood;
 #endif
 };

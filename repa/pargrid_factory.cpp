@@ -20,8 +20,8 @@
 #include "pargrid_factory.hpp"
 #include "grids/cart.hpp"
 #include "grids/diffusion.hpp"
-#include "grids/psdiffusion.hpp"
 #include "grids/gridbased.hpp"
+#include "grids/psdiffusion.hpp"
 #ifdef HAVE_PARMETIS
 #include "grids/graph.hpp"
 #include "grids/hybrid-gp-diff.hpp"
