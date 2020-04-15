@@ -137,6 +137,11 @@ void serialize(Archive &ar,
 namespace repa {
 namespace grids {
 
+static const std::unordered_map<std::string, diff_variants::FlowCalcKind>
+    basic_diffusion_methods
+    = {{"willebeek", diff_variants::FlowCalcKind::WILLEBEEK},
+       {"schornbaum", diff_variants::FlowCalcKind::SCHORN}};
+
 void Diffusion::clear_unknown_cell_ownership()
 {
     auto is_my_cell = [this](local_or_ghost_cell_index_type neighcell) {
@@ -382,55 +387,42 @@ void Diffusion::command(std::string s)
     static const std::regex iter_re("(set) (flow_count) ([[:digit:]]+)");
     if (std::regex_match(s, m, iter_re)) {
         uint32_t flow_count = std::stoul(m[3].str().c_str(), NULL);
-        if (comm_cart.rank() == 0)
-            std::cout << "Setting flow_count = " << flow_count << std::endl;
         try {
             DIFFUSION_MAYBE_SET_NFLOW_ITER(flow_calc.get(), flow_count);
+            if (comm_cart.rank() == 0)
+                std::cout << "Setting flow_count = " << flow_count << std::endl;
         }
-        catch (...) {
-            std::cerr << "Cannot set nflow iter." << std::endl;
-        }
-        return;
-    }
-
-    static const std::regex beta_re(
-        "(set) (beta) (([[:digit:]]*[.])?[[:digit:]]+)");
-    if (std::regex_match(s, m, beta_re)) {
-        double beta_value = std::stod(m[3].str().c_str(), NULL);
-        if (comm_cart.rank() == 0)
-            std::cout << "Setting beta = " << beta_value << std::endl;
-        try {
-            DIFFUSION_MAYBE_SET_BETA(flow_calc.get(), beta_value);
-        }
-        catch (...) {
-            std::cerr << "Cannot set nflow iter." << std::endl;
+        catch (const std::bad_cast &) {
+            if (comm_cart.rank() == 0)
+                std::cerr << "Cannot set nflow iter. Not supported by your "
+                             "selected flow calculation."
+                          << std::endl;
         }
         return;
     }
 
-    static const std::regex flow_re(
-        "(set) (flow) (willebeek|schornbaum|so|sof)");
+    static const std::regex flow_re("(set) (flow) (.*)");
     if (std::regex_match(s, m, flow_re)) {
         const std::string &impl = m[3].str();
-        if (comm_cart.rank() == 0)
-            std::cout << "Setting implementation to: " << impl << std::endl;
-        if (impl == "willebeek")
+        try {
             flow_calc = diff_variants::create_flow_calc(
-                diff_variants::FlowCalcKind::WILLEBEEK);
-        else if (impl == "schornbaum")
-            flow_calc = diff_variants::create_flow_calc(
-                diff_variants::FlowCalcKind::SCHORN);
-        else if (impl == "so")
-            flow_calc = diff_variants::create_flow_calc(
-                diff_variants::FlowCalcKind::SO);
-        else if (impl == "sof")
-            flow_calc = diff_variants::create_flow_calc(
-                diff_variants::FlowCalcKind::SOF);
-        else
+                basic_diffusion_methods.at(impl));
+            if (comm_cart.rank() == 0)
+                std::cout << "Setting implementation to: " << impl << std::endl;
+        }
+        catch (const std::out_of_range &) {
+            if (comm_cart.rank() == 0) {
+                std::cerr
+                    << "Cannot set implementation! Implementation \"" << impl
+                    << "\" is not found or not allowed to be used with the "
+                       "default Diffusion. If you wanna use \"so\" or \"sof\" "
+                       "use \"ps_diff\" instead. Now using default "
+                       "implementation: \"willebeek\"."
+                    << std::endl;
+            }
             assert(false);
-        return;
+        }
     }
 }
-
 } // namespace grids
 } // namespace repa

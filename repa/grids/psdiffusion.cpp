@@ -20,6 +20,7 @@
 #include "psdiffusion.hpp"
 
 #include <algorithm>
+#include <regex>
 #include <set>
 
 #include "grids/util/mpi_cart.hpp"
@@ -32,6 +33,10 @@
 
 namespace repa {
 namespace grids {
+
+const std::unordered_map<std::string, diff_variants::FlowCalcKind>
+    psdiffusion_methods = {{"so", diff_variants::FlowCalcKind::SO},
+                           {"sof", diff_variants::FlowCalcKind::SOF}};
 
 /** Returns the new Coords of a Rank after it beeing maped to opposite site.
  * This is a necessary step for the metric because of the periodic edge.
@@ -113,5 +118,44 @@ bool PSDiffusion::coords_based_allow_sending(local_cell_index_type c,
     }
     return true;
 }
+
+void PSDiffusion::command(std::string s)
+{
+    std::smatch m;
+    static const std::regex beta_re(
+        "(set) (beta) (([[:digit:]]*[.])?[[:digit:]]+)");
+    if (std::regex_match(s, m, beta_re)) {
+        double beta_value = std::stod(m[3].str().c_str(), NULL);
+        try {
+            DIFFUSION_MAYBE_SET_BETA(flow_calc.get(), beta_value);
+            if (comm_cart.rank() == 0)
+                std::cout << "Setting beta = " << beta_value << std::endl;
+        }
+        catch (const std::bad_cast &) {
+            if (comm_cart.rank() == 0)
+                std::cerr << "Cannot set beta value. Not supported by your "
+                             "selected flow calculation."
+                          << std::endl;
+        }
+        return;
+    }
+
+    static const std::regex flow_re("(set) (flow) (.*)");
+    if (std::regex_match(s, m, flow_re)) {
+        const std::string &impl = m[3].str();
+        try {
+            flow_calc
+                = diff_variants::create_flow_calc(psdiffusion_methods.at(impl));
+            if (comm_cart.rank() == 0)
+                std::cout << "Setting implementation to: " << impl << std::endl;
+            return;
+        }
+        catch (const std::out_of_range &) {
+        }
+    }
+
+    Diffusion::command(s);
+}
+
 } // namespace grids
 } // namespace repa

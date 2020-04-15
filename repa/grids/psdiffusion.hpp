@@ -44,6 +44,8 @@ protected:
 
     virtual void post_init(bool firstcall) override;
 
+    virtual void command(std::string s) override;
+
 private:
     bool coords_based_allow_sending(local_cell_index_type c,
                                     rank_type neighrank) const;
