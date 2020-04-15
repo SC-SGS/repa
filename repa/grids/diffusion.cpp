@@ -272,6 +272,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
 
     PerNeighbor<GlobalCellIndices> to_send(send_loads.size());
     double load = std::accumulate(weights.begin(), weights.end(), 0.0);
+    std::vector<double> send_loads_copy = send_loads;
 
     // Use a maxheap: Always draw the maximum element
     // (1. least new border cells, 2. most profit)
@@ -291,7 +292,8 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
                                           std::end(neighbors), neighrank));
 
             if (weights[cidx] <= 0
-                && send_loads[neighidx] < profit_percentage_pass_through * load)
+                && send_loads_copy[neighidx]
+                       < profit_percentage_pass_through * load)
                 continue;
 
             if (weights[cidx] <= send_loads[neighidx]) {
