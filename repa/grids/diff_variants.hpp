@@ -91,8 +91,8 @@ inline bool diffusion_maybe_set_beta(FlowCalculator *ptr, double beta)
 }
 
 /*
- * This implementation follows [Willebeek Le Mair and Reeves, IEEE Tr. Par.
- * Distr. Sys. 4(9), Sep 1993] propose.
+ * This implementation is adapted from [Willebeek Le Mair and Reeves, IEEE Tr.
+ * Par. Distr. Sys. 4(9), Sep 1993].
  */
 struct WLMVolumeComputation : public FlowCalculator {
     virtual PerNeighbor<double>
@@ -102,8 +102,8 @@ struct WLMVolumeComputation : public FlowCalculator {
 };
 
 /*
- * This implementation follows [Florian Schornbaum and Ulrich Rüde, SIAM J. Sci.
- * Comput., 40(3), C358–C387.] propose.
+ * This implementation is adapted from [Florian Schornbaum and Ulrich Rüde, SIAM
+ * J. Sci. Comput., 40(3), C358–C387.].
  *
  * Flow will be set with set_n_flow_iter(uint32_t nflow_iter), by using
  * dd.command("set flow_count 15")
@@ -123,8 +123,8 @@ protected:
 };
 
 /*
- * This implementation follows [Muthukrishnan, Ghosh and Schultz, Theory of
- * Computing Systems volume 31, pages331–354(1998)] propose.
+ * This implementation is adapted from [Muthukrishnan, Ghosh and Schultz, Theory
+ * of Computing Systems volume 31, pp. 331–354(1998)].
  *
  * Beta will be set with set_beta_value(double beta_value), by using
  * dd.command("set beta <value>")
@@ -146,8 +146,8 @@ private:
 };
 
 /*
- * This implementation follows [Muthukrishnan, Ghosh and Schultz, Theory of
- * Computing Systems volume 31, pages331–354(1998)] propose with a minor change.
+ * This implementation is adapted from [Muthukrishnan, Ghosh and Schultz, Theory
+ * of Computing Systems volume 31, pages331–354(1998)] with a minor change.
  *
  * Beta will be set with set_beta_value(double beta_value), by using
  * dd.command("set beta <value>")
