@@ -27,15 +27,9 @@ Same note as above goes for KDPart and ParMETIS.
 
 ### Spack
 
-Using [spack](https://github.com/spack/spack), you can install repa easily.
-First, add the [spack repo spack-hirschsn](https://github.com/hirschsn/spack-hirschsn/) with the receipe for repa and its dependencies.
-Then simply:
-
-```sh
-spack install librepa
-```
-
-For development purposes, you can also install repa's dependencies (you, again, need the additional spack repo) and load them as a spack environment:
+Using [spack](https://github.com/spack/spack), you can install all necessary dependencies easily.
+First, add the [spack repo spack-hirschsn](https://github.com/hirschsn/spack-hirschsn/) with recipes for repa dependencies.
+Then:
 
 ```sh
 git clone https://github.com/hirschsn/repa
