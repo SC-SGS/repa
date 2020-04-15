@@ -126,17 +126,13 @@ void PSDiffusion::command(std::string s)
         "(set) (beta) (([[:digit:]]*[.])?[[:digit:]]+)");
     if (std::regex_match(s, m, beta_re)) {
         double beta_value = std::stod(m[3].str().c_str(), NULL);
-        try {
-            DIFFUSION_MAYBE_SET_BETA(flow_calc.get(), beta_value);
-            if (comm_cart.rank() == 0)
-                std::cout << "Setting beta = " << beta_value << std::endl;
-        }
-        catch (const std::bad_cast &) {
-            if (comm_cart.rank() == 0)
-                std::cerr << "Cannot set beta value. Not supported by your "
-                             "selected flow calculation."
-                          << std::endl;
-        }
+        if (diff_variants::diffusion_maybe_set_beta(flow_calc.get(), beta_value)
+            && comm_cart.rank() == 0)
+            std::cout << "Setting beta = " << beta_value << std::endl;
+        else if (comm_cart.rank() == 0)
+            std::cerr << "Cannot set beta value. Not supported by your "
+                         "selected flow calculation."
+                      << std::endl;
         return;
     }
 

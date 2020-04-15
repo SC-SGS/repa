@@ -73,23 +73,22 @@ struct BetaValueSetter {
     virtual void set_beta_value(double beta_value) = 0;
 };
 
-#define DIFFUSION_MAYBE_SET_NFLOW_ITER(obj, nflow_iter)                        \
-    if (repa::grids::diff_variants::FlowIterSetter *f                          \
-        = dynamic_cast<repa::grids::diff_variants::FlowIterSetter *>(obj)) {   \
-        f->set_n_flow_iter(nflow_iter);                                        \
-    }                                                                          \
-    else {                                                                     \
-        throw std::bad_cast();                                                 \
-    }
+inline bool diffusion_maybe_set_nflow_iter(FlowCalculator *ptr,
+                                           uint32_t nflow_iter)
+{
+    FlowIterSetter *f;
+    if ((f = dynamic_cast<FlowIterSetter *>(ptr)))
+        f->set_n_flow_iter(nflow_iter);
+    return f != nullptr;
+}
 
-#define DIFFUSION_MAYBE_SET_BETA(obj, beta_value)                              \
-    if (repa::grids::diff_variants::BetaValueSetter *b                         \
-        = dynamic_cast<repa::grids::diff_variants::BetaValueSetter *>(obj)) {  \
-        b->set_beta_value(beta_value);                                         \
-    }                                                                          \
-    else {                                                                     \
-        throw std::bad_cast();                                                 \
-    }
+inline bool diffusion_maybe_set_beta(FlowCalculator *ptr, double beta)
+{
+    BetaValueSetter *b;
+    if ((b = dynamic_cast<BetaValueSetter *>(ptr)))
+        b->set_beta_value(beta);
+    return b != nullptr;
+}
 
 /*
  * This implementation follows [Willebeek Le Mair and Reeves, IEEE Tr. Par.

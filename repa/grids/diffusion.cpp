@@ -387,17 +387,14 @@ void Diffusion::command(std::string s)
     static const std::regex iter_re("(set) (flow_count) ([[:digit:]]+)");
     if (std::regex_match(s, m, iter_re)) {
         uint32_t flow_count = std::stoul(m[3].str().c_str(), NULL);
-        try {
-            DIFFUSION_MAYBE_SET_NFLOW_ITER(flow_calc.get(), flow_count);
-            if (comm_cart.rank() == 0)
-                std::cout << "Setting flow_count = " << flow_count << std::endl;
-        }
-        catch (const std::bad_cast &) {
-            if (comm_cart.rank() == 0)
-                std::cerr << "Cannot set nflow iter. Not supported by your "
-                             "selected flow calculation."
-                          << std::endl;
-        }
+        if (diff_variants::diffusion_maybe_set_nflow_iter(flow_calc.get(),
+                                                          flow_count)
+            && comm_cart.rank() == 0)
+            std::cout << "Setting flow_count = " << flow_count << std::endl;
+        else if (comm_cart.rank() == 0)
+            std::cerr << "Cannot set nflow iter. Not supported by your "
+                         "selected flow calculation."
+                      << std::endl;
         return;
     }
 
