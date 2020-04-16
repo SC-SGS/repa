@@ -77,8 +77,19 @@ BOOST_AUTO_TEST_CASE(test_coloring)
     std::vector<int> colors;
     boost::mpi::all_gather(comm, my_color, colors);
 
-    for (int col = -1; col < 8; col++) {
-        BOOST_CHECK(std::any_of(colors.begin(), colors.end(), col));
+    if (colors.size() >= 8) {
+        int start = colors.size() % 2 == 1 ? -1 : 0;
+        for (int col = start; col < 8; col++) {
+            BOOST_CHECK(std::find(colors.begin(), colors.end(), col)
+                        != colors.end());
+        }
+    }
+    // If there are less than 8 Processes all nodes have the color -1.
+    // This leads to the case that NO node will be shifted,
+    // but it's valid in the test case.
+    else {
+        BOOST_CHECK(std::count(colors.begin(), colors.end(), -1)
+                    == colors.size());
     }
 
     if (comm_cart.rank() == 0) {
@@ -89,16 +100,16 @@ BOOST_AUTO_TEST_CASE(test_coloring)
     }
 
     for (int rank = 0; rank < comm.size(); ++rank) {
+        if (colors.at(rank) == -1) {
+            continue;
+        }
         repa::Vec3i off;
-        if (colors.at(rank) != -1) {
-            for (off[0] = -1; off[0] <= 1; ++off[0]) {
-                for (off[1] = -1; off[1] <= 1; ++off[1]) {
-                    for (off[2] = -1; off[2] <= 1; ++off[2]) {
-                        auto neighrank = neighbor_rank(comm_cart, off);
-                        BOOST_CHECK(
-                            iff(rank != neighrank,
-                                colors.at(rank) != colors.at(neighrank)));
-                    }
+        for (off[0] = -1; off[0] <= 1; ++off[0]) {
+            for (off[1] = -1; off[1] <= 1; ++off[1]) {
+                for (off[2] = -1; off[2] <= 1; ++off[2]) {
+                    auto neighrank = neighbor_rank(comm_cart, off);
+                    BOOST_CHECK(iff((rank != neighrank),
+                                    colors.at(rank) != colors.at(neighrank)));
                 }
             }
         }
