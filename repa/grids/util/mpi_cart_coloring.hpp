@@ -24,9 +24,26 @@
 namespace repa {
 namespace util {
 
+int get_color(MPI_Comm comm)
+{
+    Vec3i coords = mpi_cart_get_coords(comm);
+    Vec3i dims = mpi_cart_get_dims(comm);
+
+    for (int d = 0; d < 3; d++) {
+        // Check if number of processes in this dimension is odd.
+        // If this is the case, the nodes at the border of this dimension
+        // must not be shifted.
+        if ((dims[d] % 2 == 1) && (coords[d] == dims[d] - 1)) {
+            return -1;
+        }
+    }
+
+    return coords[0] % 2 + (coords[1] % 2) * 2 + (coords[2] % 2) * 4;
+}
+
 struct independent_process_sets {
     independent_process_sets(const boost::mpi::communicator &comm_cart)
-        : _coords(util::mpi_cart_get_coords(comm_cart))
+        : col(get_color(comm_cart))
     {
         assert(comm_cart.has_cartesian_topology());
     }
@@ -48,9 +65,7 @@ struct independent_process_sets {
     void operator()()
     {
         for (int color = 0; color < 8; color++) {
-            if (_coords[0] % 2 == !!(color & 0x1)
-                && _coords[1] % 2 == !!(color & 0x2)
-                && _coords[2] % 2 == !!(color & 0x4)) {
+            if (color == col) {
                 _round_func();
             }
             _after_func();
@@ -58,7 +73,7 @@ struct independent_process_sets {
     }
 
 private:
-    const Vec3i _coords;
+    const int col;
     std::function<void(void)> _round_func, _after_func;
 };
 
