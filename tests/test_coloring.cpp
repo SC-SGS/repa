@@ -73,10 +73,13 @@ BOOST_AUTO_TEST_CASE(test_coloring)
             })
             .for_all_after_each_round([&]() { cur_color++; })();
     }
-    BOOST_CHECK(my_color != -1);
 
     std::vector<int> colors;
     boost::mpi::all_gather(comm, my_color, colors);
+
+    for (int col = -1; col < 8; col++) {
+        BOOST_CHECK(std::any_of(colors.begin(), colors.end(), col));
+    }
 
     if (comm_cart.rank() == 0) {
         std::cout << "Colors:";
@@ -87,12 +90,15 @@ BOOST_AUTO_TEST_CASE(test_coloring)
 
     for (int rank = 0; rank < comm.size(); ++rank) {
         repa::Vec3i off;
-        for (off[0] = -1; off[0] <= 1; ++off[0]) {
-            for (off[1] = -1; off[1] <= 1; ++off[1]) {
-                for (off[2] = -1; off[2] <= 1; ++off[2]) {
-                    auto neighrank = neighbor_rank(comm_cart, off);
-                    BOOST_CHECK(iff(rank != neighrank,
-                                    colors.at(rank) != colors.at(neighrank)));
+        if (colors.at(rank) != -1) {
+            for (off[0] = -1; off[0] <= 1; ++off[0]) {
+                for (off[1] = -1; off[1] <= 1; ++off[1]) {
+                    for (off[2] = -1; off[2] <= 1; ++off[2]) {
+                        auto neighrank = neighbor_rank(comm_cart, off);
+                        BOOST_CHECK(
+                            iff(rank != neighrank,
+                                colors.at(rank) != colors.at(neighrank)));
+                    }
                 }
             }
         }
