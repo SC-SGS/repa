@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <boost/mpi/collectives.hpp>
 #include <regex>
+#include <map>
 
 #include "util/mpi_cart.hpp"
 #include "util/mpi_graph.hpp"
