@@ -257,6 +257,14 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                              : decltype(subdomain_midpoint){std::bind(
                                  &GridBasedGrid::get_subdomain_center, this)})
 {
+    auto dims = util::mpi_cart_get_dims(comm);
+    if (dims[0] % 2 == 1 || dims[1] % 2 == 1 || dims[2] % 2 == 1) {
+        std::cerr
+            << "There are a odd number of processes in at least one dimension. "
+            << "Because this can lead to invalid configurations in the "
+               "coloring scheme, "
+            << " the nodes on the border in this dimension are NOT shifted.";
+    }
     init_partitioning();
     reinit();
 }
