@@ -77,19 +77,24 @@ BOOST_AUTO_TEST_CASE(test_coloring)
     std::vector<int> colors;
     boost::mpi::all_gather(comm, my_color, colors);
 
-    if (colors.size() >= 8) {
-        int start = colors.size() % 2 == 1 ? -1 : 0;
-        for (int col = start; col < 8; col++) {
+    // Check if a dimension has only lenght 1.
+    // In this case all nodes have the color -1.
+    // This means that NO node will be shifted, but it's valid in the test case.
+    if (dims[0] == 1 || dims[1] == 1 || dims[2] == 1) {
+        BOOST_CHECK(std::count(colors.begin(), colors.end(), -1)
+                    == colors.size());
+    }
+    else {
+        for (int col = 0; col < 8; col++) {
             BOOST_CHECK(std::find(colors.begin(), colors.end(), col)
                         != colors.end());
         }
-    }
-    // If there are less than 8 Processes all nodes have the color -1.
-    // This leads to the case that NO node will be shifted,
-    // but it's valid in the test case.
-    else {
-        BOOST_CHECK(std::count(colors.begin(), colors.end(), -1)
-                    == colors.size());
+        // If all dimensions are even, no node has the color -1 and all will be
+        // shifted.
+        bool all_dims_even = std::any_of(dims.begin(), dims.end(),
+                                         [](int d) { return d % 2 == 0; });
+        iff(all_dims_even,
+            std::find(colors.begin(), colors.end(), -1) == colors.end());
     }
 
     if (comm_cart.rank() == 0) {
@@ -99,17 +104,15 @@ BOOST_AUTO_TEST_CASE(test_coloring)
         std::cout << std::endl;
     }
 
-    for (int rank = 0; rank < comm.size(); ++rank) {
-        if (colors.at(rank) == -1) {
-            continue;
-        }
+    if (colors.at(comm.rank()) != -1) {
         repa::Vec3i off;
         for (off[0] = -1; off[0] <= 1; ++off[0]) {
             for (off[1] = -1; off[1] <= 1; ++off[1]) {
                 for (off[2] = -1; off[2] <= 1; ++off[2]) {
                     auto neighrank = neighbor_rank(comm_cart, off);
-                    BOOST_CHECK(iff((rank != neighrank),
-                                    colors.at(rank) != colors.at(neighrank)));
+                    BOOST_CHECK(
+                        iff((comm.rank() != neighrank),
+                            colors.at(comm.rank()) != colors.at(neighrank)));
                 }
             }
         }
