@@ -400,9 +400,10 @@ KDTreeGrid::KDTreeGrid(const boost::mpi::communicator &comm,
 {
     // Use constant load to make initial tree evenly distributed
     auto load_function = [](Vec3i) { return 1; };
-    m_kdtree = std::make_unique<KDTreePrivateImpl>(kdpart::make_parttree(
-        comm.size(), {0, 0, 0}, m_global_domain_size.as_array(), load_function,
-        kdpart::quality_splitting));
+    m_kdtree = std::unique_ptr<KDTreePrivateImpl>(new KDTreePrivateImpl(
+        kdpart::make_parttree(comm.size(), {0, 0, 0},
+                              m_global_domain_size.as_array(), load_function,
+                              kdpart::quality_splitting)));
     reinitialize();
 }
 
@@ -506,8 +507,8 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
     const auto weights = m();
     assert(weights.size() == n_local_cells());
 
-    m_kdtree = std::make_unique<KDTreePrivateImpl>(
-        kdpart::repart_parttree_par(m_kdtree->t, comm_cart, m()));
+    m_kdtree = std::unique_ptr<KDTreePrivateImpl>(new KDTreePrivateImpl(
+        kdpart::repart_parttree_par(m_kdtree->t, comm_cart, m())));
     cb();
     reinitialize();
     return true;

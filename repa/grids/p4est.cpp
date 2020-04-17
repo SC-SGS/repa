@@ -539,7 +539,7 @@ P4estGrid::P4estGrid(const boost::mpi::communicator &comm,
                      Vec3d box_size,
                      double min_cell_size)
     : ParallelLCGrid(comm, box_size, min_cell_size),
-      _impl(std::make_unique<_P4estGrid_impl>(comm_cart, box_l, max_range))
+      _impl(new _P4estGrid_impl(comm_cart, box_l, max_range))
 {
     _impl->reinitialize();
 }
