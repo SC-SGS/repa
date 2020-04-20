@@ -20,6 +20,8 @@
 #include <boost/test/unit_test.hpp>
 #include <random>
 
+#include "repa/grids/diffusion.hpp"
+
 static std::vector<double> get_random_vec(size_t n)
 {
     std::random_device rd;
@@ -76,6 +78,11 @@ struct TEnv::TEnv_impl {
                                         repa::GridType gt)>;
 
     void run(TestFunc test_func);
+
+private:
+    void exec_main_test(std::unique_ptr<repa::grids::ParallelLCGrid> &up,
+                        repa::GridType gt,
+                        TestFunc test_func);
 };
 
 TEnv::TEnv_impl::TEnv_impl(const boost::mpi::communicator &comm,
@@ -167,20 +174,43 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
         BOOST_CHECK_NO_THROW(up = repa::make_pargrid(gt, comm, box, mings, ep));
         BOOST_TEST(up.get() != nullptr);
 
-        test_func(up.get(), gt);
-
-        if (!repart)
-            continue;
-        repartition_helper(up.get(), get_metric);
-
-        test_func(up.get(), gt);
-
-        if (!repart_twice)
-            continue;
-        repartition_helper(up.get(), get_metric);
-
-        test_func(up.get(), gt);
+        if (repa::grids::Diffusion *d
+            = dynamic_cast<repa::grids::Diffusion *>(up.get())) {
+            std::set<std::string> variants = d->get_supported_variants();
+            for (auto iter = variants.begin(); iter != variants.end(); iter++) {
+                if (iter != variants.begin()) {
+                    BOOST_CHECK_NO_THROW(
+                        up = repa::make_pargrid(gt, comm, box, mings, ep));
+                    BOOST_TEST(up.get() != nullptr);
+                }
+                up->command("set flow " + *iter);
+                exec_main_test(up, gt, test_func);
+            }
+        }
+        else {
+            exec_main_test(up, gt, test_func);
+        }
     }
+}
+
+void TEnv::TEnv_impl::exec_main_test(
+    std::unique_ptr<repa::grids::ParallelLCGrid> &up,
+    repa::GridType gt,
+    TestFunc test_func)
+{
+    test_func(up.get(), gt);
+
+    if (!repart)
+        return;
+    repartition_helper(up.get(), get_metric);
+
+    test_func(up.get(), gt);
+
+    if (!repart_twice)
+        return;
+    repartition_helper(up.get(), get_metric);
+
+    test_func(up.get(), gt);
 }
 
 /// TEnv

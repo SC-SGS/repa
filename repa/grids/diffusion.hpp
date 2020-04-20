@@ -24,6 +24,7 @@
 #include "glomethod.hpp"
 #include "pargrid.hpp"
 #include <array>
+#include <set>
 #include <vector>
 
 namespace repa {
@@ -47,6 +48,8 @@ struct Diffusion : public GloMethod {
               Vec3d box_size,
               double min_cell_size);
     ~Diffusion();
+
+    virtual std::set<std::string> get_supported_variants();
 
 protected:
     virtual void post_init(bool firstcall) override;
@@ -135,6 +138,11 @@ private:
      */
     void update_partitioning_from_received_neighbourhood(
         const PerNeighbor<__diff_impl::CellNeighborhoodPerCell> &neighbourhood);
+
+    const std::unordered_map<std::string, diff_variants::FlowCalcKind>
+        supported_default_diffusion_variants
+        = {{"willebeek", diff_variants::FlowCalcKind::WILLEBEEK},
+           {"schornbaum", diff_variants::FlowCalcKind::SCHORN}};
 };
 } // namespace grids
 } // namespace repa

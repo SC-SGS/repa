@@ -38,6 +38,8 @@ struct PSDiffusion : public Diffusion {
                 double min_cell_size);
     ~PSDiffusion();
 
+    virtual std::set<std::string> get_supported_variants() override;
+
 protected:
     virtual bool accept_transfer(local_cell_index_type cidx,
                                  rank_type neighrank) const override;
@@ -51,6 +53,11 @@ private:
                                     rank_type neighrank) const;
 
     Vec3i comm_dims;
+
+    const std::unordered_map<std::string, diff_variants::FlowCalcKind>
+        supported_ps_diffusion_variants
+        = {{"so", diff_variants::FlowCalcKind::SO},
+           {"sof", diff_variants::FlowCalcKind::SOF}};
 
 #ifndef NDEBUG
     std::vector<rank_type> initial_neighborhood;

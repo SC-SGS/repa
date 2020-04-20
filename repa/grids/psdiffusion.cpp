@@ -34,10 +34,6 @@
 namespace repa {
 namespace grids {
 
-const std::unordered_map<std::string, diff_variants::FlowCalcKind>
-    psdiffusion_methods = {{"so", diff_variants::FlowCalcKind::SO},
-                           {"sof", diff_variants::FlowCalcKind::SOF}};
-
 /** Returns the new Coords of a Rank after it beeing maped to opposite site.
  * This is a necessary step for the metric because of the periodic edge.
  */
@@ -66,6 +62,15 @@ PSDiffusion::PSDiffusion(const boost::mpi::communicator &comm,
 
 PSDiffusion::~PSDiffusion()
 {
+}
+
+std::set<std::string> PSDiffusion::get_supported_variants()
+{
+    std::set<std::string> vars = Diffusion::get_supported_variants();
+    for (const auto &v : supported_ps_diffusion_variants) {
+        vars.insert(v.first);
+    }
+    return vars;
 }
 
 void PSDiffusion::post_init(bool firstcall)
@@ -140,8 +145,8 @@ void PSDiffusion::command(std::string s)
     if (std::regex_match(s, m, flow_re)) {
         const std::string &impl = m[3].str();
         try {
-            flow_calc
-                = diff_variants::create_flow_calc(psdiffusion_methods.at(impl));
+            flow_calc = diff_variants::create_flow_calc(
+                supported_ps_diffusion_variants.at(impl));
             if (comm_cart.rank() == 0)
                 std::cout << "Setting implementation to: " << impl << std::endl;
             return;

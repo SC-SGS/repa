@@ -166,13 +166,13 @@ BOOST_AUTO_TEST_CASE(test_pos_rank_agreement)
     // repartitioning, so test statically.
     testenv::TEnv::default_test_env()
         .without_repart()
-        .only({repa::GridType::DIFF, repa::GridType::GRIDBASED,
-               repa::GridType::HYB_GP_DIFF})
+        .only({repa::GridType::DIFF, repa::GridType::PS_DIFF,
+               repa::GridType::GRIDBASED, repa::GridType::HYB_GP_DIFF})
         .run(test);
     testenv::TEnv::default_test_env()
         .with_repart()
         .all_grids()
-        .exclude({repa::GridType::DIFF, repa::GridType::GRIDBASED,
-                  repa::GridType::HYB_GP_DIFF})
+        .exclude({repa::GridType::DIFF, repa::GridType::PS_DIFF,
+                  repa::GridType::GRIDBASED, repa::GridType::HYB_GP_DIFF})
         .run(test);
 }

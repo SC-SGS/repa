@@ -64,6 +64,7 @@ static const std::unordered_map<GridType, bool, enum_hash_compat>
                               {GridType::CART, true},
                               {GridType::GRAPH, PARMETIS_AVAIL},
                               {GridType::DIFF, true},
+                              {GridType::PS_DIFF, true},
                               {GridType::HYB_GP_DIFF, PARMETIS_AVAIL},
                               {GridType::KD_TREE, KDPART_AVAIL},
                               {GridType::GRIDBASED, true}};

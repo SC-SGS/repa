@@ -137,11 +137,6 @@ void serialize(Archive &ar,
 namespace repa {
 namespace grids {
 
-static const std::unordered_map<std::string, diff_variants::FlowCalcKind>
-    basic_diffusion_methods
-    = {{"willebeek", diff_variants::FlowCalcKind::WILLEBEEK},
-       {"schornbaum", diff_variants::FlowCalcKind::SCHORN}};
-
 void Diffusion::clear_unknown_cell_ownership()
 {
     auto is_my_cell = [this](local_or_ghost_cell_index_type neighcell) {
@@ -235,6 +230,15 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
 
 Diffusion::~Diffusion()
 {
+}
+
+std::set<std::string> Diffusion::get_supported_variants()
+{
+    std::set<std::string> vars;
+    for (const auto &v : supported_default_diffusion_variants) {
+        vars.insert(v.first);
+    }
+    return vars;
 }
 
 Diffusion::PerNeighbor<Diffusion::GlobalCellIndices>
@@ -405,7 +409,7 @@ void Diffusion::command(std::string s)
         const std::string &impl = m[3].str();
         try {
             flow_calc = diff_variants::create_flow_calc(
-                basic_diffusion_methods.at(impl));
+                supported_default_diffusion_variants.at(impl));
             if (comm_cart.rank() == 0)
                 std::cout << "Setting implementation to: " << impl << std::endl;
         }
