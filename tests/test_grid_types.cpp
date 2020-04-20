@@ -26,6 +26,7 @@
 #include <boost/mpi/environment.hpp>
 #include <boost/test/included/unit_test.hpp>
 #include <repa/repa.hpp>
+#include <cmath>
 
 /**
  * Relative distance between a and b.

@@ -22,7 +22,6 @@
  */
 
 #define BOOST_TEST_MODULE unknown_exceptions
-#include "testenv.hpp"
 #include <boost/mpi.hpp>
 #include <boost/test/included/unit_test.hpp>
 #include <repa/repa.hpp>
