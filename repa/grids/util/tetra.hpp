@@ -31,7 +31,7 @@ namespace tetra {
 // Opaque struct to reduce compile times on inclusion site
 struct _Octagon_Impl;
 
-const int16_t precision = 10;
+extern int16_t precision;
 
 struct Octagon {
     Octagon();

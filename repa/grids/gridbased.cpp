@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <boost/mpi/collectives.hpp>
+#include <map>
 #include <regex>
 
 #include "util/mpi_cart.hpp"
@@ -265,6 +266,7 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                "coloring scheme, "
             << " the nodes on the border in this dimension are NOT shifted.";
     }
+    util::tetra::precision = static_cast<int16_t>(10. / min_cell_size);
     init_partitioning();
     reinit();
 }
