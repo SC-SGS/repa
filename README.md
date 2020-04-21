@@ -11,10 +11,11 @@ For CI purposes, etc. a working Docker container with all dependencies as well a
 - MPI distribution (e.g. [OpenMPI](https://www.open-mpi.org/))
 - [Boost](https://www.boost.org/) (mpi, serialization) [1] [2]
 - [CMake](https://cmake.org/) and Make/Ninja/... for building
-- C++14 compatible compiler
+- C++14 compatible compiler and standard library [3]
 
 [1] Note, that Boost::MPI must be compiled with the chosen MPI distribution. <br/>
-[2] Currently, only Boost 1.67.0 and Boost 1.68.0 are supported. Previous and later versions (<1.67.0 and 1.69.0–1.72.0) contain Boost::MPI bugs that we cannot work around.
+[2] Currently, only Boost 1.67.0 and Boost 1.68.0 are supported. Previous and later versions (<1.67.0 and 1.69.0–1.72.0) contain Boost::MPI bugs that we cannot work around.<br/>
+[3] If you have to use an older standard library, have a look at the "libstdc++-4.8.5" branch.
 
 ### Optional
 
