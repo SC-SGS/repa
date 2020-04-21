@@ -23,8 +23,8 @@
 #include "glomethod.hpp"
 #include "pargrid.hpp"
 #include <array>
-#include <vector>
 #include <map>
+#include <vector>
 
 namespace repa {
 namespace grids {

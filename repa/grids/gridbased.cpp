@@ -23,8 +23,8 @@
 
 #include <algorithm>
 #include <boost/mpi/collectives.hpp>
-#include <regex>
 #include <map>
+#include <regex>
 
 #include "util/mpi_cart.hpp"
 #include "util/mpi_graph.hpp"

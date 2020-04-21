@@ -29,8 +29,8 @@
 
 #include "testenv.hpp"
 #include <boost/mpi/environment.hpp>
-#include <repa/repa.hpp>
 #include <cmath>
+#include <repa/repa.hpp>
 
 /**
  * Relative distance between a and b.
