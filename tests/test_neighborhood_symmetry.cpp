@@ -21,8 +21,11 @@
  * Checks the full shell neighborhood symmetry for inner cells.
  */
 
+#define BOOST_TEST_NO_MAIN
+#define BOOST_TEST_ALTERNATIVE_INIT_API
+#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE neighborhood_symmetry
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include "testenv.hpp"
 #include <boost/mpi/environment.hpp>
@@ -61,6 +64,11 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 
 BOOST_AUTO_TEST_CASE(test_neighborhood_symmetry)
 {
-    boost::mpi::environment env;
     testenv::TEnv::default_test_env().with_repart().all_grids().run(test);
+}
+
+int main(int argc, char **argv)
+{
+    boost::mpi::environment mpi_env{argc, argv};
+    return boost::unit_test::unit_test_main(init_unit_test, argc, argv);
 }

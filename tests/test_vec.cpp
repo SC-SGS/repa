@@ -21,7 +21,11 @@
  * Checks Vec type in common_types.hpp
  */
 
+#define BOOST_TEST_NO_MAIN
+#define BOOST_TEST_ALTERNATIVE_INIT_API
+#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE vec
+#include <boost/test/unit_test.hpp>
 
 #include <array>
 #include <chrono>
@@ -30,7 +34,6 @@
 
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
-#include <boost/test/included/unit_test.hpp>
 #include <repa/repa.hpp>
 
 BOOST_AUTO_TEST_CASE(test_vec)
@@ -116,4 +119,9 @@ BOOST_AUTO_TEST_CASE(test_vec)
     }
 
     BOOST_CHECK((k == k2));
+}
+
+int main(int argc, char **argv)
+{
+    return boost::unit_test::unit_test_main(init_unit_test, argc, argv);
 }

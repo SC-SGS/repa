@@ -18,12 +18,15 @@
  */
 
 /**
- * Checks tetra.[ch]pp
+ * Checks integral_range
  */
 
+#define BOOST_TEST_NO_MAIN
+#define BOOST_TEST_ALTERNATIVE_INIT_API
+#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE integral_range
+#include <boost/test/unit_test.hpp>
 
-#include <boost/test/included/unit_test.hpp>
 #include <repa/repa.hpp>
 
 BOOST_AUTO_TEST_CASE(test_integral_range)
@@ -38,4 +41,9 @@ BOOST_AUTO_TEST_CASE(test_integral_range)
     BOOST_CHECK_THROW(ni = 27, std::domain_error);
     BOOST_CHECK_THROW(ni = -1, std::domain_error);
 #endif
+}
+
+int main(int argc, char **argv)
+{
+    return boost::unit_test::unit_test_main(init_unit_test, argc, argv);
 }

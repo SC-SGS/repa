@@ -21,9 +21,12 @@
  * Checks vec_arith.hpp
  */
 
+#define BOOST_TEST_NO_MAIN
+#define BOOST_TEST_ALTERNATIVE_INIT_API
+#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE vec_arith
-
 #include <boost/test/included/unit_test.hpp>
+
 #include <repa/common_types.hpp>
 #include <repa/grids/util/vec_arith.hpp>
 
@@ -160,4 +163,9 @@ BOOST_AUTO_TEST_CASE(test_vec_arith)
     check_clamp();
     check_wrap();
     check_comparison();
+}
+
+int main(int argc, char **argv)
+{
+    return boost::unit_test::unit_test_main(init_unit_test, argc, argv);
 }
