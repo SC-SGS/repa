@@ -258,7 +258,7 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                              : decltype(subdomain_midpoint){std::bind(
                                  &GridBasedGrid::get_subdomain_center, this)})
 {
-    auto dims = util::mpi_cart_get_dims(comm);
+    auto dims = util::mpi_cart_get_dims(comm_cart);
     if (dims[0] % 2 == 1 || dims[1] % 2 == 1 || dims[2] % 2 == 1) {
         std::cerr
             << "There are a odd number of processes in at least one dimension. "
