@@ -54,11 +54,6 @@ private:
 
     Vec3i comm_dims;
 
-    const std::unordered_map<std::string, diff_variants::FlowCalcKind>
-        supported_ps_diffusion_variants
-        = {{"so", diff_variants::FlowCalcKind::SO},
-           {"sof", diff_variants::FlowCalcKind::SOF}};
-
 #ifndef NDEBUG
     std::vector<rank_type> initial_neighborhood;
 #endif

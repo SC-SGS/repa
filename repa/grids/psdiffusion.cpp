@@ -25,6 +25,8 @@
 
 #include "grids/util/mpi_cart.hpp"
 #include "grids/util/mpi_graph.hpp"
+#include "util/get_keys.hpp"
+#include "util/set_union.hpp"
 #include "util/vec_arith.hpp"
 
 #ifndef NDEBUG
@@ -33,6 +35,11 @@
 
 namespace repa {
 namespace grids {
+
+static const std::unordered_map<std::string, diff_variants::FlowCalcKind>
+    supported_ps_diffusion_variants
+    = {{"so", diff_variants::FlowCalcKind::SO},
+       {"sof", diff_variants::FlowCalcKind::SOF}};
 
 /** Returns the new Coords of a Rank after it beeing maped to opposite site.
  * This is a necessary step for the metric because of the periodic edge.
@@ -66,11 +73,8 @@ PSDiffusion::~PSDiffusion()
 
 std::set<std::string> PSDiffusion::get_supported_variants() const
 {
-    std::set<std::string> vars = Diffusion::get_supported_variants();
-    for (const auto &v : supported_ps_diffusion_variants) {
-        vars.insert(v.first);
-    }
-    return vars;
+    return util::set_union(Diffusion::get_supported_variants(),
+                           util::get_keys(supported_ps_diffusion_variants));
 }
 
 void PSDiffusion::post_init(bool firstcall)

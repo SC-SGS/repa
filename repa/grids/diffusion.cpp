@@ -32,6 +32,7 @@
 #include "util/mpi_neighbor_allgather.hpp"
 #include "util/mpi_neighbor_alltoall.hpp"
 #include "util/push_back_unique.hpp"
+#include "util/get_keys.hpp"
 
 #ifndef NDEBUG
 #define DIFFUSION_DEBUG
@@ -137,6 +138,11 @@ void serialize(Archive &ar,
 namespace repa {
 namespace grids {
 
+static const std::unordered_map<std::string, diff_variants::FlowCalcKind>
+    supported_default_diffusion_variants
+    = {{"willebeek", diff_variants::FlowCalcKind::WILLEBEEK},
+       {"schornbaum", diff_variants::FlowCalcKind::SCHORN}};
+
 void Diffusion::clear_unknown_cell_ownership()
 {
     auto is_my_cell = [this](local_or_ghost_cell_index_type neighcell) {
@@ -234,11 +240,7 @@ Diffusion::~Diffusion()
 
 std::set<std::string> Diffusion::get_supported_variants() const
 {
-    std::set<std::string> vars;
-    for (const auto &v : supported_default_diffusion_variants) {
-        vars.insert(v.first);
-    }
-    return vars;
+    return util::get_keys(supported_default_diffusion_variants);
 }
 
 void Diffusion::set_variant(const std::string &var)

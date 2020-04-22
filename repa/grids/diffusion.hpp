@@ -140,11 +140,6 @@ private:
      */
     void update_partitioning_from_received_neighbourhood(
         const PerNeighbor<__diff_impl::CellNeighborhoodPerCell> &neighbourhood);
-
-    const std::unordered_map<std::string, diff_variants::FlowCalcKind>
-        supported_default_diffusion_variants
-        = {{"willebeek", diff_variants::FlowCalcKind::WILLEBEEK},
-           {"schornbaum", diff_variants::FlowCalcKind::SCHORN}};
 };
 } // namespace grids
 } // namespace repa
