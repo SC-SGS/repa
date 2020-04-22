@@ -27,12 +27,12 @@
 #include <regex>
 
 #include "util/fill.hpp"
+#include "util/get_keys.hpp"
 #include "util/initial_partitioning.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/mpi_neighbor_allgather.hpp"
 #include "util/mpi_neighbor_alltoall.hpp"
 #include "util/push_back_unique.hpp"
-#include "util/get_keys.hpp"
 
 #ifndef NDEBUG
 #define DIFFUSION_DEBUG

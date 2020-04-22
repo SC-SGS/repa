@@ -30,7 +30,7 @@ namespace repa {
  */
 struct VariantSetter {
     virtual std::set<std::string> get_supported_variants() const = 0;
-    virtual void set_variant(const std::string&) = 0;
+    virtual void set_variant(const std::string &) = 0;
 };
 
 struct UnknownVariantError {
@@ -49,10 +49,10 @@ private:
 /** Returns a reference to a variant setter object if the grid supports it.
  * Else returns a reference to an object that returns no supported variants
  * and throws an UnknownVariantError on set_variant.
- * 
+ *
  * Attention: The returned reference points into "grid", thus, it is only
  * valid as long as "grid" is valid.
  */
 VariantSetter &variants(grids::ParallelLCGrid *grid);
 
-}
+} // namespace repa

@@ -28,7 +28,7 @@ struct NoVariants : repa::VariantSetter {
     {
         return {};
     };
-    void set_variant(const std::string&)
+    void set_variant(const std::string &)
     {
         throw repa::UnknownVariantError{};
     };

@@ -20,9 +20,9 @@
 #pragma once
 
 #include "diff_variants.hpp"
-#include "grid_variants.hpp"
 #include "globox.hpp"
 #include "glomethod.hpp"
+#include "grid_variants.hpp"
 #include "pargrid.hpp"
 #include <array>
 #include <set>
