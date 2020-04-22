@@ -24,7 +24,14 @@
 namespace repa {
 namespace util {
 
-int get_color(MPI_Comm comm)
+namespace __impl {
+/** Returns a color for independent set traveral.
+ * All neighboring processes in a Cartesian setting will have different colors.
+ * There are at most 8 colors.
+ * To guarantee 8 colors, If the number of processes is odd in a direction,
+ * returns -1 on all processes with the highest coordinate in this direction.
+ */
+inline int get_color(MPI_Comm comm)
 {
     Vec3i coords = mpi_cart_get_coords(comm);
     Vec3i dims = mpi_cart_get_dims(comm);
@@ -40,10 +47,11 @@ int get_color(MPI_Comm comm)
 
     return coords[0] % 2 + (coords[1] % 2) * 2 + (coords[2] % 2) * 4;
 }
+} // namespace __impl
 
 struct independent_process_sets {
     independent_process_sets(const boost::mpi::communicator &comm_cart)
-        : col(get_color(comm_cart))
+        : col(__impl::get_color(comm_cart))
     {
         assert(comm_cart.has_cartesian_topology());
     }
