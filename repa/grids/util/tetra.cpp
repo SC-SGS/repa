@@ -22,12 +22,14 @@
 #include "tetra.hpp"
 #include "vec_arith.hpp"
 #include <cmath>
+#include <iostream>
 
 namespace repa {
 namespace util {
 namespace tetra {
 
 int16_t precision = 10;
+Vec3i box_size{0, 0, 0};
 
 using Vec3i64 = Vec3<int64_t>;
 
@@ -48,6 +50,20 @@ std::array<Vec3i64, 8> integerizedArray(const std::array<Vec3d, 8> &vertices)
         intVert[i] = integerize(vertices[i]);
     }
     return intVert;
+}
+
+std::pair<Vec3i, Vec3i> min_max_of_dim(const std::array<Vec3i64, 8> &vertices)
+{
+    Vec3i min = box_size;
+    Vec3i max{0, 0, 0};
+    for (int d = 0; d < 3; d++) {
+        for (Vec3i64 vertex : vertices) {
+            int v_d = vertex[d];
+            min[d] = std::min(v_d, min[d]);
+            max[d] = std::max(v_d, max[d]);
+        }
+    }
+    return std::make_pair(min, max);
 }
 
 struct Plane {
@@ -99,6 +115,8 @@ private:
     std::array<std::array<Plane, 4>, 6> tetrahedron_planes;
     double min_height;
     bool isValid;
+    Vec3<bool> periodic;
+    Vec3i min_dim;
 
 public:
     _Octagon_Impl() = delete;
@@ -106,6 +124,10 @@ public:
     _Octagon_Impl(const std::array<Vec3i64, 8> &corners, double max_cutoff)
         : min_height(2. * std::sqrt(3.) * max_cutoff), isValid(true)
     {
+        periodic = {false, false, false};
+        if (util::vector_arithmetic::all(box_size > 0)) {
+            check_periodity(corners);
+        }
         Vec3i64 start = corners[0];
         Vec3i64 end = corners[7];
         Vec3i64 last = corners[5];
@@ -114,6 +136,31 @@ public:
             tetrahedron_planes[i] = generate_tetra({start, end, next, last});
             last = next;
         }
+    }
+
+    void check_periodity(const std::array<Vec3i64, 8> corners)
+    {
+        auto minmax = min_max_of_dim(corners);
+        Vec3i min = minmax.first;
+        Vec3i max = minmax.second;
+        box_size *= precision;
+        for (int d = 0; d < 3; d++) {
+            if (max[d] - min[d] > box_size[d]) {
+                std::cerr << "A domain with a lenght greater than the box "
+                             "itself is technically possible but not accepted.";
+            }
+            if (max[d] > box_size[d]) { // box_size -1?
+                periodic[d] = true;
+            }
+            if (min[d] < 0) {
+                for (Vec3i64 vec : corners) {
+                    vec[d] += box_size[d];
+                }
+                min[d] += box_size[d];
+                periodic[d] = true;
+            }
+        }
+        min_dim = min;
     }
 
     /** Returns 4 planes that represent the faces of a tetrahedron.
@@ -133,6 +180,13 @@ public:
 
     bool contains(Vec3i64 point) const noexcept
     {
+        if (util::vector_arithmetic::any(periodic)) {
+            for (int d = 0; d < 3; d++) {
+                if (periodic[d] && point[d] < min_dim[d]) {
+                    point[d] += box_size[d];
+                }
+            }
+        }
         // Iterate over all tetrahedrons of the domain
         for (int tetra = 0; tetra < 6; tetra++) {
             // Points which are exactly on this plane of the tetrahedron

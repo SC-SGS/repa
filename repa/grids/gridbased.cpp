@@ -270,6 +270,8 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                    "shifted.";
     }
     util::tetra::precision = static_cast<int16_t>(10. / min_cell_size);
+    util::tetra::box_size
+        = util::vector_arithmetic::static_cast_vec<Vec3i>(box_size);
     init_partitioning();
     reinit();
 }
