@@ -20,5 +20,6 @@
 #pragma once
 
 #include "repa/grid_types.hpp"
+#include "repa/grid_variants.hpp"
 #include "repa/pargrid.hpp"
 #include "repa/pargrid_factory.hpp"

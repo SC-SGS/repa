@@ -20,7 +20,7 @@
 #include <boost/test/unit_test.hpp>
 #include <random>
 
-#include "repa/grids/diffusion.hpp"
+#include <repa/grid_variants.hpp>
 
 static std::vector<double> get_random_vec(size_t n)
 {
@@ -80,9 +80,9 @@ struct TEnv::TEnv_impl {
     void run(TestFunc test_func);
 
 private:
-    void exec_main_test(std::unique_ptr<repa::grids::ParallelLCGrid> &up,
-                        repa::GridType gt,
-                        TestFunc test_func);
+    void run_main_test(std::unique_ptr<repa::grids::ParallelLCGrid> &up,
+                       repa::GridType gt,
+                       TestFunc test_func);
 };
 
 TEnv::TEnv_impl::TEnv_impl(const boost::mpi::communicator &comm,
@@ -174,26 +174,22 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
         BOOST_CHECK_NO_THROW(up = repa::make_pargrid(gt, comm, box, mings, ep));
         BOOST_TEST(up.get() != nullptr);
 
-        if (repa::grids::Diffusion *d
-            = dynamic_cast<repa::grids::Diffusion *>(up.get())) {
-            std::set<std::string> variants = d->get_supported_variants();
-            for (auto iter = variants.begin(); iter != variants.end(); iter++) {
-                if (iter != variants.begin()) {
-                    BOOST_CHECK_NO_THROW(
-                        up = repa::make_pargrid(gt, comm, box, mings, ep));
-                    BOOST_TEST(up.get() != nullptr);
-                }
-                up->command("set flow " + *iter);
-                exec_main_test(up, gt, test_func);
-            }
-        }
-        else {
-            exec_main_test(up, gt, test_func);
+        run_main_test(up, gt, test_func);
+
+        // Also check all possible variants
+        for (const auto &variant :
+             repa::variants(up.get()).get_supported_variants()) {
+            BOOST_CHECK_NO_THROW(
+                up = repa::make_pargrid(gt, comm, box, mings, ep));
+            BOOST_TEST(up.get() != nullptr);
+            repa::variants(up.get()).set_variant(variant);
+
+            run_main_test(up, gt, test_func);
         }
     }
 }
 
-void TEnv::TEnv_impl::exec_main_test(
+void TEnv::TEnv_impl::run_main_test(
     std::unique_ptr<repa::grids::ParallelLCGrid> &up,
     repa::GridType gt,
     TestFunc test_func)

@@ -64,7 +64,7 @@ PSDiffusion::~PSDiffusion()
 {
 }
 
-std::set<std::string> PSDiffusion::get_supported_variants()
+std::set<std::string> PSDiffusion::get_supported_variants() const
 {
     std::set<std::string> vars = Diffusion::get_supported_variants();
     for (const auto &v : supported_ps_diffusion_variants) {

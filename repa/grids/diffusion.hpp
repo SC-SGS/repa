@@ -20,6 +20,7 @@
 #pragma once
 
 #include "diff_variants.hpp"
+#include "grid_variants.hpp"
 #include "globox.hpp"
 #include "glomethod.hpp"
 #include "pargrid.hpp"
@@ -43,13 +44,14 @@ using CellNeighborhoodPerCell = std::vector<CellNeighborhood>;
 /** Diffusively load-balanced grid.
  * Processes iteratively exchange boundary cells with neighbors.
  */
-struct Diffusion : public GloMethod {
+struct Diffusion : public GloMethod, public VariantSetter {
     Diffusion(const boost::mpi::communicator &comm,
               Vec3d box_size,
               double min_cell_size);
     ~Diffusion();
 
-    virtual std::set<std::string> get_supported_variants();
+    virtual std::set<std::string> get_supported_variants() const override;
+    virtual void set_variant(const std::string &var) override;
 
 protected:
     virtual void post_init(bool firstcall) override;

@@ -26,6 +26,7 @@ set(repa_SRC
     grids/util/neighbor_offsets.cpp
     grids/util/tetra.cpp
     grid_types.cpp
+    grid_variants.cpp
     pargrid_factory.cpp
     pargrid.cpp
 )
@@ -55,6 +56,7 @@ set(repa_HDR
     pargrid_factory.hpp
     common_types.hpp
     grid_types.hpp
+    grid_variants.hpp
 )
 
 add_library(repa SHARED ${repa_SRC})

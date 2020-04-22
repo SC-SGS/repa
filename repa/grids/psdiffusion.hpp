@@ -38,7 +38,7 @@ struct PSDiffusion : public Diffusion {
                 double min_cell_size);
     ~PSDiffusion();
 
-    virtual std::set<std::string> get_supported_variants() override;
+    virtual std::set<std::string> get_supported_variants() const override;
 
 protected:
     virtual bool accept_transfer(local_cell_index_type cidx,

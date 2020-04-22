@@ -232,13 +232,19 @@ Diffusion::~Diffusion()
 {
 }
 
-std::set<std::string> Diffusion::get_supported_variants()
+std::set<std::string> Diffusion::get_supported_variants() const
 {
     std::set<std::string> vars;
     for (const auto &v : supported_default_diffusion_variants) {
         vars.insert(v.first);
     }
     return vars;
+}
+
+void Diffusion::set_variant(const std::string &var)
+{
+    // Hacky
+    command(std::string{"set flow "} + var);
 }
 
 Diffusion::PerNeighbor<Diffusion::GlobalCellIndices>
