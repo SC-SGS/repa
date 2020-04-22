@@ -54,22 +54,5 @@ inline rank_type mpi_cart_rank(MPI_Comm comm, const Vec3i &coord)
     return static_cast<rank_type>(r);
 }
 
-inline int mpi_cart_get_color(MPI_Comm comm)
-{
-    Vec3i coords = mpi_cart_get_coords(comm);
-    Vec3i dims = mpi_cart_get_dims(comm);
-
-    for (int d = 0; d < 3; d++) {
-        // Check if number of processes in this dimension is odd.
-        // If this is the case, the nodes at the border of this dimension
-        // must not be shifted.
-        if ((dims[d] % 2 == 1) && (coords[d] == dims[d] - 1)) {
-            return -1;
-        }
-    }
-
-    return coords[0] % 2 + (coords[1] % 2) * 2 + (coords[2] % 2) * 4;
-}
-
 } // namespace util
 } // namespace repa
