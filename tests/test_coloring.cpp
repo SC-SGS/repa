@@ -91,10 +91,11 @@ BOOST_AUTO_TEST_CASE(test_coloring)
         }
         // If all dimensions are even, no node has the color -1 and all will be
         // shifted.
-        bool all_dims_even = std::any_of(dims.begin(), dims.end(),
+        bool all_dims_even = std::all_of(dims.begin(), dims.end(),
                                          [](int d) { return d % 2 == 0; });
-        iff(all_dims_even,
-            std::find(colors.begin(), colors.end(), -1) == colors.end());
+        BOOST_CHECK(
+            iff(all_dims_even,
+                std::find(colors.begin(), colors.end(), -1) == colors.end()));
     }
 
     if (comm_cart.rank() == 0) {
