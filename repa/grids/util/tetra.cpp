@@ -109,6 +109,12 @@ planes_of_tetrahedron(const std::array<Vec3i64, 4> &corners)
 
 } // namespace
 
+void init_tetra(double min_cell_size, Vec3d box_s)
+{
+    precision = static_cast<int16_t>(10. / min_cell_size);
+    box_size
+        = util::vector_arithmetic::static_cast_vec<Vec3i>(integerize(box_s));
+}
 struct _Octagon_Impl {
 private:
     static const std::array<int, 6> cornerOrder;
