@@ -466,7 +466,7 @@ static Vec3d shift_gridpoint(Vec3d gp,
     // Therefore, they do not need periodic mirroring.
     for (int d = 0; d < 3; ++d) {
         // Shift only non-boundary coordinates
-        if (coords[d] == dims[d] - 1)
+        if (!PERIODIC(d) && coords[d] == dims[d] - 1)
             continue;
         gp[d] += shift_vector[d];
     }
