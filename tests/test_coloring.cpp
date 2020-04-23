@@ -28,10 +28,10 @@
 #define BOOST_TEST_MODULE coloring
 #include <boost/test/unit_test.hpp>
 
-#include <vector>
 #include <boost/mpi.hpp>
 #include <repa/grids/util/mpi_cart_coloring.hpp>
 #include <repa/grids/util/vec_arith.hpp>
+#include <vector>
 
 static int neighbor_rank(const boost::mpi::communicator &comm, repa::Vec3i off)
 {
