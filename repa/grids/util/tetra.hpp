@@ -32,6 +32,8 @@ namespace tetra {
 struct _Octagon_Impl;
 
 extern int16_t precision;
+
+// Initialize precision and box_size
 void init_tetra(double min_cell_size, Vec3d box_size);
 
 struct Octagon {

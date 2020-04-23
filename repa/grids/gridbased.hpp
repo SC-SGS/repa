@@ -136,9 +136,6 @@ private:
     // Initializes the neighbor ranks data structures
     void init_neighbors();
 
-    // Initializes the core values for tetra-namespace
-    void init_tetra(double min_cell_size, Vec3d box_size);
-
     // Returns the center of this subdomain
     Vec3d get_subdomain_center();
 
