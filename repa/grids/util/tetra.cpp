@@ -57,7 +57,8 @@ std::array<Vec3i64, 8> integerizedArray(const std::array<Vec3d, 8> &vertices)
  * In the first Vector the minimum values are collected, in the second the
  * maximum values.
  */
-std::pair<Vec3i64, Vec3i64> min_max_per_dim(const std::array<Vec3i64, 8> &vertices)
+std::pair<Vec3i64, Vec3i64>
+min_max_per_dim(const std::array<Vec3i64, 8> &vertices)
 {
     Vec3i64 min = box_size;
     Vec3i64 max{0, 0, 0};
@@ -155,8 +156,7 @@ public:
         std::tie(min, max) = min_max_per_dim(corners);
         for (int d = 0; d < 3; d++) {
             if (max[d] - min[d] > box_size[d]) {
-                std::cerr << "A domain with a lenght greater than the box "
-                             "itself is technically possible but not accepted.";
+                isValid = false;
             }
             if (max[d] > box_size[d]) { // box_size -1?
                 periodic[d] = true;
