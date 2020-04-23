@@ -52,7 +52,12 @@ std::array<Vec3i64, 8> integerizedArray(const std::array<Vec3d, 8> &vertices)
     return intVert;
 }
 
-std::pair<Vec3i, Vec3i> min_max_of_dim(const std::array<Vec3i64, 8> &vertices)
+/**
+ * Returns the minimum and maximum value for each dimension.
+ * In the first Vector the minimum values are collected, in the second the
+ * maximum values.
+ */
+std::pair<Vec3i, Vec3i> min_max_per_dim(const std::array<Vec3i64, 8> &vertices)
 {
     Vec3i min = box_size;
     Vec3i max{0, 0, 0};
@@ -128,11 +133,12 @@ public:
     _Octagon_Impl() = delete;
 
     _Octagon_Impl(const std::array<Vec3i64, 8> &corners, double max_cutoff)
-        : min_height(2. * std::sqrt(3.) * max_cutoff), isValid(true)
+        : min_height(2. * std::sqrt(3.) * max_cutoff),
+          isValid(true),
+          periodic({false, false, false})
     {
-        periodic = {false, false, false};
         if (util::vector_arithmetic::all(box_size > 0)) {
-            check_periodity(corners);
+            check_periodicity(corners);
         }
         Vec3i64 start = corners[0];
         Vec3i64 end = corners[7];
@@ -144,11 +150,10 @@ public:
         }
     }
 
-    void check_periodity(const std::array<Vec3i64, 8> corners)
+    void check_periodicity(const std::array<Vec3i64, 8> corners)
     {
-        auto minmax = min_max_of_dim(corners);
-        Vec3i min = minmax.first;
-        Vec3i max = minmax.second;
+        Vec3i min, max;
+        std::tie(min, max) = min_max_per_dim(corners);
         for (int d = 0; d < 3; d++) {
             if (max[d] - min[d] > box_size[d]) {
                 std::cerr << "A domain with a lenght greater than the box "
