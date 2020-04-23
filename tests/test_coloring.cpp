@@ -99,13 +99,6 @@ BOOST_AUTO_TEST_CASE(test_coloring)
                 std::find(colors.begin(), colors.end(), -1) == colors.end()));
     }
 
-    if (comm_cart.rank() == 0) {
-        std::cout << "Colors:";
-        for (auto c : colors)
-            std::cout << " " << c;
-        std::cout << std::endl;
-    }
-
     if (colors.at(comm.rank()) != -1) {
         repa::Vec3i off;
         for (off[0] = -1; off[0] <= 1; ++off[0]) {
