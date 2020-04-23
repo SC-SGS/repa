@@ -21,6 +21,7 @@
 #include "../../pargrid.hpp"
 #include "../globox.hpp"
 #include "linearize.hpp"
+#include "vec_arith.hpp"
 #include <cmath>
 
 namespace repa {
@@ -49,36 +50,37 @@ void init_part_linear(const globox::GlobalBox<global_cell_index_type> &gbox,
 
 namespace __cart_impl {
 
-inline repa::Vec3i ceil_div(const repa::Vec3i &a, const repa::Vec3i &b)
-{
-    Vec3i result;
-    for (int i = 0; i < 3; ++i) {
-        // Does not assign an equal amount of cells to each process.
-        result[i] = static_cast<Vec3i::value_type>(
-            std::ceil(static_cast<double>(a[i]) / b[i]));
-    }
-    return result;
-}
-
 struct Cart_CellProcessIndexConverter {
+    static repa::Vec3d _vdiv(const Vec3i &a, const Vec3i &b)
+    {
+        using namespace repa::util::vector_arithmetic;
+        return static_cast_vec<Vec3d>(a) / static_cast_vec<Vec3d>(b);
+    }
+
+    static Vec3i _round_vec(const Vec3d &a)
+    {
+        Vec3i res;
+        for (int d = 0; d < 3; ++d)
+            res[d] = static_cast<int>(std::round(a[d]));
+        return res;
+    }
+
     Cart_CellProcessIndexConverter(const repa::Vec3i &cell_grid,
                                    const repa::Vec3i &dims)
-        : dims(dims), cells_per_proc(ceil_div(cell_grid, dims))
+        : dims(dims), cells_per_proc(_vdiv(cell_grid, dims))
     {
     }
 
     Vec3i operator()(const Vec3i &cell_idx) const
     {
-        Vec3i result;
-        for (int d = 0; d < 3; ++d) {
-            result[d] = std::min(cell_idx[d] / cells_per_proc[d], dims[d] - 1);
-        }
-        return result;
+        using namespace repa::util::vector_arithmetic;
+        return vec_clamp(_round_vec(cell_idx / cells_per_proc - .5),
+                         constant_vec3(0), dims - 1);
     }
 
 private:
     const repa::Vec3i &dims;
-    const repa::Vec3i cells_per_proc;
+    const repa::Vec3d cells_per_proc;
 };
 
 } // namespace __cart_impl
