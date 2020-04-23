@@ -28,10 +28,10 @@ namespace repa {
 namespace util {
 namespace tetra {
 
-int16_t precision = 10;
-Vec3i box_size{0, 0, 0};
-
 using Vec3i64 = Vec3<int64_t>;
+
+int16_t precision = 10;
+Vec3i64 box_size{0, 0, 0};
 
 // Anonymous namespace for internal linkage
 namespace {
@@ -57,15 +57,14 @@ std::array<Vec3i64, 8> integerizedArray(const std::array<Vec3d, 8> &vertices)
  * In the first Vector the minimum values are collected, in the second the
  * maximum values.
  */
-std::pair<Vec3i, Vec3i> min_max_per_dim(const std::array<Vec3i64, 8> &vertices)
+std::pair<Vec3i64, Vec3i64> min_max_per_dim(const std::array<Vec3i64, 8> &vertices)
 {
-    Vec3i min = box_size;
-    Vec3i max{0, 0, 0};
+    Vec3i64 min = box_size;
+    Vec3i64 max{0, 0, 0};
     for (int d = 0; d < 3; d++) {
         for (Vec3i64 vertex : vertices) {
-            int v_d = vertex[d];
-            min[d] = std::min(v_d, min[d]);
-            max[d] = std::max(v_d, max[d]);
+            min[d] = std::min(vertex[d], min[d]);
+            max[d] = std::max(vertex[d], max[d]);
         }
     }
     return std::make_pair(min, max);
@@ -118,7 +117,7 @@ void init_tetra(double min_cell_size, Vec3d box_s)
 {
     precision = static_cast<int16_t>(10. / min_cell_size);
     box_size
-        = util::vector_arithmetic::static_cast_vec<Vec3i>(integerize(box_s));
+        = util::vector_arithmetic::static_cast_vec<Vec3i64>(integerize(box_s));
 }
 struct _Octagon_Impl {
 private:
@@ -127,7 +126,7 @@ private:
     double min_height;
     bool isValid;
     Vec3<bool> periodic;
-    Vec3i min_dim;
+    Vec3i64 min_dim;
 
 public:
     _Octagon_Impl() = delete;
@@ -152,7 +151,7 @@ public:
 
     void check_periodicity(const std::array<Vec3i64, 8> corners)
     {
-        Vec3i min, max;
+        Vec3i64 min, max;
         std::tie(min, max) = min_max_per_dim(corners);
         for (int d = 0; d < 3; d++) {
             if (max[d] - min[d] > box_size[d]) {
