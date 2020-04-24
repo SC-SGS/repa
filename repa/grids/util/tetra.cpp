@@ -127,7 +127,7 @@ private:
     double min_height;
     bool isValid;
     Vec3<bool> periodic;
-    Vec3i64 min_dim;
+    Vec3i64 max_dim;
 
 public:
     _Octagon_Impl() = delete;
@@ -159,17 +159,17 @@ public:
                 isValid = false;
             }
             if (max[d] > box_size[d]) { // box_size -1?
+                for (Vec3i64 vec : corners) {
+                    vec[d] -= box_size[d];
+                }
+                max[d] -= box_size[d];
                 periodic[d] = true;
             }
             if (min[d] < 0) {
-                for (Vec3i64 vec : corners) {
-                    vec[d] += box_size[d];
-                }
-                min[d] += box_size[d];
                 periodic[d] = true;
             }
         }
-        min_dim = min;
+        max_dim = max;
     }
 
     /** Returns 4 planes that represent the faces of a tetrahedron.
@@ -190,8 +190,8 @@ public:
     bool contains(Vec3i64 point) const noexcept
     {
         for (int d = 0; d < 3; d++) {
-            if (periodic[d] && point[d] < min_dim[d]) {
-                point[d] += box_size[d];
+            if (periodic[d] && point[d] > max_dim[d]) {
+                point[d] -= box_size[d];
             }
         }
         // Iterate over all tetrahedrons of the domain
