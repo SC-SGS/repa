@@ -143,7 +143,6 @@ public:
         auto minmax = min_max_of_dim(corners);
         Vec3i min = minmax.first;
         Vec3i max = minmax.second;
-        box_size *= precision;
         for (int d = 0; d < 3; d++) {
             if (max[d] - min[d] > box_size[d]) {
                 std::cerr << "A domain with a lenght greater than the box "

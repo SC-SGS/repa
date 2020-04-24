@@ -246,6 +246,15 @@ void GridBasedGrid::reinit()
     }
 }
 
+void GridBasedGrid::init_tetra(double min_cell_size, Vec3d box_size)
+{
+    using util::vector_arithmetic::operator*;
+    double precision = 10. / min_cell_size;
+    util::tetra::precision = static_cast<int16_t>(precision);
+    util::tetra::box_size
+        = util::vector_arithmetic::static_cast_vec<Vec3i>(box_size * precision);
+}
+
 GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                              Vec3d box_size,
                              double min_cell_size,
@@ -258,20 +267,7 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                              : decltype(subdomain_midpoint){std::bind(
                                  &GridBasedGrid::get_subdomain_center, this)})
 {
-    auto dims = util::mpi_cart_get_dims(comm_cart);
-    if (dims[0] % 2 == 1 || dims[1] % 2 == 1 || dims[2] % 2 == 1) {
-        if (comm_cart.rank() == 0)
-            std::cerr
-                << "There are a odd number of processes in at least one "
-                   "dimension. "
-                << "Because this can lead to invalid configurations in the "
-                   "coloring scheme, "
-                << " the nodes on the border in this dimension are NOT "
-                   "shifted.";
-    }
-    util::tetra::precision = static_cast<int16_t>(10. / min_cell_size);
-    util::tetra::box_size
-        = util::vector_arithmetic::static_cast_vec<Vec3i>(box_size);
+    init_tetra(min_cell_size, box_size);
     init_partitioning();
     reinit();
 }
