@@ -67,6 +67,27 @@ inline std::vector<int> mpi_undirected_neighbors(MPI_Comm neighcomm)
     return srcneigh;
 }
 
+inline std::pair<std::vector<int>, std::vector<int>>
+mpi_directed_neighbors(MPI_Comm neighcomm)
+{
+    assert(has_dist_graph_topology(neighcomm));
+
+    int indegree = 0, outdegree = 0, weighted = 0;
+    MPI_Dist_graph_neighbors_count(neighcomm, &indegree, &outdegree, &weighted);
+
+    std::vector<int> srcneigh(indegree, UNKNOWN_RANK), dummy1(indegree),
+        dstneigh(outdegree, UNKNOWN_RANK), dummy2(outdegree);
+    MPI_Dist_graph_neighbors(neighcomm, indegree, srcneigh.data(),
+                             dummy1.data(), outdegree, dstneigh.data(),
+                             dummy2.data());
+
+    assert(std::find(srcneigh.begin(), srcneigh.end(), UNKNOWN_RANK)
+           == srcneigh.end());
+    assert(std::find(dstneigh.begin(), dstneigh.end(), UNKNOWN_RANK)
+           == dstneigh.end());
+    return std::make_pair(srcneigh, dstneigh);
+}
+
 /** Returns a boost::mpi::communicator with a undirected Dist_graph
  * topology.
  */

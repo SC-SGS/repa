@@ -22,8 +22,12 @@
  * and ensures that each ghost and boundary cells have associated
  * communications.
  */
+
+#define BOOST_TEST_NO_MAIN
+#define BOOST_TEST_ALTERNATIVE_INIT_API
+#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE ghost_cells_valid
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include "testenv.hpp"
 #include <algorithm>
@@ -110,6 +114,11 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 
 BOOST_AUTO_TEST_CASE(test_all_ghost_cells_valid)
 {
-    boost::mpi::environment env;
     testenv::TEnv::default_test_env().with_repart().all_grids().run(test);
+}
+
+int main(int argc, char **argv)
+{
+    boost::mpi::environment mpi_env{argc, argv};
+    return boost::unit_test::unit_test_main(init_unit_test, argc, argv);
 }

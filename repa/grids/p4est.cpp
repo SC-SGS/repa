@@ -44,6 +44,15 @@ namespace grids {
 
 namespace impl {
 
+void init_p4est_logging()
+{
+    static bool initialized = false;
+    if (!initialized) {
+        p4est_init(NULL, SC_LP_ERROR);
+        initialized = true;
+    }
+}
+
 enum class CellType { inner = 0, boundary = 1, ghost = 2 };
 struct CellInfo {
     const rank_type
@@ -283,6 +292,7 @@ struct P4estGrid::_P4estGrid_impl {
           box_l(box_l),
           max_range(max_range)
     {
+        impl::init_p4est_logging();
     }
 };
 

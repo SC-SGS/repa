@@ -28,6 +28,7 @@ define_test(NAME test_integral_range SRC test_integral_range.cpp SINGLEPROC)
 define_test(NAME test_unknown_exceptions SRC test_unknown_exceptions.cpp SINGLEPROC)
 define_test(NAME test_vec_arith SRC test_vec_arith.cpp SINGLEPROC)
 define_test(NAME test_tetra SRC test_tetra.cpp SINGLEPROC)
+define_test(NAME test_coloring SRC test_coloring.cpp)
 
 
 # Integration tests

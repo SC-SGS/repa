@@ -21,10 +21,13 @@
  * Checks for the correct creation of supported pargrids.
  */
 
+#define BOOST_TEST_NO_MAIN
+#define BOOST_TEST_ALTERNATIVE_INIT_API
+#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE unknown_exceptions
-#include "testenv.hpp"
+#include <boost/test/unit_test.hpp>
+
 #include <boost/mpi.hpp>
-#include <boost/test/included/unit_test.hpp>
 #include <repa/repa.hpp>
 
 template <typename E>
@@ -64,7 +67,6 @@ BOOST_AUTO_TEST_CASE(test_unknown_exceptions)
     BOOST_CHECK_EXCEPTION(repa::grid_type_to_string(gt),
                           repa::UnknownGridTypeError, ignore_message);
 
-    boost::mpi::environment env;
     boost::mpi::communicator comm;
     BOOST_CHECK_EXCEPTION(repa::make_pargrid(gt, comm, {1., 1., 1.}, 1.),
                           repa::UnknownGridTypeError,
@@ -75,4 +77,10 @@ BOOST_AUTO_TEST_CASE(test_unknown_exceptions)
     BOOST_CHECK_EXCEPTION(g->command("unknown"),
                           repa::grids::ParallelLCGrid::UnknwonCommandError,
                           message_unknown_command);
+}
+
+int main(int argc, char **argv)
+{
+    boost::mpi::environment mpi_env{argc, argv};
+    return boost::unit_test::unit_test_main(init_unit_test, argc, argv);
 }

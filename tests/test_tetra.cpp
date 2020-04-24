@@ -22,13 +22,16 @@
  * Checks tetra.[ch]pp
  */
 
+#define BOOST_TEST_NO_MAIN
+#define BOOST_TEST_ALTERNATIVE_INIT_API
+#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE tetra
+#include <boost/test/unit_test.hpp>
 
 #include <array>
 #include <chrono>
 #include <random>
 
-#include <boost/test/included/unit_test.hpp>
 #include <repa/grids/util/tetra.hpp>
 
 using namespace repa::util;
@@ -419,4 +422,9 @@ BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
                                    {0., 0., 0.}}};
         BOOST_CHECK(tetra::Octagon(cs3, max_cutoff).is_valid());
     }
+}
+
+int main(int argc, char **argv)
+{
+    return boost::unit_test::unit_test_main(init_unit_test, argc, argv);
 }

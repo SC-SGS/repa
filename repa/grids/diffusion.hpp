@@ -26,6 +26,7 @@
 #include "pargrid.hpp"
 #include <array>
 #include <set>
+#include <map>
 #include <vector>
 
 namespace repa {

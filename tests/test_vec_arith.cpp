@@ -21,9 +21,12 @@
  * Checks vec_arith.hpp
  */
 
+#define BOOST_TEST_NO_MAIN
+#define BOOST_TEST_ALTERNATIVE_INIT_API
+#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE vec_arith
-
 #include <boost/test/included/unit_test.hpp>
+
 #include <repa/common_types.hpp>
 #include <repa/grids/util/vec_arith.hpp>
 
@@ -31,7 +34,7 @@ using namespace repa::util::vector_arithmetic;
 using repa::Vec3d;
 using repa::Vec3i;
 
-void check_binary_ops()
+BOOST_AUTO_TEST_CASE(binary_ops)
 {
     const Vec3i v{7, 9, -21}, w{-1, 2, 17};
     const Vec3i up = v + w, um = v - w, ut = v * w, ud = v / w;
@@ -41,7 +44,7 @@ void check_binary_ops()
     BOOST_CHECK((ud == Vec3i{-7, 4, -1}));
 }
 
-void check_binary_ops_literal()
+BOOST_AUTO_TEST_CASE(binary_ops_literal)
 {
     const Vec3i v{7, 9, -21};
     const Vec3i up = v + 2, um = v - 2, ut = v * 2, ud = v / 2;
@@ -51,7 +54,7 @@ void check_binary_ops_literal()
     BOOST_CHECK((ud == Vec3i{3, 4, -10}));
 }
 
-void check_binary_assignment_ops()
+BOOST_AUTO_TEST_CASE(binary_assignment_ops)
 {
     Vec3i v{7, 9, -21}, w{-1, 2, 17};
     v += w;
@@ -64,7 +67,7 @@ void check_binary_assignment_ops()
     BOOST_CHECK((v == Vec3i{7, 9, -21}));
 }
 
-void check_binary_assignment_ops_literal()
+BOOST_AUTO_TEST_CASE(binary_assignment_ops_literal)
 {
     Vec3i v{7, 9, -21};
     v += 2;
@@ -77,7 +80,7 @@ void check_binary_assignment_ops_literal()
     BOOST_CHECK((v == Vec3i{7, 9, -21}));
 }
 
-void check_shift()
+BOOST_AUTO_TEST_CASE(shift_operators)
 {
     Vec3i v{7, 9, 12}, x{1, 2, 3};
     Vec3i w = v >> 1, y = 1 << x;
@@ -85,14 +88,14 @@ void check_shift()
     BOOST_CHECK((y == Vec3i{2, 4, 8}));
 }
 
-void check_unary()
+BOOST_AUTO_TEST_CASE(unary_operator)
 {
     const Vec3i v{7, 9, -21};
     const Vec3i w{-v};
     BOOST_CHECK((w == Vec3i{-7, -9, 21}));
 }
 
-void check_expression_capture()
+BOOST_AUTO_TEST_CASE(expression_capture)
 {
     const repa::Vec3i v{1, 1, 1};
     const auto v11 = v + 2;
@@ -103,28 +106,28 @@ void check_expression_capture()
     BOOST_CHECK((v111 == Vec3i{3, 3, 3}));
 }
 
-void check_cast()
+BOOST_AUTO_TEST_CASE(cast_vec)
 {
     const Vec3d v{1., 2., 3.};
     const Vec3i w{static_cast_vec<Vec3i>(v)};
     BOOST_CHECK((w == Vec3i{1, 2, 3}));
 }
 
-void check_clamp()
+BOOST_AUTO_TEST_CASE(clamp_function)
 {
     const Vec3i v{-2, 1, 10};
     const Vec3i w{vec_clamp(v, constant_vec3(0), constant_vec3(5))};
     BOOST_CHECK((w == Vec3i{0, 1, 5}));
 }
 
-void check_wrap()
+BOOST_AUTO_TEST_CASE(wrap_operator)
 {
     const Vec3i v{-2, 1, 10};
     const Vec3i w{v % constant_vec3(5)};
     BOOST_CHECK((w == Vec3i{3, 1, 0}));
 }
 
-void check_comparison()
+BOOST_AUTO_TEST_CASE(comparison_operators)
 {
     const Vec3i v{-2, 1, 10};
     const repa::Vec3<bool> weq{v == -2}, wg{v > -2}, wgeq{v >= -2}, wl{v < -2},
@@ -147,17 +150,7 @@ void check_comparison()
         all(wleq.as_expr() == repa::Vec3<bool>{true, false, false}.as_expr()));
 }
 
-BOOST_AUTO_TEST_CASE(test_vec_arith)
+int main(int argc, char **argv)
 {
-    check_binary_ops();
-    check_binary_ops_literal();
-    check_binary_assignment_ops();
-    check_binary_assignment_ops_literal();
-    check_shift();
-    check_unary();
-    check_expression_capture();
-    check_cast();
-    check_clamp();
-    check_wrap();
-    check_comparison();
+    return boost::unit_test::unit_test_main(init_unit_test, argc, argv);
 }
