@@ -189,11 +189,9 @@ public:
 
     bool contains(Vec3i64 point) const noexcept
     {
-        if (util::vector_arithmetic::any(periodic)) {
-            for (int d = 0; d < 3; d++) {
-                if (periodic[d] && point[d] < min_dim[d]) {
-                    point[d] += box_size[d];
-                }
+        for (int d = 0; d < 3; d++) {
+            if (periodic[d] && point[d] < min_dim[d]) {
+                point[d] += box_size[d];
             }
         }
         // Iterate over all tetrahedrons of the domain
