@@ -86,6 +86,17 @@ void PSDiffusion::post_init(bool firstcall)
     // Copy initial neighborhood, so that the neighborhood can be checked for
     // consistency in later iterations.
     if (firstcall) {
+        int nneigh = neighbors.size();
+        int minV;
+        int maxV;
+        MPI_Allreduce(&nneigh, &minV, 1, MPI_INT, MPI_MIN, comm_cart);
+        MPI_Allreduce(&nneigh, &maxV, 1, MPI_INT, MPI_MAX, comm_cart);
+        if (minV != maxV) {
+            std::cerr << "Not all processes have the same amount of neighbors."
+                      << std::endl;
+            assert(false);
+        }
+
         initial_neighborhood
             = std::vector<rank_type>(neighbors.begin(), neighbors.end());
     }
