@@ -31,7 +31,7 @@ make_cartesian_communicator(const boost::mpi::communicator &comm)
     MPI_Dims_create(comm.size(), 3, dims.data());
 
     MPI_Comm _comm_cart;
-    MPI_Cart_create(comm, 3, dims.data(), periods.data(), true, &_comm_cart);
+    MPI_Cart_create(comm, 3, dims.data(), periods.data(), false, &_comm_cart);
 
     return _comm_cart;
 }
