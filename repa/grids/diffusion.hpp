@@ -25,8 +25,8 @@
 #include "grid_variants.hpp"
 #include "pargrid.hpp"
 #include <array>
-#include <set>
 #include <map>
+#include <set>
 #include <vector>
 
 namespace repa {
@@ -48,7 +48,9 @@ using CellNeighborhoodPerCell = std::vector<CellNeighborhood>;
 struct Diffusion : public GloMethod, public VariantSetter {
     Diffusion(const boost::mpi::communicator &comm,
               Vec3d box_size,
-              double min_cell_size);
+              double min_cell_size,
+              util::InitialPartitionType init_part
+              = util::InitialPartitionType::CARTESIAN3D);
     ~Diffusion();
 
     virtual std::set<std::string> get_supported_variants() const override;

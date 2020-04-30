@@ -27,7 +27,6 @@
 #include "grids/util/mpi_graph.hpp"
 #include "util/get_keys.hpp"
 #include "util/set_union.hpp"
-#include "util/vec_arith.hpp"
 
 #ifndef NDEBUG
 #define PSDIFFUSION_DEBUG
@@ -62,8 +61,9 @@ static Vec3i map_coords_to_opposite_side(const Vec3i &c0,
  */
 PSDiffusion::PSDiffusion(const boost::mpi::communicator &comm,
                          Vec3d box_size,
-                         double min_cell_size)
-    : Diffusion(comm, box_size, min_cell_size)
+                         double min_cell_size,
+                         util::InitialPartitionType init_part)
+    : Diffusion(comm, box_size, min_cell_size, init_part)
 {
 }
 

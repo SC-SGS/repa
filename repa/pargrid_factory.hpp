@@ -41,5 +41,6 @@ make_pargrid(GridType gt,
              const boost::mpi::communicator &comm,
              Vec3d box_size,
              double min_cell_size,
+             std::string init_part = "",
              ExtraParams ep = ExtraParams{});
 } // namespace repa

@@ -28,7 +28,6 @@
 
 #include "util/fill.hpp"
 #include "util/get_keys.hpp"
-#include "util/initial_partitioning.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/mpi_neighbor_allgather.hpp"
 #include "util/mpi_neighbor_alltoall.hpp"
@@ -219,16 +218,16 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 
 Diffusion::Diffusion(const boost::mpi::communicator &comm,
                      Vec3d box_size,
-                     double min_cell_size)
-    : GloMethod(comm, box_size, min_cell_size),
+                     double min_cell_size,
+                     util::InitialPartitionType init_part)
+    : GloMethod(comm, box_size, min_cell_size, init_part),
       flow_calc(diff_variants::create_flow_calc(
           diff_variants::FlowCalcKind::WILLEBEEK))
 {
     // Initial partitioning
     partition.resize(gbox.ncells());
     util::InitPartitioning{gbox, comm_cart}(
-        util::InitialPartitionType::CARTESIAN1D,
-        [this](global_cell_index_type idx, rank_type r) {
+        initial_partitioning, [this](global_cell_index_type idx, rank_type r) {
             assert(r >= 0 && r < this->comm.size());
             this->partition[idx] = r;
         });
