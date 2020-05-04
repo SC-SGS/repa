@@ -446,6 +446,15 @@ T1 sumOfAbs(const VecExpression<T1, N, Expr1> &v)
     return result;
 }
 
+template <typename T1, size_t N, typename Expr1>
+T1 max_norm(const VecExpression<T1, N, Expr1> &v)
+{
+    T1 result{0};
+    for (size_t i = 0; i < N; ++i)
+        result = std::max(result, std::abs(v[i]));
+    return result;
+}
+
 } // namespace vector_arithmetic
 } // namespace util
 } // namespace repa
