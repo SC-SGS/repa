@@ -210,7 +210,7 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
                       << repa::grid_type_to_string(itest.gt) << "' with '"
                       << itest.ipart << "' partitioning" << std::endl;
         }
-        
+
         std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
         BOOST_CHECK_NO_THROW(up = repa::make_pargrid(itest.gt, comm, box, mings,
                                                      itest.ipart, ep));
