@@ -26,6 +26,24 @@
 namespace repa {
 namespace util {
 
+inline MPI_Comm
+make_cartesian_communicator(const boost::mpi::communicator &comm, Vec3i dims)
+{
+    Vec3i periods{1, 1, 1};
+    MPI_Dims_create(comm.size(), 3, dims.data());
+
+    MPI_Comm _comm_cart;
+    MPI_Cart_create(comm, 3, dims.data(), periods.data(), true, &_comm_cart);
+
+    return _comm_cart;
+}
+
+inline MPI_Comm
+make_cartesian_communicator(const boost::mpi::communicator &comm)
+{
+    return make_cartesian_communicator(comm, Vec3i{0, 0, 0});
+}
+
 inline Vec3i mpi_cart_get_dims(MPI_Comm comm)
 {
     Vec3i dims, _dummy, _dummy2;

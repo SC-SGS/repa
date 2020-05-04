@@ -50,11 +50,10 @@ protected:
 
     virtual void command(std::string s) override;
 
+    boost::mpi::communicator init_topology_comm;
 private:
     bool coords_based_allow_sending(local_cell_index_type c,
                                     rank_type neighrank) const;
-
-    Vec3i comm_dims;
 
 #ifndef NDEBUG
     std::vector<rank_type> initial_neighborhood;

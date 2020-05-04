@@ -27,6 +27,7 @@
 #include "grids/util/mpi_cart.hpp"
 #include "grids/util/mpi_graph.hpp"
 #include "util/get_keys.hpp"
+#include "util/mpi_cart.hpp"
 #include "util/set_union.hpp"
 #include "util/vec_arith.hpp"
 
@@ -65,7 +66,8 @@ PSDiffusion::PSDiffusion(const boost::mpi::communicator &comm,
                          Vec3d box_size,
                          double min_cell_size,
                          util::InitialPartitionType init_part)
-    : Diffusion(comm, box_size, min_cell_size, init_part)
+    : Diffusion(comm, box_size, min_cell_size, init_part),
+      init_topology_comm(util::make_init_part_communicator(comm, init_part))
 {
     ensure(initial_partitioning != util::InitialPartitionType::LINEAR,
            "PSDiffusion does not support initial linear partitioning."
@@ -85,7 +87,6 @@ std::set<std::string> PSDiffusion::get_supported_variants() const
 void PSDiffusion::post_init(bool firstcall)
 {
     Diffusion::post_init(firstcall);
-    comm_dims = util::mpi_cart_get_dims(comm_cart);
 
 #ifdef PSDIFFUSION_DEBUG
     // Copy initial neighborhood, so that the neighborhood can be checked for
@@ -119,21 +120,22 @@ bool PSDiffusion::accept_transfer(local_cell_index_type cidx,
 bool PSDiffusion::coords_based_allow_sending(local_cell_index_type c,
                                              rank_type neighrank) const
 {
-    Vec3i c0, cn;
-    MPI_Cart_coords(comm_cart, rank_of_cell(cells[c]), 3, c0.data());
-    MPI_Cart_coords(comm_cart, neighrank, 3, cn.data());
+    const Vec3i comm_dims = util::mpi_cart_get_dims(init_topology_comm);
+    const Vec3i c0 = util::mpi_cart_get_coords(init_topology_comm);
+    const Vec3i cn = map_coords_to_opposite_side(
+        c0, util::mpi_cart_get_coords(init_topology_comm, neighrank),
+        comm_dims);
     for (const global_cell_index_type &d :
          gbox.full_shell_neigh_without_center(cells[c])) {
         rank_type rank_d = rank_of_cell(d);
         if (rank_d == rank_of_cell(cells[c]) || rank_d == neighrank)
             continue;
-        Vec3i c2;
-        MPI_Cart_coords(comm_cart, rank_d, 3, c2.data());
+        Vec3i c2 = map_coords_to_opposite_side(
+            c0, util::mpi_cart_get_coords(init_topology_comm, rank_d),
+            comm_dims);
 
-        cn = map_coords_to_opposite_side(c0, cn, comm_dims);
-        c2 = map_coords_to_opposite_side(c0, c2, comm_dims);
-        if (std::abs(cn[0] - c2[0]) > 2 || std::abs(cn[1] - c2[1]) > 2
-            || std::abs(cn[2] - c2[2]) > 2)
+        if (std::abs(cn[0] - c2[0]) >= 2 || std::abs(cn[1] - c2[1]) >= 2
+            || std::abs(cn[2] - c2[2]) >= 2)
             return false;
     }
     return true;

@@ -189,8 +189,9 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
         }
     }
 
+    // Check different initial partitionings
     if (std::find(grids.begin(), grids.end(), repa::GridType::DIFF)
-        != grids.end()) {
+        != grids.end() && repa::has_grid_type(repa::GridType::DIFF)) {
         repa::GridType gt = repa::GridType::DIFF;
         std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
         std::vector<std::string> pts{"Linear", "Cart1D", "Cart3D"};

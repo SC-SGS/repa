@@ -21,6 +21,7 @@
 #include "../../pargrid.hpp"
 #include "../globox.hpp"
 #include "linearize.hpp"
+#include "mpi_cart.hpp"
 #include "vec_arith.hpp"
 #include <cmath>
 
@@ -162,6 +163,26 @@ private:
     const globox::GlobalBox<global_cell_index_type> &gbox;
     const boost::mpi::communicator &comm;
 };
+
+inline boost::mpi::communicator
+make_init_part_communicator(const boost::mpi::communicator &comm,
+                            InitialPartitionType init_part)
+{
+    switch (init_part) {
+    case util::InitialPartitionType::CARTESIAN1D:
+        return boost::mpi::communicator{
+            make_cartesian_communicator(comm, Vec3i{0, 1, 1}),
+            boost::mpi::comm_take_ownership};
+        break;
+    case util::InitialPartitionType::CARTESIAN3D:
+        return boost::mpi::communicator{make_cartesian_communicator(comm),
+                                        boost::mpi::comm_take_ownership};
+        break;
+    default:
+        return boost::mpi::communicator{MPI_COMM_NULL, boost::mpi::comm_attach};
+        break;
+    }
+}
 
 } // namespace util
 } // namespace repa
