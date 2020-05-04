@@ -18,20 +18,23 @@
  */
 
 #include "grid_types.hpp"
+#include "grids/util/initial_partitioning.hpp"
 #include <unordered_map>
 
 namespace repa {
 
 namespace {
 
-static const std::unordered_map<std::string, GridType> grid_type_registry
-    = {{"p4est", GridType::P4EST},
-       {"cart", GridType::CART},
-       {"graph", GridType::GRAPH},
-       {"diff", GridType::DIFF},
-       {"hybrid_gp_diff", GridType::HYB_GP_DIFF},
-       {"kd_tree", GridType::KD_TREE},
-       {"gridbased", GridType::GRIDBASED}};
+static const std::unordered_map<std::string, GridType> grid_type_registry = {
+    {"p4est", GridType::P4EST},     {"cart", GridType::CART},
+    {"graph", GridType::GRAPH},     {"diff", GridType::DIFF},
+    {"ps_diff", GridType::PS_DIFF}, {"hybrid_gp_diff", GridType::HYB_GP_DIFF},
+    {"kd_tree", GridType::KD_TREE}, {"gridbased", GridType::GRIDBASED}};
+
+static const std::unordered_map<std::string, util::InitialPartitionType>
+    partition_registry = {{"Linear", util::InitialPartitionType::LINEAR},
+                          {"Cart1D", util::InitialPartitionType::CARTESIAN1D},
+                          {"Cart3D", util::InitialPartitionType::CARTESIAN3D}};
 
 #ifdef HAVE_KDPART
 #define KDPART_AVAIL true
@@ -67,6 +70,7 @@ static const std::unordered_map<GridType, bool, enum_hash_compat>
                               {GridType::CART, true},
                               {GridType::GRAPH, PARMETIS_AVAIL},
                               {GridType::DIFF, true},
+                              {GridType::PS_DIFF, true},
                               {GridType::HYB_GP_DIFF, PARMETIS_AVAIL},
                               {GridType::KD_TREE, KDPART_AVAIL},
                               {GridType::GRIDBASED, true}};
@@ -80,6 +84,16 @@ GridType parse_grid_type(const std::string &desc)
     }
     catch (const std::out_of_range &) {
         throw UnknownGridTypeError(desc);
+    }
+}
+
+util::InitialPartitionType parse_part_type(const std::string &desc)
+{
+    try {
+        return partition_registry.at(desc);
+    }
+    catch (const std::out_of_range &) {
+        throw UnknownPartitionTypeError(desc);
     }
 }
 

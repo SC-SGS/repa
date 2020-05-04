@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2019 Steffen Hirschmann
+ * Copyright 2017-2020 Steffen Hirschmann
  *
  * This file is part of Repa.
  *
@@ -19,7 +19,16 @@
 
 #pragma once
 
-#include "repa/grid_types.hpp"
-#include "repa/grid_variants.hpp"
-#include "repa/pargrid.hpp"
-#include "repa/pargrid_factory.hpp"
+namespace repa {
+namespace util {
+
+template <typename Set>
+Set set_union(Set s, Set t)
+{
+    for (const auto &el : t)
+        s.insert(el);
+    return s;
+}
+
+} // namespace util
+} // namespace repa

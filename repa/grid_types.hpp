@@ -24,6 +24,10 @@
 
 namespace repa {
 
+namespace util {
+enum InitialPartitionType : int;
+}
+
 /** Enum of supported grid types.
  * Caution: Might not all be compiled in.
  */
@@ -33,6 +37,7 @@ enum class GridType {
     CART,
     GRAPH,
     DIFF,
+    PS_DIFF,
     KD_TREE,
     HYB_GP_DIFF,
     GRIDBASED
@@ -55,10 +60,31 @@ private:
     std::string w;
 };
 
+struct UnknownPartitionTypeError {
+    UnknownPartitionTypeError() : w(std::string("Unknown grid type."))
+    {
+    }
+    UnknownPartitionTypeError(std::string s)
+        : w(std::string("Unknown grid type: `") + s + std::string("'"))
+    {
+    }
+    virtual const char *what() const
+    {
+        return w.c_str();
+    }
+
+private:
+    std::string w;
+};
+
 /** Returns the GridType associated with a descriptive string for the grid
  * type.
  */
 GridType parse_grid_type(const std::string &desc);
+
+/** Returns the InitialPartitionType with a descriptive string
+ */
+util::InitialPartitionType parse_part_type(const std::string &desc);
 
 /** Inverse of 'parse_grid_type'
  */

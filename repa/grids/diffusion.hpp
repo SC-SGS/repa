@@ -19,11 +19,14 @@
 
 #pragma once
 
+#include "diff_variants.hpp"
 #include "globox.hpp"
 #include "glomethod.hpp"
+#include "grid_variants.hpp"
 #include "pargrid.hpp"
 #include <array>
 #include <map>
+#include <set>
 #include <vector>
 
 namespace repa {
@@ -42,52 +45,25 @@ using CellNeighborhoodPerCell = std::vector<CellNeighborhood>;
 /** Diffusively load-balanced grid.
  * Processes iteratively exchange boundary cells with neighbors.
  */
-struct Diffusion : public GloMethod {
+struct Diffusion : public GloMethod, public VariantSetter {
     Diffusion(const boost::mpi::communicator &comm,
               Vec3d box_size,
-              double min_cell_size);
+              double min_cell_size,
+              util::InitialPartitionType init_part
+              = util::InitialPartitionType::CARTESIAN3D);
     ~Diffusion();
 
+    virtual std::set<std::string> get_supported_variants() const override;
+    virtual void set_variant(const std::string &var) override;
+
 protected:
-    /*
-     * Determines the status of each process (underloaded, overloaded)
-     * in the neighborhood given the local load and returns the volume of load
-     * to send to each neighbor. On underloaded processes, returns a vector of
-     * zeros.
-     *
-     * This call is collective on neighcomm.
-     *
-     * Default implementation follows [Willebeek Le Mair and Reeves, IEEE Tr.
-     * Par. Distr. Sys. 4(9), Sep 1993] propose
-     *
-     * @param neighcomm Graph communicator which reflects the neighbor
-     * relationship amongst processes (undirected edges), without edges to the
-     *                  process itself.
-     * @param load The load of the calling process.
-     * @returns Vector of load values ordered according to the neighborhood
-     *          ordering in neighcomm.
-     */
-    virtual std::vector<double> compute_send_volume(double load) const;
-
-    // Neighborhood communicator
-    boost::mpi::communicator neighcomm;
-
-private:
-    friend struct HybridGPDiff; // Needs access to "partition" vector
-
-    void pre_init(bool firstcall) override;
-    void post_init(bool firstcall) override;
-    void init_new_foreign_cell(local_cell_index_type localcell,
-                               global_cell_index_type foreigncell,
-                               rank_type owner) override;
+    virtual void post_init(bool firstcall) override;
 
     virtual rank_type rank_of_cell(global_cell_index_type idx) const override
     {
         assert(idx >= 0 && idx < gbox.ncells());
         return partition[idx];
     }
-
-    bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
 
     //
     // Additional data
@@ -96,7 +72,8 @@ private:
     // Stores all local cells which ar at the border of the local area of
     // this process (Stores the local index)
     std::vector<local_cell_index_type> borderCells;
-    // Stores for each cell in "borderCells" the ranks of their neighbourhood
+
+    // Stores for each cell in "borderCells" the ranks of their neighborhood
     // Key is the local cell ID and value a set of ranks
     std::map<local_cell_index_type, std::vector<rank_type>>
         borderCellsNeighbors;
@@ -105,12 +82,8 @@ private:
     // index.
     std::vector<rank_type> partition;
 
-    //
-    // Additional methods
-    //
-
-    // Clears obsolete entries from "partition"
-    void clear_unknown_cell_ownership();
+    // Neighborhood communicator
+    boost::mpi::communicator neighcomm;
 
     /** Type "Per_Neighbor": an element designated for communication with
      * a neighboring process (one per rank_index_type).
@@ -121,6 +94,35 @@ private:
     /** Communication volume (list of cells)
      */
     using GlobalCellIndices = std::vector<global_cell_index_type>;
+
+    virtual void command(std::string s) override;
+
+    virtual bool accept_transfer(local_cell_index_type cell,
+                                 rank_type rank) const
+    {
+        return true;
+    };
+
+    std::unique_ptr<diff_variants::FlowCalculator> flow_calc;
+
+private:
+    friend struct HybridGPDiff; // Needs access to "partition" vector
+
+    double profit_percentage_pass_through = 1.0;
+
+    void pre_init(bool firstcall) override;
+    void init_new_foreign_cell(local_cell_index_type localcell,
+                               global_cell_index_type foreigncell,
+                               rank_type owner) override;
+
+    bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
+
+    //
+    // Additional methods
+    //
+
+    // Clears obsolete entries from "partition"
+    void clear_unknown_cell_ownership();
 
     /** Computes vector of vectors of cells to be sent to neighboring processes
      * based on the send volume passed in "send_volume".

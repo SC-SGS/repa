@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2019 Steffen Hirschmann
+ * Copyright 2017-2020 Steffen Hirschmann
  *
  * This file is part of Repa.
  *
@@ -16,31 +16,22 @@
  * You should have received a copy of the GNU General Public License
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 #pragma once
 
-#include "grid_types.hpp"
-#include "pargrid.hpp"
-#include <memory>
+#include <set>
 
 namespace repa {
+namespace util {
 
-/** Grid factory method.
- * To be called on every node.
- *
- * @param gt Grid type to instantiate
- * @param comm Communicator to use
- * @param box_size Domain
- * @param min_cell_size Minimum cell size
- * @param paramq optional pointer to ParamQuery object
- *
- * @throws UnknwonGridTypeError if grid type is unknown.
- */
-std::unique_ptr<grids::ParallelLCGrid>
-make_pargrid(GridType gt,
-             const boost::mpi::communicator &comm,
-             Vec3d box_size,
-             double min_cell_size,
-             std::string init_part = "",
-             ExtraParams ep = ExtraParams{});
+template <typename Map>
+std::set<typename Map::key_type> get_keys(const Map &m)
+{
+    std::set<std::string> keys;
+    for (const auto &v : m) {
+        keys.insert(v.first);
+    }
+    return keys;
+}
+
+} // namespace util
 } // namespace repa

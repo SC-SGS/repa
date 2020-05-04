@@ -19,8 +19,8 @@
 
 #include "pargrid_factory.hpp"
 #include "grids/cart.hpp"
-#include "grids/diffusion.hpp"
 #include "grids/gridbased.hpp"
+#include "grids/psdiffusion.hpp"
 #ifdef HAVE_PARMETIS
 #include "grids/graph.hpp"
 #include "grids/hybrid-gp-diff.hpp"
@@ -40,6 +40,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
                                   const boost::mpi::communicator &comm,
                                   Vec3d box_size,
                                   double min_cell_size,
+                                  std::string init_part,
                                   ExtraParams ep)
 {
     ParallelLCGrid *r = nullptr;
@@ -66,7 +67,23 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         break;
 
     case GridType::DIFF:
-        r = new Diffusion(comm, box_size, min_cell_size);
+        if (init_part == "") {
+            r = new Diffusion(comm, box_size, min_cell_size);
+        }
+        else {
+            util::InitialPartitionType part = parse_part_type(init_part);
+            r = new Diffusion(comm, box_size, min_cell_size, part);
+        }
+        break;
+
+    case GridType::PS_DIFF:
+        if (init_part == "") {
+            r = new PSDiffusion(comm, box_size, min_cell_size);
+        }
+        else {
+            util::InitialPartitionType part = parse_part_type(init_part);
+            r = new PSDiffusion(comm, box_size, min_cell_size, part);
+        }
         break;
 
     case GridType::KD_TREE:
@@ -108,10 +125,11 @@ make_pargrid(GridType gt,
              const boost::mpi::communicator &comm,
              Vec3d box_size,
              double min_cell_size,
+             std::string init_part,
              ExtraParams ep)
 {
-    return std::unique_ptr<grids::ParallelLCGrid>(
-        grids::make_pargrid_impl(gt, comm, box_size, min_cell_size, ep));
+    return std::unique_ptr<grids::ParallelLCGrid>(grids::make_pargrid_impl(
+        gt, comm, box_size, min_cell_size, init_part, ep));
 }
 
 } // namespace repa

@@ -22,6 +22,7 @@
 
 #include "globox.hpp"
 #include "pargrid.hpp"
+#include "util/initial_partitioning.hpp"
 #include <unordered_map>
 
 namespace repa {
@@ -30,7 +31,8 @@ namespace grids {
 struct GloMethod : public ParallelLCGrid {
     GloMethod(const boost::mpi::communicator &comm,
               Vec3d box_size,
-              double min_cell_size);
+              double min_cell_size,
+              util::InitialPartitionType init_part);
     void after_construction() override;
     local_cell_index_type n_local_cells() override;
     ghost_cell_index_type n_ghost_cells() override;
@@ -73,6 +75,9 @@ protected:
 
     // Defines the linearization and global cell neighborhoods.
     globox::GlobalBox<global_cell_index_type, global_cell_index_type> gbox;
+
+    // Stores the initial partitioning enum
+    const util::InitialPartitionType initial_partitioning;
 
     // Stores the global index of local cells and the ghost cells of the
     // subdomain associated to this process. This ordering is imposed via

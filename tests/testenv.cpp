@@ -20,6 +20,8 @@
 #include <boost/test/unit_test.hpp>
 #include <random>
 
+#include <repa/grid_variants.hpp>
+
 static std::vector<double> get_random_vec(size_t n)
 {
     std::random_device rd;
@@ -76,6 +78,11 @@ struct TEnv::TEnv_impl {
                                         repa::GridType gt)>;
 
     void run(TestFunc test_func);
+
+private:
+    void run_main_test(std::unique_ptr<repa::grids::ParallelLCGrid> &up,
+                       repa::GridType gt,
+                       TestFunc test_func);
 };
 
 TEnv::TEnv_impl::TEnv_impl(const boost::mpi::communicator &comm,
@@ -164,23 +171,72 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
         }
 
         std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
-        BOOST_CHECK_NO_THROW(up = repa::make_pargrid(gt, comm, box, mings, ep));
+        BOOST_CHECK_NO_THROW(
+            up = repa::make_pargrid(gt, comm, box, mings, "", ep));
         BOOST_TEST(up.get() != nullptr);
 
-        test_func(up.get(), gt);
+        run_main_test(up, gt, test_func);
 
-        if (!repart)
-            continue;
-        repartition_helper(up.get(), get_metric);
+        // Also check all possible variants
+        for (const auto &variant :
+             repa::variants(up.get()).get_supported_variants()) {
+            BOOST_CHECK_NO_THROW(
+                up = repa::make_pargrid(gt, comm, box, mings, "", ep));
+            BOOST_TEST(up.get() != nullptr);
+            repa::variants(up.get()).set_variant(variant);
 
-        test_func(up.get(), gt);
-
-        if (!repart_twice)
-            continue;
-        repartition_helper(up.get(), get_metric);
-
-        test_func(up.get(), gt);
+            run_main_test(up, gt, test_func);
+        }
     }
+
+    // Check different initial partitionings
+    static const struct {
+        repa::GridType gt;
+        std::string ipart;
+    } initial_partitioning_confs[] = {
+        {repa::GridType::DIFF, "Linear"},
+        {repa::GridType::PS_DIFF, "Cart1D"},
+        {repa::GridType::PS_DIFF, "Cart3D"},
+    };
+
+    for (const auto &itest : initial_partitioning_confs) {
+        if (!repa::has_grid_type(itest.gt))
+            continue;
+        if (grids.find(itest.gt) == std::end(grids))
+            continue;
+
+        if (comm.rank() == 0) {
+            std::cout << "Checking grid '"
+                      << repa::grid_type_to_string(itest.gt) << "' with '"
+                      << itest.ipart << "' partitioning" << std::endl;
+        }
+
+        std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
+        BOOST_CHECK_NO_THROW(up = repa::make_pargrid(itest.gt, comm, box, mings,
+                                                     itest.ipart, ep));
+        BOOST_TEST(up.get() != nullptr);
+        run_main_test(up, itest.gt, test_func);
+    }
+}
+
+void TEnv::TEnv_impl::run_main_test(
+    std::unique_ptr<repa::grids::ParallelLCGrid> &up,
+    repa::GridType gt,
+    TestFunc test_func)
+{
+    test_func(up.get(), gt);
+
+    if (!repart)
+        return;
+    repartition_helper(up.get(), get_metric);
+
+    test_func(up.get(), gt);
+
+    if (!repart_twice)
+        return;
+    repartition_helper(up.get(), get_metric);
+
+    test_func(up.get(), gt);
 }
 
 /// TEnv

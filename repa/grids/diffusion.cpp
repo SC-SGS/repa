@@ -24,9 +24,10 @@
 #include <boost/serialization/utility.hpp> // std::pair
 #include <boost/serialization/vector.hpp>
 #include <numeric>
+#include <regex>
 
 #include "util/fill.hpp"
-#include "util/initial_partitioning.hpp"
+#include "util/get_keys.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/mpi_neighbor_allgather.hpp"
 #include "util/mpi_neighbor_alltoall.hpp"
@@ -136,41 +137,10 @@ void serialize(Archive &ar,
 namespace repa {
 namespace grids {
 
-std::vector<double> Diffusion::compute_send_volume(double load) const
-{
-    int nneigh = repa::util::mpi_undirected_neighbor_count(neighcomm);
-    // Exchange load in local neighborhood
-    std::vector<double> neighloads(nneigh);
-    MPI_Neighbor_allgather(&load, 1, MPI_DOUBLE, neighloads.data(), 1,
-                           MPI_DOUBLE, neighcomm);
-
-    double avgload
-        = std::accumulate(std::begin(neighloads), std::end(neighloads), load)
-          / (nneigh + 1);
-
-    // Return empty send volume if this process is underloaded
-    if (load < avgload)
-        return std::vector<double>(neighloads.size(), 0.0);
-
-    std::vector<double> deficiency(neighloads.size());
-
-    // Calculate deficiency
-    for (size_t i = 0; i < neighloads.size(); ++i) {
-        deficiency[i] = std::max(avgload - neighloads[i], 0.0);
-    }
-
-    auto total_deficiency
-        = std::accumulate(std::begin(deficiency), std::end(deficiency), 0.0);
-    double overload = load - avgload;
-
-    // Make "deficiency" relative and then scale it to be an
-    // absolute part of this process's overload
-    for (size_t i = 0; i < neighloads.size(); ++i) {
-        deficiency[i] = overload * deficiency[i] / total_deficiency;
-    }
-
-    return deficiency;
-}
+static const std::unordered_map<std::string, diff_variants::FlowCalcKind>
+    supported_default_diffusion_variants
+    = {{"willebeek", diff_variants::FlowCalcKind::WILLEBEEK},
+       {"schornbaum", diff_variants::FlowCalcKind::SCHORN}};
 
 void Diffusion::clear_unknown_cell_ownership()
 {
@@ -197,7 +167,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     double local_load
         = std::accumulate(std::begin(cellweights), std::end(cellweights), 0.0);
 
-    std::vector<double> send_volume = compute_send_volume(local_load);
+    std::vector<double> send_volume
+        = flow_calc->compute_flow(neighcomm, neighbors, local_load);
     assert(send_volume.size() == neighbors.size());
 
     const PerNeighbor<GlobalCellIndices> cells_to_send
@@ -247,14 +218,16 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 
 Diffusion::Diffusion(const boost::mpi::communicator &comm,
                      Vec3d box_size,
-                     double min_cell_size)
-    : GloMethod(comm, box_size, min_cell_size)
+                     double min_cell_size,
+                     util::InitialPartitionType init_part)
+    : GloMethod(comm, box_size, min_cell_size, init_part),
+      flow_calc(diff_variants::create_flow_calc(
+          diff_variants::FlowCalcKind::WILLEBEEK))
 {
     // Initial partitioning
     partition.resize(gbox.ncells());
     util::InitPartitioning{gbox, comm_cart}(
-        util::InitialPartitionType::CARTESIAN1D,
-        [this](global_cell_index_type idx, rank_type r) {
+        initial_partitioning, [this](global_cell_index_type idx, rank_type r) {
             assert(r >= 0 && r < this->comm.size());
             this->partition[idx] = r;
         });
@@ -262,6 +235,17 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
 
 Diffusion::~Diffusion()
 {
+}
+
+std::set<std::string> Diffusion::get_supported_variants() const
+{
+    return util::get_keys(supported_default_diffusion_variants);
+}
+
+void Diffusion::set_variant(const std::string &var)
+{
+    // Hacky
+    command(std::string{"set flow "} + var);
 }
 
 Diffusion::PerNeighbor<Diffusion::GlobalCellIndices>
@@ -294,11 +278,12 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
         assert(nadditional_comm < 27);
 #endif
 
-        if (profit > 0)
-            plist.emplace_back(27 - nadditional_comm, profit, borderCells[i]);
+        plist.emplace_back(27 - nadditional_comm, profit, borderCells[i]);
     }
 
     PerNeighbor<GlobalCellIndices> to_send(send_loads.size());
+    double load = std::accumulate(weights.begin(), weights.end(), 0.0);
+    std::vector<double> send_loads_copy = send_loads;
 
     // Use a maxheap: Always draw the maximum element
     // (1. least new border cells, 2. most profit)
@@ -310,10 +295,17 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
         plist.pop_back();
 
         for (auto neighrank : borderCellsNeighbors.at(cidx)) {
+            if (!accept_transfer(cidx, neighrank))
+                continue;
             auto neighidx
                 = std::distance(std::begin(neighbors),
                                 std::find(std::begin(neighbors),
                                           std::end(neighbors), neighrank));
+
+            if (weights[cidx] <= 0
+                && send_loads_copy[neighidx]
+                       < profit_percentage_pass_through * load)
+                continue;
 
             if (weights[cidx] <= send_loads[neighidx]) {
                 to_send[neighidx].push_back(cells[cidx]);
@@ -391,5 +383,56 @@ void Diffusion::init_new_foreign_cell(local_cell_index_type localcell,
     util::push_back_unique(borderCellsNeighbors[localcell], owner);
 }
 
+void Diffusion::command(std::string s)
+{
+    std::smatch m;
+
+    static const std::regex profit_re(
+        "(set) (profit) (pass) (through) (([[:digit:]]*[.])?[[:digit:]]+)");
+    if (std::regex_match(s, m, profit_re)) {
+        double ppt = std::stod(m[5].str().c_str(), NULL);
+        if (comm_cart.rank() == 0)
+            std::cout << "Setting profit pass through = " << ppt << std::endl;
+        profit_percentage_pass_through = ppt;
+        return;
+    }
+
+    static const std::regex iter_re("(set) (flow_count) ([[:digit:]]+)");
+    if (std::regex_match(s, m, iter_re)) {
+        uint32_t flow_count = std::stoul(m[3].str().c_str(), NULL);
+        if (diff_variants::diffusion_maybe_set_nflow_iter(flow_calc.get(),
+                                                          flow_count)
+            && comm_cart.rank() == 0)
+            std::cout << "Setting flow_count = " << flow_count << std::endl;
+        else if (comm_cart.rank() == 0)
+            std::cerr << "Cannot set nflow iter. Not supported by your "
+                         "selected flow calculation."
+                      << std::endl;
+        return;
+    }
+
+    static const std::regex flow_re("(set) (flow) (.*)");
+    if (std::regex_match(s, m, flow_re)) {
+        const std::string &impl = m[3].str();
+        try {
+            flow_calc = diff_variants::create_flow_calc(
+                supported_default_diffusion_variants.at(impl));
+            if (comm_cart.rank() == 0)
+                std::cout << "Setting implementation to: " << impl << std::endl;
+        }
+        catch (const std::out_of_range &) {
+            if (comm_cart.rank() == 0) {
+                std::cerr
+                    << "Cannot set implementation! Implementation \"" << impl
+                    << "\" is not found or not allowed to be used with the "
+                       "default Diffusion. If you wanna use \"so\" or \"sof\" "
+                       "use \"ps_diff\" instead. Now using default "
+                       "implementation: \"willebeek\"."
+                    << std::endl;
+            }
+            assert(false);
+        }
+    }
+}
 } // namespace grids
 } // namespace repa
