@@ -190,21 +190,32 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
     }
 
     // Check different initial partitionings
-    if (std::find(grids.begin(), grids.end(), repa::GridType::DIFF)
-        != grids.end() && repa::has_grid_type(repa::GridType::DIFF)) {
-        repa::GridType gt = repa::GridType::DIFF;
-        std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
-        std::vector<std::string> pts{"Linear", "Cart1D", "Cart3D"};
-        for (const auto &pt : pts) {
-            if (comm.rank() == 0) {
-                std::cout << "Checking grid '" << repa::grid_type_to_string(gt)
-                          << "' with '" << pt << "' partitioning" << std::endl;
-            }
-            BOOST_CHECK_NO_THROW(
-                up = repa::make_pargrid(gt, comm, box, mings, pt, ep));
-            BOOST_TEST(up.get() != nullptr);
-            run_main_test(up, gt, test_func);
+    static const struct {
+        repa::GridType gt;
+        std::string ipart;
+    } initial_partitioning_confs[] = {
+        {repa::GridType::DIFF, "Linear"},
+        {repa::GridType::PS_DIFF, "Cart1D"},
+        {repa::GridType::PS_DIFF, "Cart3D"},
+    };
+
+    for (const auto &itest : initial_partitioning_confs) {
+        if (!repa::has_grid_type(itest.gt))
+            continue;
+        if (grids.find(itest.gt) == std::end(grids))
+            continue;
+
+        if (comm.rank() == 0) {
+            std::cout << "Checking grid '"
+                      << repa::grid_type_to_string(itest.gt) << "' with '"
+                      << itest.ipart << "' partitioning" << std::endl;
         }
+        
+        std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
+        BOOST_CHECK_NO_THROW(up = repa::make_pargrid(itest.gt, comm, box, mings,
+                                                     itest.ipart, ep));
+        BOOST_TEST(up.get() != nullptr);
+        run_main_test(up, itest.gt, test_func);
     }
 }
 
