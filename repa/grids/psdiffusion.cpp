@@ -43,8 +43,8 @@ static const std::unordered_map<std::string, diff_variants::FlowCalcKind>
     = {{"so", diff_variants::FlowCalcKind::SO},
        {"sof", diff_variants::FlowCalcKind::SOF}};
 
-/** Maps coords "c2" over the periodic boundary towards "c0" if the periodic
- * image of "c2" is nearer to "c0" than "c2" itself.
+/** Returns the new Coords of a Rank after it beeing maped to opposite site.
+ * This is a necessary step for the metric because of the periodic edge.
  */
 static Vec3i map_coords_to_opposite_side(const Vec3i &c0,
                                          const Vec3i &c2,
@@ -118,26 +118,24 @@ bool PSDiffusion::accept_transfer(local_cell_index_type cidx,
 }
 
 bool PSDiffusion::coords_based_allow_sending(local_cell_index_type c,
-                                             rank_type target_rank) const
+                                             rank_type neighrank) const
 {
-    using namespace util::vector_arithmetic;
-
     const Vec3i comm_dims = util::mpi_cart_get_dims(init_topology_comm);
-    const Vec3i own_coord = util::mpi_cart_get_coords(init_topology_comm);
-    const Vec3i target_coord = map_coords_to_opposite_side(
-        own_coord, util::mpi_cart_get_coords(init_topology_comm, target_rank),
+    const Vec3i c0 = util::mpi_cart_get_coords(init_topology_comm);
+    const Vec3i cn = map_coords_to_opposite_side(
+        c0, util::mpi_cart_get_coords(init_topology_comm, neighrank),
         comm_dims);
     for (const global_cell_index_type &d :
          gbox.full_shell_neigh_without_center(cells[c])) {
         rank_type rank_d = rank_of_cell(d);
-        if (rank_d == rank_of_cell(cells[c]) || rank_d == target_rank)
+        if (rank_d == rank_of_cell(cells[c]) || rank_d == neighrank)
             continue;
-
-        Vec3i neighbor_rank_coord = map_coords_to_opposite_side(
-            own_coord, util::mpi_cart_get_coords(init_topology_comm, rank_d),
+        Vec3i c2 = map_coords_to_opposite_side(
+            c0, util::mpi_cart_get_coords(init_topology_comm, rank_d),
             comm_dims);
 
-        if (max_norm(target_coord - neighbor_rank_coord) >= 2)
+        if (std::abs(cn[0] - c2[0]) >= 2 || std::abs(cn[1] - c2[1]) >= 2
+            || std::abs(cn[2] - c2[2]) >= 2)
             return false;
     }
     return true;
