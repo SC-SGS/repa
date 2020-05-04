@@ -20,6 +20,7 @@
 #include "psdiffusion.hpp"
 
 #include <algorithm>
+#include <boost/mpi/collectives.hpp>
 #include <regex>
 #include <set>
 
@@ -66,12 +67,9 @@ PSDiffusion::PSDiffusion(const boost::mpi::communicator &comm,
                          util::InitialPartitionType init_part)
     : Diffusion(comm, box_size, min_cell_size, init_part)
 {
-    if (initial_partitioning == util::InitialPartitionType::LINEAR) {
-        std::cerr << "PSDiffusion does not support initial linear "
-                     "partitioning. Please use Cartesian1D or Cartesian3D."
-                  << std::endl;
-        assert(false);
-    }
+    ensure(initial_partitioning != util::InitialPartitionType::LINEAR,
+           "PSDiffusion does not support initial linear partitioning."
+           " Please use Cartesian1D or Cartesian3D");
 }
 
 PSDiffusion::~PSDiffusion()
@@ -93,16 +91,11 @@ void PSDiffusion::post_init(bool firstcall)
     // Copy initial neighborhood, so that the neighborhood can be checked for
     // consistency in later iterations.
     if (firstcall) {
-        int nneigh = neighbors.size();
-        int minV;
-        int maxV;
-        MPI_Allreduce(&nneigh, &minV, 1, MPI_INT, MPI_MIN, comm_cart);
-        MPI_Allreduce(&nneigh, &maxV, 1, MPI_INT, MPI_MAX, comm_cart);
-        if (minV != maxV) {
-            std::cerr << "Not all processes have the same amount of neighbors."
-                      << std::endl;
-            assert(false);
-        }
+        const int nneigh = neighbors.size();
+        const int value
+            = boost::mpi::all_reduce(comm_cart, nneigh, std::bit_or<void>{});
+        ensure(nneigh == value,
+               "Not all processes have the same amount of neighbors.");
 
         initial_neighborhood
             = std::vector<rank_type>(neighbors.begin(), neighbors.end());
