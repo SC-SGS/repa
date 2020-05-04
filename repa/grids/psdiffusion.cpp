@@ -125,6 +125,8 @@ bool PSDiffusion::coords_based_allow_sending(local_cell_index_type c,
     const Vec3i cn = map_coords_to_opposite_side(
         c0, util::mpi_cart_get_coords(init_topology_comm, neighrank),
         comm_dims);
+    // Determine any of the processes owning neighboring cells of "c" would
+    // be new neighbors to "neighrank".
     for (const global_cell_index_type &d :
          gbox.full_shell_neigh_without_center(cells[c])) {
         rank_type rank_d = rank_of_cell(d);
