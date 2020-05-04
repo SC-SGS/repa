@@ -71,8 +71,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
             r = new Diffusion(comm, box_size, min_cell_size);
         }
         else {
-            util::InitialPartitionType part
-                = util::InitPartitioning::parse_part_type(init_part);
+            util::InitialPartitionType part = parse_part_type(init_part);
             r = new Diffusion(comm, box_size, min_cell_size, part);
         }
         break;
@@ -82,8 +81,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
             r = new PSDiffusion(comm, box_size, min_cell_size);
         }
         else {
-            util::InitialPartitionType part
-                = util::InitPartitioning::parse_part_type(init_part);
+            util::InitialPartitionType part = parse_part_type(init_part);
             r = new PSDiffusion(comm, box_size, min_cell_size, part);
         }
         break;

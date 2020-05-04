@@ -27,6 +27,7 @@
 #include "grids/util/mpi_graph.hpp"
 #include "util/get_keys.hpp"
 #include "util/set_union.hpp"
+#include "util/vec_arith.hpp"
 
 #ifndef NDEBUG
 #define PSDIFFUSION_DEBUG
@@ -65,6 +66,12 @@ PSDiffusion::PSDiffusion(const boost::mpi::communicator &comm,
                          util::InitialPartitionType init_part)
     : Diffusion(comm, box_size, min_cell_size, init_part)
 {
+    if (initial_partitioning == util::InitialPartitionType::LINEAR) {
+        std::cerr << "PSDiffusion does not support initial linear "
+                     "partitioning. Please use Cartesian1D or Cartesian3D."
+                  << std::endl;
+        assert(false);
+    }
 }
 
 PSDiffusion::~PSDiffusion()

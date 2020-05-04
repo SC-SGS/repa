@@ -17,6 +17,8 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include "common_types.hpp"
 #include <type_traits>
 

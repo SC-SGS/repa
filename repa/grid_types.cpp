@@ -18,6 +18,7 @@
  */
 
 #include "grid_types.hpp"
+#include "grids/util/initial_partitioning.hpp"
 #include <unordered_map>
 
 namespace repa {
@@ -29,6 +30,11 @@ static const std::unordered_map<std::string, GridType> grid_type_registry = {
     {"graph", GridType::GRAPH},     {"diff", GridType::DIFF},
     {"ps_diff", GridType::PS_DIFF}, {"hybrid_gp_diff", GridType::HYB_GP_DIFF},
     {"kd_tree", GridType::KD_TREE}, {"gridbased", GridType::GRIDBASED}};
+
+static const std::unordered_map<std::string, util::InitialPartitionType>
+    partition_registry = {{"Linear", util::InitialPartitionType::LINEAR},
+                          {"Cart1D", util::InitialPartitionType::CARTESIAN1D},
+                          {"Cart3D", util::InitialPartitionType::CARTESIAN3D}};
 
 #ifdef HAVE_KDPART
 #define KDPART_AVAIL true
@@ -78,6 +84,16 @@ GridType parse_grid_type(const std::string &desc)
     }
     catch (const std::out_of_range &) {
         throw UnknownGridTypeError(desc);
+    }
+}
+
+util::InitialPartitionType parse_part_type(const std::string &desc)
+{
+    try {
+        return partition_registry.at(desc);
+    }
+    catch (const std::out_of_range &) {
+        throw UnknownPartitionTypeError(desc);
     }
 }
 

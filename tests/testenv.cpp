@@ -188,6 +188,23 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
             run_main_test(up, gt, test_func);
         }
     }
+
+    if (std::find(grids.begin(), grids.end(), repa::GridType::DIFF)
+        != grids.end()) {
+        repa::GridType gt = repa::GridType::DIFF;
+        std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
+        std::vector<std::string> pts{"Linear", "Cart1D", "Cart3D"};
+        for (const auto &pt : pts) {
+            if (comm.rank() == 0) {
+                std::cout << "Checking grid '" << repa::grid_type_to_string(gt)
+                          << "' with '" << pt << "' partitioning" << std::endl;
+            }
+            BOOST_CHECK_NO_THROW(
+                up = repa::make_pargrid(gt, comm, box, mings, pt, ep));
+            BOOST_TEST(up.get() != nullptr);
+            run_main_test(up, gt, test_func);
+        }
+    }
 }
 
 void TEnv::TEnv_impl::run_main_test(

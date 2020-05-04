@@ -23,23 +23,15 @@
 #include "linearize.hpp"
 #include "vec_arith.hpp"
 #include <cmath>
-#include <unordered_map>
 
 namespace repa {
 namespace util {
 
 using namespace repa::grids; // cell index types
 
-enum InitialPartitionType { LINEAR, CARTESIAN1D, CARTESIAN3D };
+enum InitialPartitionType : int { LINEAR, CARTESIAN1D, CARTESIAN3D };
 
 namespace impl {
-
-static const std::unordered_map<std::string, InitialPartitionType>
-    partition_registry = {
-        {"Linear", InitialPartitionType::LINEAR},
-        {"Cart1D", InitialPartitionType::CARTESIAN1D},
-        {"Cart3D", InitialPartitionType::CARTESIAN3D},
-};
 
 template <typename AssignFunc>
 void init_part_linear(const globox::GlobalBox<global_cell_index_type> &gbox,
@@ -140,23 +132,6 @@ void init_part_cartesian1d(
 
 } // namespace impl
 
-struct UnknownPartitionTypeError {
-    UnknownPartitionTypeError() : w(std::string("Unknown grid type."))
-    {
-    }
-    UnknownPartitionTypeError(std::string s)
-        : w(std::string("Unknown grid type: `") + s + std::string("'"))
-    {
-    }
-    virtual const char *what() const
-    {
-        return w.c_str();
-    }
-
-private:
-    std::string w;
-};
-
 struct InitPartitioning {
     InitPartitioning(const globox::GlobalBox<global_cell_index_type> &gbox,
                      const boost::mpi::communicator &comm)
@@ -181,16 +156,6 @@ struct InitPartitioning {
             break;
         }
         return *this;
-    }
-
-    static InitialPartitionType parse_part_type(const std::string & desc)
-    {
-        try {
-            return impl::partition_registry.at(desc);
-        }
-        catch (const std::out_of_range &) {
-            throw UnknownPartitionTypeError(desc);
-        }
     }
 
 private:
