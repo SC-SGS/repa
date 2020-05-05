@@ -67,7 +67,8 @@ PSDiffusion::PSDiffusion(const boost::mpi::communicator &comm,
                          double min_cell_size,
                          ExtraParams ep)
     : Diffusion(comm, box_size, min_cell_size, ep),
-      init_topology_comm(util::make_init_part_communicator(comm, initial_partitioning))
+      init_topology_comm(
+          util::make_init_part_communicator(comm, initial_partitioning))
 {
     ensure(initial_partitioning != util::InitialPartitionType::LINEAR,
            "PSDiffusion does not support initial linear partitioning."

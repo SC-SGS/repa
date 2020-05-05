@@ -19,8 +19,8 @@
 
 #pragma once
 
-#include <boost/optional.hpp>
 #include <boost/mpi/communicator.hpp>
+#include <boost/optional.hpp>
 #include <vector>
 
 #include "common_types.hpp"

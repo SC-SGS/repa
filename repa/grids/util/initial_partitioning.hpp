@@ -168,8 +168,6 @@ boost::mpi::communicator
 make_init_part_communicator(const boost::mpi::communicator &comm,
                             InitialPartitionType init_part);
 
-
-
 struct UnknownInitialPartitionTypeError {
     UnknownInitialPartitionTypeError() : w(std::string("Unknown grid type."))
     {
@@ -190,7 +188,6 @@ private:
 /** Returns the InitialPartitionType with a descriptive string
  */
 util::InitialPartitionType parse_part_type(const std::string &desc);
-
 
 } // namespace util
 } // namespace repa
