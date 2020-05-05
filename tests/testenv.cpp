@@ -52,7 +52,7 @@ namespace testenv {
 
 struct TEnv::TEnv_impl {
     boost::mpi::communicator comm;
-    repa::Vec3d box;
+    repa::Vec3d box, box_1d;
     double mings;
     repa::ExtraParams ep;
     std::set<repa::GridType> grids;
@@ -71,6 +71,9 @@ struct TEnv::TEnv_impl {
     void with_repart_twice();
     void without_repart();
     void all_grids();
+    void set_box(const repa::Vec3i &dims);
+    void set_default_box();
+    void set_box_for_1d_initial_decomp();
     void only(std::set<repa::GridType> s);
     void exclude(std::set<repa::GridType> s);
 
@@ -101,13 +104,30 @@ TEnv::TEnv_impl::TEnv_impl(repa::Vec3d box, double mings, repa::ExtraParams ep)
 {
 }
 
-TEnv::TEnv_impl::TEnv_impl(repa::ExtraParams ep) : mings(1.0), ep(ep)
+void TEnv::TEnv_impl::set_box(const repa::Vec3i &dims)
 {
     // Devise some appropriately sized grid suitable for all methods.
-    repa::Vec3i dims{0, 0, 0};
-    MPI_Dims_create(comm.size(), 3, dims.data());
     for (size_t i = 0; i < box.size(); ++i)
         box[i] = mings * 5 * (dims[i] + 1);
+}
+
+void TEnv::TEnv_impl::set_default_box()
+{
+    repa::Vec3i dims{0, 0, 0};
+    MPI_Dims_create(comm.size(), 3, dims.data());
+    set_box(dims);
+}
+
+void TEnv::TEnv_impl::set_box_for_1d_initial_decomp()
+{
+    repa::Vec3i dims{0, 1, 1};
+    MPI_Dims_create(comm.size(), 3, dims.data());
+    set_box(dims);
+}
+
+TEnv::TEnv_impl::TEnv_impl(repa::ExtraParams ep) : mings(1.0), ep(ep)
+{
+    set_default_box();
 }
 
 void TEnv::TEnv_impl::with_repart()
@@ -212,6 +232,11 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
         }
 
         std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
+
+        if (itest.ipart == "Cart1D")
+            set_box_for_1d_initial_decomp();
+        else
+            set_default_box();
         BOOST_CHECK_NO_THROW(up = repa::make_pargrid(itest.gt, comm, box, mings,
                                                      itest.ipart, ep));
         BOOST_TEST(up.get() != nullptr);
