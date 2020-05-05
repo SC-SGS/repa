@@ -23,6 +23,7 @@ set(repa_SRC
     grids/diff_variants.cpp
     grids/cart.cpp
     grids/gridbased.cpp
+    grids/util/initial_partitioning.cpp
     grids/util/neighbor_offsets.cpp
     grids/util/tetra.cpp
     grid_types.cpp

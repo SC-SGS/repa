@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <boost/optional.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <vector>
 
@@ -44,6 +45,13 @@ struct ExtraParams {
      * Not required, but strongly recommended.
      */
     std::function<Vec3d(void)> subdomain_midpoint = nullptr;
+
+    /**
+     * For unstructured methods.
+     * Descriptor of the initial partitioning to use.
+     * Currently, "Linear", "Cart1D" and "Cart3D" are available.
+     */
+    boost::optional<std::string> init_part;
 };
 
 /** Some typedefs to document what an integer is supposed to mean

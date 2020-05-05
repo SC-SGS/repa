@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <boost/mpi.hpp>
 
+#include "util/initial_partitioning.hpp"
 #include "util/push_back_unique.hpp"
 
 #ifndef NDEBUG
@@ -127,10 +128,12 @@ bool GloMethod::repartition(CellMetric m,
 GloMethod::GloMethod(const boost::mpi::communicator &comm,
                      Vec3d box_size,
                      double min_cell_size,
-                     util::InitialPartitionType init_part)
+                     ExtraParams ep)
     : ParallelLCGrid(comm, box_size, min_cell_size),
       gbox(box_size, min_cell_size),
-      initial_partitioning(init_part)
+      initial_partitioning(ep.init_part
+                               ? util::parse_part_type(*ep.init_part)
+                               : util::InitialPartitionType::CARTESIAN3D)
 {
 }
 

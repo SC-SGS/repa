@@ -192,7 +192,7 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
 
         std::unique_ptr<repa::grids::ParallelLCGrid> up = nullptr;
         BOOST_CHECK_NO_THROW(
-            up = repa::make_pargrid(gt, comm, box, mings, "", ep));
+            up = repa::make_pargrid(gt, comm, box, mings, ep));
         BOOST_TEST(up.get() != nullptr);
 
         run_main_test(up, gt, test_func);
@@ -201,7 +201,7 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
         for (const auto &variant :
              repa::variants(up.get()).get_supported_variants()) {
             BOOST_CHECK_NO_THROW(
-                up = repa::make_pargrid(gt, comm, box, mings, "", ep));
+                up = repa::make_pargrid(gt, comm, box, mings, ep));
             BOOST_TEST(up.get() != nullptr);
             repa::variants(up.get()).set_variant(variant);
 
@@ -237,8 +237,10 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
             set_box_for_1d_initial_decomp();
         else
             set_default_box();
+        repa::ExtraParams epi = ep;
+        epi.init_part = itest.ipart;
         BOOST_CHECK_NO_THROW(up = repa::make_pargrid(itest.gt, comm, box, mings,
-                                                     itest.ipart, ep));
+                                                     epi));
         BOOST_TEST(up.get() != nullptr);
         run_main_test(up, itest.gt, test_func);
     }

@@ -30,7 +30,8 @@ namespace grids {
 struct HybridGPDiff : public ParallelLCGrid {
     HybridGPDiff(const boost::mpi::communicator &comm,
                  Vec3d box_size,
-                 double min_cell_size);
+                 double min_cell_size,
+                 ExtraParams ep);
     void after_construction() override;
     local_cell_index_type n_local_cells() override;
     ghost_cell_index_type n_ghost_cells() override;

@@ -44,9 +44,9 @@ namespace grids {
 
 Graph::Graph(const boost::mpi::communicator &comm,
              Vec3d box_size,
-             double min_cell_size)
-    : GloMethod(
-        comm, box_size, min_cell_size, util::InitialPartitionType::CARTESIAN1D)
+             double min_cell_size,
+             ExtraParams ep)
+    : GloMethod(comm, box_size, min_cell_size, ep)
 {
     // Initial partitioning
     partition.resize(gbox.ncells());

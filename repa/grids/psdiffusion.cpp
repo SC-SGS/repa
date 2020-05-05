@@ -65,9 +65,9 @@ static Vec3i map_coords_to_opposite_side(const Vec3i &c0,
 PSDiffusion::PSDiffusion(const boost::mpi::communicator &comm,
                          Vec3d box_size,
                          double min_cell_size,
-                         util::InitialPartitionType init_part)
-    : Diffusion(comm, box_size, min_cell_size, init_part),
-      init_topology_comm(util::make_init_part_communicator(comm, init_part))
+                         ExtraParams ep)
+    : Diffusion(comm, box_size, min_cell_size, ep),
+      init_topology_comm(util::make_init_part_communicator(comm, initial_partitioning))
 {
     ensure(initial_partitioning != util::InitialPartitionType::LINEAR,
            "PSDiffusion does not support initial linear partitioning."

@@ -219,8 +219,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 Diffusion::Diffusion(const boost::mpi::communicator &comm,
                      Vec3d box_size,
                      double min_cell_size,
-                     util::InitialPartitionType init_part)
-    : GloMethod(comm, box_size, min_cell_size, init_part),
+                     ExtraParams ep)
+    : GloMethod(comm, box_size, min_cell_size, ep),
       flow_calc(diff_variants::create_flow_calc(
           diff_variants::FlowCalcKind::WILLEBEEK))
 {

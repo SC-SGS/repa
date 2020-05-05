@@ -164,25 +164,33 @@ private:
     const boost::mpi::communicator &comm;
 };
 
-inline boost::mpi::communicator
+boost::mpi::communicator
 make_init_part_communicator(const boost::mpi::communicator &comm,
-                            InitialPartitionType init_part)
-{
-    switch (init_part) {
-    case util::InitialPartitionType::CARTESIAN1D:
-        return boost::mpi::communicator{
-            make_cartesian_communicator(comm, Vec3i{0, 1, 1}),
-            boost::mpi::comm_take_ownership};
-        break;
-    case util::InitialPartitionType::CARTESIAN3D:
-        return boost::mpi::communicator{make_cartesian_communicator(comm),
-                                        boost::mpi::comm_take_ownership};
-        break;
-    default:
-        return boost::mpi::communicator{MPI_COMM_NULL, boost::mpi::comm_attach};
-        break;
+                            InitialPartitionType init_part);
+
+
+
+struct UnknownInitialPartitionTypeError {
+    UnknownInitialPartitionTypeError() : w(std::string("Unknown grid type."))
+    {
     }
-}
+    UnknownInitialPartitionTypeError(std::string s)
+        : w(std::string("Unknown grid type: `") + s + std::string("'"))
+    {
+    }
+    virtual const char *what() const
+    {
+        return w.c_str();
+    }
+
+private:
+    std::string w;
+};
+
+/** Returns the InitialPartitionType with a descriptive string
+ */
+util::InitialPartitionType parse_part_type(const std::string &desc);
+
 
 } // namespace util
 } // namespace repa

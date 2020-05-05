@@ -36,8 +36,7 @@ struct PSDiffusion : public Diffusion {
     PSDiffusion(const boost::mpi::communicator &comm,
                 Vec3d box_size,
                 double min_cell_size,
-                util::InitialPartitionType init_part
-                = util::InitialPartitionType::CARTESIAN3D);
+                ExtraParams ep);
     ~PSDiffusion();
 
     virtual std::set<std::string> get_supported_variants() const override;

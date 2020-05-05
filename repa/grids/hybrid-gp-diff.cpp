@@ -29,10 +29,11 @@ namespace grids {
 
 HybridGPDiff::HybridGPDiff(const boost::mpi::communicator &comm,
                            Vec3d box_size,
-                           double min_cell_size)
+                           double min_cell_size,
+                           ExtraParams ep)
     : ParallelLCGrid(comm, box_size, min_cell_size),
-      diff_impl(comm, box_size, min_cell_size),
-      graph_impl(comm, box_size, min_cell_size),
+      diff_impl(comm, box_size, min_cell_size, ep),
+      graph_impl(comm, box_size, min_cell_size, ep),
       state(State::GRAPH),
       switch_to_state(State::GRAPH),
       active_implementation(&graph_impl)

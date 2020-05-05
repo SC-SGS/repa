@@ -40,7 +40,6 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
                                   const boost::mpi::communicator &comm,
                                   Vec3d box_size,
                                   double min_cell_size,
-                                  std::string init_part,
                                   ExtraParams ep)
 {
     ParallelLCGrid *r = nullptr;
@@ -59,7 +58,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
 
     case GridType::GRAPH:
 #ifdef HAVE_PARMETIS
-        r = new Graph(comm, box_size, min_cell_size);
+        r = new Graph(comm, box_size, min_cell_size, ep);
 #else
         throw std::invalid_argument(
             "Librepa not compiled with Parmetis support.");
@@ -67,23 +66,11 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         break;
 
     case GridType::DIFF:
-        if (init_part == "") {
-            r = new Diffusion(comm, box_size, min_cell_size);
-        }
-        else {
-            util::InitialPartitionType part = parse_part_type(init_part);
-            r = new Diffusion(comm, box_size, min_cell_size, part);
-        }
+        r = new Diffusion(comm, box_size, min_cell_size, ep);
         break;
 
     case GridType::PS_DIFF:
-        if (init_part == "") {
-            r = new PSDiffusion(comm, box_size, min_cell_size);
-        }
-        else {
-            util::InitialPartitionType part = parse_part_type(init_part);
-            r = new PSDiffusion(comm, box_size, min_cell_size, part);
-        }
+        r = new PSDiffusion(comm, box_size, min_cell_size, ep);
         break;
 
     case GridType::KD_TREE:
@@ -97,7 +84,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
 
     case GridType::HYB_GP_DIFF:
 #ifdef HAVE_PARMETIS
-        r = new HybridGPDiff(comm, box_size, min_cell_size);
+        r = new HybridGPDiff(comm, box_size, min_cell_size, ep);
 #else
         throw std::invalid_argument(
             "Librepa not compiled with Parmetis support.");
@@ -125,11 +112,10 @@ make_pargrid(GridType gt,
              const boost::mpi::communicator &comm,
              Vec3d box_size,
              double min_cell_size,
-             std::string init_part,
              ExtraParams ep)
 {
-    return std::unique_ptr<grids::ParallelLCGrid>(grids::make_pargrid_impl(
-        gt, comm, box_size, min_cell_size, init_part, ep));
+    return std::unique_ptr<grids::ParallelLCGrid>(
+        grids::make_pargrid_impl(gt, comm, box_size, min_cell_size, ep));
 }
 
 } // namespace repa
