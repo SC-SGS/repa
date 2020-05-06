@@ -71,6 +71,23 @@ min_max_per_dim(const std::array<Vec3i64, 8> &vertices)
     return std::make_pair(min, max);
 }
 
+/**
+ * Returns the indexes for the lower and upper points in the 
+ * requested dimension.
+ */
+std::pair<std::vector<int>, std::vector<int>> lower_upper_indexes_dim(int d)
+{
+    std::vector<int> lower, upper;
+    int d_bit = std::pow(2, d);
+    for (int i = 0; i < 8; i++) {
+        if (i % d_bit == 0)
+            upper.push_back(i);
+        else
+            lower.push_back(i);
+    }
+    return std::make_pair(lower, upper);
+}
+
 struct Plane {
     Vec3i64 normVector;
     int64_t heightOfPlane;
@@ -137,9 +154,7 @@ public:
           isValid(true),
           periodic({false, false, false})
     {
-        if (util::vector_arithmetic::all(box_size > 0)) {
-            check_periodicity(corners);
-        }
+        shift_vertices_over_boundaries(corners);
         Vec3i64 start = corners[0];
         Vec3i64 end = corners[7];
         Vec3i64 last = corners[5];
@@ -150,23 +165,31 @@ public:
         }
     }
 
-    void check_periodicity(const std::array<Vec3i64, 8> corners)
+    void shift_vertices_over_boundaries(const std::array<Vec3i64, 8> &corners)
     {
+        using util::vector_arithmetic::operator>=;
         Vec3i64 min, max;
         std::tie(min, max) = min_max_per_dim(corners);
+        periodic = max >= box_size;
+
+        std::vector<int> lower, upper;
         for (int d = 0; d < 3; d++) {
-            if (max[d] - min[d] > box_size[d]) {
-                isValid = false;
-            }
-            if (max[d] > box_size[d]) { // box_size -1?
-                periodic[d] = true;
-            }
-            if (min[d] < 0) {
-                for (Vec3i64 vec : corners) {
-                    vec[d] += box_size[d];
+            if (periodic[d]) {
+                std::tie(lower, upper) = lower_upper_indexes_dim(d);
+                for (auto &l_i : lower) {
+                    Vec3i64 low = corners[l_i];
+                    for (auto &u_i : upper) {
+                        Vec3i64 up = corners[u_i];
+                        if (low[d] > up[d]) {
+                            int border = box_size[d];
+                            low[d] -= (low[d] >= border) ? border : 0;
+                            up[d] += (low[d] > up[d] && up[d] < border) ? border
+                                                                        : 0;
+                            isValid = isValid && low[d] <= up[d];
+                        }
+                    }
                 }
-                min[d] += box_size[d];
-                periodic[d] = true;
+                std::tie(min, max) = min_max_per_dim(corners);
             }
         }
         min_dim = min;
