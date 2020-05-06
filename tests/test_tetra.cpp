@@ -385,6 +385,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_4)
 BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
 {
     double max_cutoff = 2.;
+    tetra::init_tetra(0.1, {15., 15., 15.});
 
     {
         // This Octagon should NOT be accepted.
