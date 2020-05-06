@@ -72,7 +72,7 @@ min_max_per_dim(const std::array<Vec3i64, 8> &vertices)
 }
 
 /**
- * Returns the indexes for the lower and upper points in the 
+ * Returns the indexes for the lower and upper points in the
  * requested dimension.
  */
 std::pair<std::vector<int>, std::vector<int>> lower_upper_indexes_dim(int d)
