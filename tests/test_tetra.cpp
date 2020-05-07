@@ -95,8 +95,7 @@ struct PointArray {
     array<array<array<Vec3d, size>, size>, size> point = {{{}}};
     PointArray();
     Vec3d randomPoint();
-    octaVertices getVerticesAtPosition(int x, int y, int z);
-    octaVertices getVerticesOverEdgeAtPosition(int id);
+    octaVertices getVerticesAtPosition(int id);
 };
 
 Vec3d PointArray::randomPoint()
@@ -138,24 +137,14 @@ PointArray::PointArray()
     point[1][1][1] = randomPoint();
 }
 
-octaVertices PointArray::getVerticesAtPosition(int x, int y, int z)
+octaVertices PointArray::getVerticesAtPosition(int id)
 {
+    int x = (id & 1) != 0, y = (id & 2) != 0, z = (id & 4) != 0;
     return {
         point[1 + x][1 + y][1 + z], point[0 + x][1 + y][1 + z],
         point[1 + x][0 + y][1 + z], point[0 + x][0 + y][1 + z],
         point[1 + x][1 + y][0 + z], point[0 + x][1 + y][0 + z],
         point[1 + x][0 + y][0 + z], point[0 + x][0 + y][0 + z],
-    };
-}
-
-octaVertices PointArray::getVerticesOverEdgeAtPosition(int id)
-{
-    int x = (id & 1) != 0, y = (id & 2) != 0, z = (id & 4) != 0;
-    return {
-        point[1 + x][1 + y][1 + z], point[2 - x][1 + y][1 + z],
-        point[1 + x][2 - y][1 + z], point[2 - x][2 - y][1 + z],
-        point[1 + x][1 + y][2 - z], point[2 - x][1 + y][2 - z],
-        point[1 + x][2 - y][2 - z], point[2 - x][2 - y][2 - z],
     };
 }
 
@@ -339,14 +328,8 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
 
     // Create the 8 Octagons
     array<octaVertices, 8> corners = {};
-    int index = 0;
-    for (int x = 0; x < 2; x++) {
-        for (int y = 0; y < 2; y++) {
-            for (int z = 0; z < 2; z++) {
-                corners[index] = p.getVerticesAtPosition(x, y, z);
-                index++;
-            }
-        }
+    for (int i = 0; i < 8; i++) {
+        corners[i] = p.getVerticesAtPosition(i);
     }
 
     // Test acceptance of N points
@@ -444,14 +427,18 @@ BOOST_AUTO_TEST_CASE(check_periodic_boundaries)
     PointArray p{};
     std::array<octaVertices, 8> vertices = {};
 
-    for (int i = 0; i < 8; i++) {
-        int x = (i & 4) != 0, y = (i & 2) != 0, z = (i & 1) != 0;
-        for (int d = 0; d < 3; d++) {
-            p.point[x + 1][y + 1][z + 1][d] -= 0.1;
+    // Decrease all points in the PointArray by 0.1
+    for (int x = 0; x < 3; x++) {
+        for (int y = 0; y < 3; y++) {
+            for (int z = 0; z < 3; z++) {
+                for (int d = 0; d < 3; d++) {
+                    p.point[x][y][z][d] -= 0.1;
+                }
+            }
         }
     }
     for (int i = 0; i < 8; i++) {
-        vertices[i] = p.getVerticesOverEdgeAtPosition(i);
+        vertices[i] = p.getVerticesAtPosition(i);
     }
 
     Vec3d point{0, 0, 0};
