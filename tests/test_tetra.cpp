@@ -96,6 +96,7 @@ struct PointArray {
     PointArray();
     Vec3d randomPoint();
     octaVertices getVerticesAtPosition(int x, int y, int z);
+    octaVertices getVerticesOverEdgeAtPosition(int id);
 };
 
 Vec3d PointArray::randomPoint()
@@ -144,6 +145,17 @@ octaVertices PointArray::getVerticesAtPosition(int x, int y, int z)
         point[1 + x][0 + y][1 + z], point[0 + x][0 + y][1 + z],
         point[1 + x][1 + y][0 + z], point[0 + x][1 + y][0 + z],
         point[1 + x][0 + y][0 + z], point[0 + x][0 + y][0 + z],
+    };
+}
+
+octaVertices PointArray::getVerticesOverEdgeAtPosition(int id)
+{
+    int x = (id & 1) != 0, y = (id & 2) != 0, z = (id & 4) != 0;
+    return {
+        point[1 + x][1 + y][1 + z], point[2 - x][1 + y][1 + z],
+        point[1 + x][2 - y][1 + z], point[2 - x][2 - y][1 + z],
+        point[1 + x][1 + y][2 - z], point[2 - x][1 + y][2 - z],
+        point[1 + x][2 - y][2 - z], point[2 - x][2 - y][2 - z],
     };
 }
 
@@ -423,6 +435,39 @@ BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
                                    {0., 0., 0.}}};
         BOOST_CHECK(tetra::Octagon(cs3, max_cutoff).is_valid());
     }
+}
+
+BOOST_AUTO_TEST_CASE(check_periodic_boundaries)
+{
+    // tetra::precision = 100;
+    tetra::init_tetra(.01, {1, 1, 1});
+    PointArray p{};
+    std::array<octaVertices, 8> vertices = {};
+
+    for (int i = 0; i < 8; i++) {
+        int x = (i & 4) != 0, y = (i & 2) != 0, z = (i & 1) != 0;
+        for (int d = 0; d < 3; d++) {
+            p.point[x + 1][y + 1][z + 1][d] -= 0.1;
+        }
+    }
+    for (int i = 0; i < 8; i++) {
+        vertices[i] = p.getVerticesOverEdgeAtPosition(i);
+    }
+
+    Vec3d point{0, 0, 0};
+    int count_contains = 0;
+    for (int i = 0; i < 8; i++) {
+        auto octa = tetra::Octagon(vertices[i], 0.00001);
+        // Check if ordering is correct
+        BOOST_CHECK(octa.is_valid());
+        bool contains = octa.contains(point);
+        if (i == 0)
+            BOOST_CHECK(contains);
+        if (i != 0)
+            BOOST_CHECK(!contains);
+        count_contains += int(contains);
+    }
+    BOOST_CHECK(count_contains == 1);
 }
 
 int main(int argc, char **argv)
