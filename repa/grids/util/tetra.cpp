@@ -81,7 +81,10 @@ bool check_orientation_for_vertices(Vertices &vertices)
     std::vector<int64_t> lower, upper;
     bool valid = true;
     for (int d = 0; d < 3; d++) {
-        int d_bit = std::pow(2, d);
+        // Because the mapping is inverse, an inverse bit is choosen.
+        // (eg we map vertices[001] to position 011 in grid)
+        // Inverting works as follows 001 -> 100 -> 011
+        int d_bit = std::pow(2, 2 - d);
         for (int i = 0; i < 8; i++) {
             if ((i & d_bit) == 0)
                 upper.push_back(vertices[i][d]);

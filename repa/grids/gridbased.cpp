@@ -56,8 +56,8 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
     // (c0,     c1,     c2) upper right back corner,
     // (c0 - 1, c1,     c2) upper left back corner,
     // (c0,     c1 - 1, c2) lower right back corner,
-    // (c0,     c1,     c2 - 1) upper right front corner,
     // (c0 - 1, c1 - 1, c2) lower left back corner
+    // (c0,     c1,     c2 - 1) upper right front corner,
     // ... 2 more ...
     // (c0 - 1, c1 - 1, c2 - 1) lower left front corner
     // In total the set: {c0, c0 - 1} x {c1, c1 - 1} x {c2, c2 - 1}
