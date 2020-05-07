@@ -21,6 +21,7 @@
 
 #include "tetra.hpp"
 #include "vec_arith.hpp"
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 
@@ -75,17 +76,23 @@ std::pair<Vec3i64, Vec3i64> min_max_per_dim(const Vertices &vertices)
  * Returns the indexes for the lower and upper points in the
  * requested dimension.
  */
-std::pair<std::vector<int>, std::vector<int>> lower_upper_indexes_dim(int d)
+bool check_orientation_for_vertices(Vertices &vertices)
 {
-    std::vector<int> lower, upper;
-    int d_bit = std::pow(2, d);
-    for (int i = 0; i < 8; i++) {
-        if (i % d_bit == 0)
-            upper.push_back(i);
-        else
-            lower.push_back(i);
+    std::vector<int64_t> lower, upper;
+    bool valid = true;
+    for (int d = 0; d < 3; d++) {
+        int d_bit = std::pow(2, d);
+        for (int i = 0; i < 8; i++) {
+            if ((i & d_bit) == 0)
+                upper.push_back(vertices[i][d]);
+            else
+                lower.push_back(vertices[i][d]);
+        }
+        int smallest_upper = *std::min_element(upper.begin(), upper.end());
+        int greatest_lower = *std::max_element(lower.begin(), lower.end());
+        valid = valid && (smallest_upper > greatest_lower);
     }
-    return std::make_pair(lower, upper);
+    return valid;
 }
 
 struct Plane {
@@ -182,30 +189,11 @@ public:
             for (Vec3i64 &vertex : vertices) {
                 vertex += static_cast_vec<Vec3i64>(shifted_below) * box_size;
             }
+            std::tie(min, max) = min_max_per_dim(vertices);
         }
         periodic = shifted_above || shifted_below;
-
-        std::vector<int> lower, upper;
-        for (int d = 0; d < 3; d++) {
-            if (periodic[d]) {
-                std::tie(lower, upper) = lower_upper_indexes_dim(d);
-                for (auto &l_i : lower) {
-                    Vec3i64 &low = vertices[l_i];
-                    for (auto &u_i : upper) {
-                        Vec3i64 &up = vertices[u_i];
-                        if (low[d] > up[d]) {
-                            int border = box_size[d];
-                            low[d] -= (low[d] >= border) ? border : 0;
-                            up[d] += (low[d] > up[d] && up[d] < border) ? border
-                                                                        : 0;
-                            isValid = isValid && low[d] <= up[d];
-                        }
-                    }
-                }
-                std::tie(min, max) = min_max_per_dim(vertices);
-            }
-        }
         min_dim = min;
+        isValid = isValid && check_orientation_for_vertices(vertices);
     }
 
     /** Returns 4 planes that represent the faces of a tetrahedron.
