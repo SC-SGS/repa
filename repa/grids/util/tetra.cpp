@@ -169,10 +169,21 @@ public:
 
     void shift_vertices_over_boundaries(Vertices &vertices)
     {
-        using util::vector_arithmetic::operator>=;
+        using namespace util::vector_arithmetic;
         Vec3i64 min, max;
         std::tie(min, max) = min_max_per_dim(vertices);
-        periodic = max >= box_size;
+        Vec3<bool> shifted_above = max >= box_size;
+        Vec3<bool> shifted_below = min < Vec3i64{0, 0, 0};
+        if (any(shifted_above && shifted_below)) {
+            std::cerr << "Subdomain too large! This subdomain is larger than "
+                      << "the domain itself in at least one dimension!";
+        }
+        if (any(shifted_below)) {
+            for (Vec3i64 &vertex : vertices) {
+                vertex += static_cast_vec<Vec3i64>(shifted_below) * box_size;
+            }
+        }
+        periodic = shifted_above || shifted_below;
 
         std::vector<int> lower, upper;
         for (int d = 0; d < 3; d++) {
