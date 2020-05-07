@@ -29,6 +29,7 @@ namespace util {
 namespace tetra {
 
 using Vec3i64 = Vec3<int64_t>;
+using Vertices = std::array<Vec3i64, 8>;
 
 int16_t precision = 10;
 Vec3i64 box_size{0, 0, 0};
@@ -43,9 +44,9 @@ Vec3i64 integerize(const Vec3d &v)
     return static_cast_vec<Vec3i64>(v * static_cast<double>(precision));
 }
 
-std::array<Vec3i64, 8> integerizedArray(const std::array<Vec3d, 8> &vertices)
+Vertices integerizedArray(const std::array<Vec3d, 8> &vertices)
 {
-    std::array<Vec3i64, 8> intVert;
+    Vertices intVert;
     for (int i = 0; i < 8; i++) {
         intVert[i] = integerize(vertices[i]);
     }
@@ -57,8 +58,7 @@ std::array<Vec3i64, 8> integerizedArray(const std::array<Vec3d, 8> &vertices)
  * In the first Vector the minimum values are collected, in the second the
  * maximum values.
  */
-std::pair<Vec3i64, Vec3i64>
-min_max_per_dim(const std::array<Vec3i64, 8> &vertices)
+std::pair<Vec3i64, Vec3i64> min_max_per_dim(const Vertices &vertices)
 {
     Vec3i64 min = box_size;
     Vec3i64 max{0, 0, 0};
@@ -121,12 +121,12 @@ struct Plane {
 };
 
 std::array<Plane, 4>
-planes_of_tetrahedron(const std::array<Vec3i64, 4> &corners)
+planes_of_tetrahedron(const std::array<Vec3i64, 4> &vertices)
 {
-    return {Plane({corners[0], corners[1], corners[2]}),
-            Plane({corners[0], corners[2], corners[3]}),
-            Plane({corners[0], corners[3], corners[1]}),
-            Plane({corners[1], corners[3], corners[2]})};
+    return {Plane({vertices[0], vertices[1], vertices[2]}),
+            Plane({vertices[0], vertices[2], vertices[3]}),
+            Plane({vertices[0], vertices[3], vertices[1]}),
+            Plane({vertices[1], vertices[3], vertices[2]})};
 }
 
 } // namespace
@@ -137,9 +137,10 @@ void init_tetra(double min_cell_size, Vec3d box_s)
     box_size
         = util::vector_arithmetic::static_cast_vec<Vec3i64>(integerize(box_s));
 }
+
 struct _Octagon_Impl {
 private:
-    static const std::array<int, 6> cornerOrder;
+    static const std::array<int, 6> vertexOrder;
     std::array<std::array<Plane, 4>, 6> tetrahedron_planes;
     double min_height;
     bool isValid;
@@ -149,27 +150,27 @@ private:
 public:
     _Octagon_Impl() = delete;
 
-    _Octagon_Impl(const std::array<Vec3i64, 8> &corners, double max_cutoff)
+    _Octagon_Impl(const Vertices &vertices, double max_cutoff)
         : min_height(2. * std::sqrt(3.) * max_cutoff),
           isValid(true),
           periodic({false, false, false})
     {
-        shift_vertices_over_boundaries(corners);
-        Vec3i64 start = corners[0];
-        Vec3i64 end = corners[7];
-        Vec3i64 last = corners[5];
+        shift_vertices_over_boundaries(vertices);
+        Vec3i64 start = vertices[0];
+        Vec3i64 end = vertices[7];
+        Vec3i64 last = vertices[5];
         for (int i = 0; i < 6; i++) {
-            Vec3i64 next = corners[cornerOrder[i]];
+            Vec3i64 next = vertices[vertexOrder[i]];
             tetrahedron_planes[i] = generate_tetra({start, end, next, last});
             last = next;
         }
     }
 
-    void shift_vertices_over_boundaries(const std::array<Vec3i64, 8> &corners)
+    void shift_vertices_over_boundaries(const Vertices &vertices)
     {
         using util::vector_arithmetic::operator>=;
         Vec3i64 min, max;
-        std::tie(min, max) = min_max_per_dim(corners);
+        std::tie(min, max) = min_max_per_dim(vertices);
         periodic = max >= box_size;
 
         std::vector<int> lower, upper;
@@ -177,9 +178,9 @@ public:
             if (periodic[d]) {
                 std::tie(lower, upper) = lower_upper_indexes_dim(d);
                 for (auto &l_i : lower) {
-                    Vec3i64 low = corners[l_i];
+                    Vec3i64 low = vertices[l_i];
                     for (auto &u_i : upper) {
-                        Vec3i64 up = corners[u_i];
+                        Vec3i64 up = vertices[u_i];
                         if (low[d] > up[d]) {
                             int border = box_size[d];
                             low[d] -= (low[d] >= border) ? border : 0;
@@ -189,7 +190,7 @@ public:
                         }
                     }
                 }
-                std::tie(min, max) = min_max_per_dim(corners);
+                std::tie(min, max) = min_max_per_dim(vertices);
             }
         }
         min_dim = min;
@@ -199,14 +200,14 @@ public:
      * Additionally, updates isValid.
      */
     inline std::array<Plane, 4>
-    generate_tetra(const std::array<Vec3i64, 4> &corners)
+    generate_tetra(const std::array<Vec3i64, 4> &vertices)
     {
-        auto cur_tetra = planes_of_tetrahedron(corners);
+        auto cur_tetra = planes_of_tetrahedron(vertices);
         if (has_validity_check())
-            isValid = isValid && cur_tetra[0].isXAbove(corners[3], min_height)
-                      && cur_tetra[1].isXAbove(corners[1], min_height)
-                      && cur_tetra[2].isXAbove(corners[2], min_height)
-                      && cur_tetra[3].isXAbove(corners[0], min_height);
+            isValid = isValid && cur_tetra[0].isXAbove(vertices[3], min_height)
+                      && cur_tetra[1].isXAbove(vertices[1], min_height)
+                      && cur_tetra[2].isXAbove(vertices[2], min_height)
+                      && cur_tetra[3].isXAbove(vertices[0], min_height);
         return cur_tetra;
     }
 
@@ -250,7 +251,7 @@ public:
     }
 };
 
-const std::array<int, 6> _Octagon_Impl::cornerOrder = {{1, 3, 2, 6, 4, 5}};
+const std::array<int, 6> _Octagon_Impl::vertexOrder = {{1, 3, 2, 6, 4, 5}};
 
 // These are declared here because _Octagon_Impl is an imcomplete type in the
 // header.
