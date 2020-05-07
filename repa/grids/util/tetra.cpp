@@ -150,11 +150,12 @@ private:
 public:
     _Octagon_Impl() = delete;
 
-    _Octagon_Impl(const Vertices &vertices, double max_cutoff)
+    _Octagon_Impl(const Vertices &const_vertices, double max_cutoff)
         : min_height(2. * std::sqrt(3.) * max_cutoff),
           isValid(true),
           periodic({false, false, false})
     {
+        Vertices vertices = const_vertices;
         shift_vertices_over_boundaries(vertices);
         Vec3i64 start = vertices[0];
         Vec3i64 end = vertices[7];
@@ -166,7 +167,7 @@ public:
         }
     }
 
-    void shift_vertices_over_boundaries(const Vertices &vertices)
+    void shift_vertices_over_boundaries(Vertices &vertices)
     {
         using util::vector_arithmetic::operator>=;
         Vec3i64 min, max;
@@ -178,9 +179,9 @@ public:
             if (periodic[d]) {
                 std::tie(lower, upper) = lower_upper_indexes_dim(d);
                 for (auto &l_i : lower) {
-                    Vec3i64 low = vertices[l_i];
+                    Vec3i64 &low = vertices[l_i];
                     for (auto &u_i : upper) {
-                        Vec3i64 up = vertices[u_i];
+                        Vec3i64 &up = vertices[u_i];
                         if (low[d] > up[d]) {
                             int border = box_size[d];
                             low[d] -= (low[d] >= border) ? border : 0;
