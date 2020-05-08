@@ -42,6 +42,7 @@ struct GridBasedGrid : public ParallelLCGrid {
                   double min_cell_size,
                   ExtraParams ep);
     ~GridBasedGrid();
+    void after_construction() override;
     local_cell_index_type n_local_cells() override;
     ghost_cell_index_type n_ghost_cells() override;
     rank_index_type n_neighbors() override;

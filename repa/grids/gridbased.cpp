@@ -258,6 +258,11 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                              : decltype(subdomain_midpoint){std::bind(
                                  &GridBasedGrid::get_subdomain_center, this)})
 {
+    util::tetra::precision = static_cast<int16_t>(10. / min_cell_size);
+}
+
+void GridBasedGrid::after_construction()
+{
     auto dims = util::mpi_cart_get_dims(comm_cart);
     if (dims[0] % 2 == 1 || dims[1] % 2 == 1 || dims[2] % 2 == 1) {
         if (comm_cart.rank() == 0)
@@ -269,7 +274,6 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                 << " the nodes on the border in this dimension are NOT "
                    "shifted.";
     }
-    util::tetra::precision = static_cast<int16_t>(10. / min_cell_size);
     init_partitioning();
     reinit();
 }
