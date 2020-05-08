@@ -42,7 +42,7 @@ spack env activate .
 
 ### Linux Distributions
 
-MPI, Boost, ParMETIS and CGAL can be installed e.g. on Debian/Ubuntu using:
+MPI, Boost and ParMETIS can be installed e.g. on Debian/Ubuntu using:
 
 ```sh
 apt-get install openmpi-bin libboost-all-dev libparmetis-dev cmake
