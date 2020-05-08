@@ -9,11 +9,9 @@ For CI purposes, etc. a working Docker container with all dependencies as well a
 ### Required
 
 - MPI distribution (e.g. [OpenMPI](https://www.open-mpi.org/))
-- [Boost](https://www.boost.org/) (mpi, serialization) [1]
+- [Boost](https://www.boost.org/) (mpi, serialization) v1.67, 1.68 or 1.72 or newer
 - [CMake](https://cmake.org/) and Make/Ninja/... for building
 - C++14 compatible compiler and standard library
-
-[1] Use Boost 1.67-1.68 or 1.72 or newer.
 
 ### Optional
 
