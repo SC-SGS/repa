@@ -13,7 +13,7 @@ For CI purposes, etc. a working Docker container with all dependencies as well a
 - [CMake](https://cmake.org/) and Make/Ninja/... for building
 - C++14 compatible compiler and standard library
 
-[1] Use Boost 1.67-1.68 or 1.71 or newer.
+[1] Use Boost 1.67-1.68 or 1.72 or newer.
 
 ### Optional
 
