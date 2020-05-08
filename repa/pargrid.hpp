@@ -241,7 +241,7 @@ struct ParallelLCGrid {
                 + std::string("'"))
         {
         }
-        virtual const char *what() const noexcept override
+        const char *what() const noexcept override
         {
             return w.c_str();
         }
