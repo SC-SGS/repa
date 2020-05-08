@@ -56,7 +56,7 @@ struct GloMethod : public ParallelLCGrid {
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;
-    ~GloMethod();
+    virtual ~GloMethod();
 
     global_cell_index_type
     global_hash(local_or_ghost_cell_index_type cellidx) override;

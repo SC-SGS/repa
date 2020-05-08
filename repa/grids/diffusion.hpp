@@ -50,7 +50,7 @@ struct Diffusion : public GloMethod, public VariantSetter {
               Vec3d box_size,
               double min_cell_size,
               ExtraParams ep);
-    ~Diffusion();
+    virtual ~Diffusion();
 
     virtual std::set<std::string> get_supported_variants() const override;
     virtual void set_variant(const std::string &var) override;

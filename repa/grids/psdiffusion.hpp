@@ -37,7 +37,7 @@ struct PSDiffusion : public Diffusion {
                 Vec3d box_size,
                 double min_cell_size,
                 ExtraParams ep);
-    ~PSDiffusion();
+    virtual ~PSDiffusion();
 
     virtual std::set<std::string> get_supported_variants() const override;
 
