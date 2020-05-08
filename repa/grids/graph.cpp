@@ -114,14 +114,15 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     // [1-26]: edge weights
     using Weights = std::array<idx_t, 27>;
 
-    std::vector<boost::mpi::request> rreq(comm_cart.size());
+    std::vector<boost::mpi::request> rreq;
     std::vector<std::vector<Weights>> their_weights(comm_cart.size());
     idx_t wsum = 0; // Check for possible overflow
+    rreq.reserve(comm_cart.size());
     for (rank_type n : recvranks)
-        rreq[n] = comm_cart.irecv(n, 0, their_weights[n]);
+        rreq.push_back(comm_cart.irecv(n, 0, their_weights[n]));
 
     // Sending vertex weights
-    std::vector<boost::mpi::request> sreq(comm_cart.size());
+    std::vector<boost::mpi::request> sreq;
     std::vector<std::vector<Weights>> my_weights(comm_cart.size());
     for (local_cell_index_type i = 0; i < localCells; ++i) {
         // "Rank" is responsible for cell "gidx" / "i" (local)
@@ -156,9 +157,10 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
                "Graph weights too large for chosen Metis IDX_TYPE_WIDTH");
     }
 
+    sreq.reserve(comm_cart.size());
     for (rank_type i = 0; i < comm_cart.size(); ++i) {
         if (my_weights[i].size() > 0)
-            sreq[i] = comm_cart.isend(i, 0, my_weights[i]);
+            sreq.push_back(comm_cart.isend(i, 0, my_weights[i]));
     }
 
     // Prepare graph
