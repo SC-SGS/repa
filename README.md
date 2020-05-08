@@ -20,8 +20,6 @@ For CI purposes, etc. a working Docker container with all dependencies as well a
 - [ParMETIS](http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview) for graph-partitioning-based load-balancing method
 - [lahnerml's p4est](https://github.com/lahnerml/p4est/tree/p4est-ESPResSo-integration) for SFC-based grid
 
-Same note as above goes for KDPart and ParMETIS.
-
 ### Spack
 
 Using [spack](https://github.com/spack/spack), you can install repa easily.
