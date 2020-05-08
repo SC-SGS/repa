@@ -137,7 +137,7 @@ struct ParallelLCGrid {
     {
     }
 
-    virtual ~ParallelLCGrid(){};
+    virtual ~ParallelLCGrid() = default;
 
     /** Returns the number of local cells.
      */
@@ -241,7 +241,7 @@ struct ParallelLCGrid {
                 + std::string("'"))
         {
         }
-        virtual const char *what() const noexcept
+        virtual const char *what() const noexcept override
         {
             return w.c_str();
         }
