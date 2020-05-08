@@ -63,6 +63,8 @@ struct FlowCalculator {
     compute_flow(boost::mpi::communicator neighcomm,
                  const std::vector<rank_type> &neighbors,
                  double load) const = 0;
+
+    virtual ~FlowCalculator() = default;
 };
 
 struct FlowIterSetter {
