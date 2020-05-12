@@ -64,7 +64,7 @@ std::pair<Vec3i64, Vec3i64> min_max_per_dim(const Vertices &vertices)
     Vec3i64 min = box_size;
     Vec3i64 max{0, 0, 0};
     for (int d = 0; d < 3; d++) {
-        for (Vec3i64 vertex : vertices) {
+        for (const Vec3i64 &vertex : vertices) {
             min[d] = std::min(vertex[d], min[d]);
             max[d] = std::max(vertex[d], max[d]);
         }
@@ -181,10 +181,12 @@ public:
         std::tie(min, max) = min_max_per_dim(vertices);
         Vec3<bool> shifted_above = max >= box_size;
         Vec3<bool> shifted_below = min < Vec3i64{0, 0, 0};
-        if (any(shifted_above && shifted_below)) {
+        if (any((max - min) > box_size)) {
+            isValid = false;
+#ifndef NDEBUG
             std::cerr << "Subdomain too large! This subdomain is larger than "
                       << "the domain itself in at least one dimension!";
-            isValid = false;
+#endif
         }
         if (any(shifted_below)) {
             for (Vec3i64 &vertex : vertices) {
