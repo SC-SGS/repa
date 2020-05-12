@@ -460,6 +460,10 @@ static Vec3d shift_gridpoint(Vec3d gp,
         if (!PERIODIC(d) && coords[d] == dims[d] - 1)
             continue;
         gp[d] += shift_vector[d];
+
+        // Reject shifting over domain border if gp is not a 'border gridpoint'
+        if ((gp[d] < 0 || gp[d] >= box_l[d]) && coords[d] != dims[d] - 1)
+            gp[d] -= shift_vector[d];
     }
 
     return gp;
