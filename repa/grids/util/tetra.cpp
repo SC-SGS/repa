@@ -181,7 +181,7 @@ public:
         std::tie(min, max) = min_max_per_dim(vertices);
         Vec3<bool> shifted_above = max >= box_size;
         Vec3<bool> shifted_below = min < Vec3i64{0, 0, 0};
-        if (any((max - min) > box_size)) {
+        if (any((max - min) >= box_size)) {
             isValid = false;
 #ifndef NDEBUG
             std::cerr << "Subdomain too large! This subdomain is larger than "
