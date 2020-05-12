@@ -78,13 +78,10 @@ std::pair<Vec3i64, Vec3i64> min_max_per_dim(const Vertices &vertices)
  */
 bool check_orientation_for_vertices(Vertices &vertices)
 {
-    std::vector<int64_t> lower, upper;
     bool valid = true;
     for (int d = 0; d < 3; d++) {
-        // Because the mapping is inverse, an inverse bit is choosen.
-        // (eg we map vertices[001] to position 011 in grid)
-        // Inverting works as follows 001 -> 100 -> 011
-        int d_bit = std::pow(2, 2 - d);
+        std::vector<int64_t> lower, upper;
+        int d_bit = std::pow(2, d);
         for (int i = 0; i < 8; i++) {
             if ((i & d_bit) == 0)
                 upper.push_back(vertices[i][d]);
@@ -187,6 +184,7 @@ public:
         if (any(shifted_above && shifted_below)) {
             std::cerr << "Subdomain too large! This subdomain is larger than "
                       << "the domain itself in at least one dimension!";
+            isValid = false;
         }
         if (any(shifted_below)) {
             for (Vec3i64 &vertex : vertices) {

@@ -447,6 +447,7 @@ BOOST_AUTO_TEST_CASE(check_periodic_boundaries)
         auto octa = tetra::Octagon(vertices[i], 0.00001);
         // Check if ordering is correct
         BOOST_CHECK(octa.is_valid());
+        // Check if the point is in the correct octagon
         bool contains = octa.contains(point);
         if (i == 0)
             BOOST_CHECK(contains);
