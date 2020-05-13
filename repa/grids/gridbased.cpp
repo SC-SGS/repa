@@ -447,7 +447,8 @@ static Vec3d calc_shift(double local_load,
 static Vec3d shift_gridpoint(Vec3d gp,
                              Vec3d shift_vector,
                              double factor,
-                             const boost::mpi::communicator &comm_cart)
+                             const boost::mpi::communicator &comm_cart,
+                             Vec3d box_l)
 {
     const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
@@ -497,7 +498,7 @@ bool GridBasedGrid::repartition(CellMetric m,
             for (double factor = 1.0; !neighborhood_valid && factor > .2;
                  factor /= 2.) {
                 gridpoints[comm_cart.rank()] = shift_gridpoint(
-                    gridpoint, shift_vector, mu * factor, comm_cart);
+                    gridpoint, shift_vector, mu * factor, comm_cart, box_l);
                 neighborhood_valid
                     = check_validity_of_subdomains(domains_to_check);
             }
