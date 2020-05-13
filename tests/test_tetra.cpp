@@ -420,12 +420,35 @@ BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
     }
 }
 
-BOOST_AUTO_TEST_CASE(check_periodic_boundaries)
+BOOST_AUTO_TEST_CASE(check_random_shift_over_boundaries)
 {
     // tetra::precision = 100;
     tetra::init_tetra(.01, {1, 1, 1});
     PointArray p{};
-    std::array<octaVertices, 8> vertices = {};
+    auto rnd = Randgen{};
+
+    // Decrease all points in the PointArray by 0.1
+    for (int x = 0; x < 3; x++) {
+        for (int y = 0; y < 3; y++) {
+            for (int z = 0; z < 3; z++) {
+                for (int d = 0; d < 3; d++) {
+                    // add x in [-0.1, 0.1[
+                    p.point[x][y][z][d] += (rnd() - .5) / 5;
+                }
+            }
+        }
+    }
+    for (int i = 0; i < 8; i++) {
+        BOOST_CHECK(
+            tetra::Octagon(p.getVerticesAtPosition(i), 0.00001).is_valid());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(check_points_over_boundaries)
+{
+    // tetra::precision = 100;
+    tetra::init_tetra(.01, {1., 1., 1.});
+    PointArray p{};
 
     // Decrease all points in the PointArray by 0.1
     for (int x = 0; x < 3; x++) {
@@ -437,25 +460,26 @@ BOOST_AUTO_TEST_CASE(check_periodic_boundaries)
             }
         }
     }
-    for (int i = 0; i < 8; i++) {
-        vertices[i] = p.getVerticesAtPosition(i);
-    }
 
     Vec3d point{0, 0, 0};
-    int count_contains = 0;
     for (int i = 0; i < 8; i++) {
-        auto octa = tetra::Octagon(vertices[i], 0.00001);
-        // Check if ordering is correct
+        auto octa = tetra::Octagon(p.getVerticesAtPosition(i), 0.00001);
         BOOST_CHECK(octa.is_valid());
-        // Check if the point is in the correct octagon
-        bool contains = octa.contains(point);
-        if (i == 0)
-            BOOST_CHECK(contains);
-        if (i != 0)
-            BOOST_CHECK(!contains);
-        count_contains += int(contains);
+        for (int id = 0; id < 8; id++) {
+            // Check if Octa contains points at the domain border
+            point = {double((id & 1) != 0), double((id & 2) != 0),
+                     double((id & 4) != 0)};
+            if (i == 0)
+                BOOST_CHECK(octa.contains(point));
+            if (i != 0)
+                BOOST_CHECK(!octa.contains(point));
+        }
+        // check if domain contains midpoint
+        for (int d = 0; d < 3; d++) {
+            point[d] = 0.15 + 0.5 * double((i & int(std::pow(2, d))) != 0);
+        }
+        BOOST_CHECK(octa.contains(point));
     }
-    BOOST_CHECK(count_contains == 1);
 }
 
 int main(int argc, char **argv)
