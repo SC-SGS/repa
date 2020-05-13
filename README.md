@@ -9,13 +9,9 @@ For CI purposes, etc. a working Docker container with all dependencies as well a
 ### Required
 
 - MPI distribution (e.g. [OpenMPI](https://www.open-mpi.org/))
-- [Boost](https://www.boost.org/) (mpi, serialization) [1] [2]
+- [Boost](https://www.boost.org/) (mpi, serialization) v1.67, 1.68 or 1.72 or newer
 - [CMake](https://cmake.org/) and Make/Ninja/... for building
-- C++14 compatible compiler and standard library [3]
-
-[1] Note, that Boost::MPI must be compiled with the chosen MPI distribution. <br/>
-[2] Currently, only Boost 1.67.0 and Boost 1.68.0 are supported. Previous and later versions (<1.67.0 and 1.69.0–1.72.0) contain Boost::MPI bugs that we cannot work around.<br/>
-[3] If you have to use an older standard library, have a look at the "libstdc++-4.8.5" branch.
+- C++14 compatible compiler and standard library
 
 ### Optional
 
@@ -23,8 +19,6 @@ For CI purposes, etc. a working Docker container with all dependencies as well a
 - [KDPart](https://github.com/hirschsn/kdpart) for kd-tree-based load-balancing method
 - [ParMETIS](http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview) for graph-partitioning-based load-balancing method
 - [lahnerml's p4est](https://github.com/lahnerml/p4est/tree/p4est-ESPResSo-integration) for SFC-based grid
-
-Same note as above goes for KDPart and ParMETIS.
 
 ### Spack
 
@@ -48,7 +42,7 @@ spack env activate .
 
 ### Linux Distributions
 
-MPI, Boost, ParMETIS and CGAL can be installed e.g. on Debian/Ubuntu using:
+MPI, Boost and ParMETIS can be installed e.g. on Debian/Ubuntu using:
 
 ```sh
 apt-get install openmpi-bin libboost-all-dev libparmetis-dev cmake

@@ -19,8 +19,8 @@
 
 #include "pargrid_factory.hpp"
 #include "grids/cart.hpp"
-#include "grids/diffusion.hpp"
 #include "grids/gridbased.hpp"
+#include "grids/psdiffusion.hpp"
 #ifdef HAVE_PARMETIS
 #include "grids/graph.hpp"
 #include "grids/hybrid-gp-diff.hpp"
@@ -58,7 +58,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
 
     case GridType::GRAPH:
 #ifdef HAVE_PARMETIS
-        r = new Graph(comm, box_size, min_cell_size);
+        r = new Graph(comm, box_size, min_cell_size, ep);
 #else
         throw std::invalid_argument(
             "Librepa not compiled with Parmetis support.");
@@ -66,7 +66,11 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         break;
 
     case GridType::DIFF:
-        r = new Diffusion(comm, box_size, min_cell_size);
+        r = new Diffusion(comm, box_size, min_cell_size, ep);
+        break;
+
+    case GridType::PS_DIFF:
+        r = new PSDiffusion(comm, box_size, min_cell_size, ep);
         break;
 
     case GridType::KD_TREE:
@@ -80,7 +84,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
 
     case GridType::HYB_GP_DIFF:
 #ifdef HAVE_PARMETIS
-        r = new HybridGPDiff(comm, box_size, min_cell_size);
+        r = new HybridGPDiff(comm, box_size, min_cell_size, ep);
 #else
         throw std::invalid_argument(
             "Librepa not compiled with Parmetis support.");

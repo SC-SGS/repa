@@ -45,7 +45,7 @@ static struct EPCallCount {
     }
 
     EPCallCount()
-        : ep(repa::ExtraParams{std::bind(&EPCallCount::operator(), this)})
+        : ep(repa::ExtraParams{std::bind(&EPCallCount::operator(), this), {}})
     {
     }
 } epcallcount;

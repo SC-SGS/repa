@@ -259,6 +259,23 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                                  &GridBasedGrid::get_subdomain_center, this)})
 {
     util::tetra::init_tetra(min_cell_size, box_size);
+}
+
+void GridBasedGrid::after_construction()
+{
+    auto dims = util::mpi_cart_get_dims(comm_cart);
+    if (dims[0] % 2 == 1 || dims[1] % 2 == 1 || dims[2] % 2 == 1) {
+        if (comm_cart.rank() == 0)
+            std::cerr << "Warning: There is an odd number of processes in at "
+                         "least one "
+                         "dimension. "
+                      << " The nodes on the domain boundary in these "
+                         "dimensions are *not* "
+                         "shifted. "
+                      << " This *only* affects load-balancing quality, not "
+                         "functionality ."
+                      << std::endl;
+    }
     init_partitioning();
     reinit();
 }

@@ -186,6 +186,10 @@ CartGrid::CartGrid(const boost::mpi::communicator &comm,
                    double min_cell_size)
     : ParallelLCGrid(comm, box_size, min_cell_size)
 {
+}
+
+void CartGrid::after_construction()
+{
     create_grid();
     create_index_permutations();
     fill_neighranks();

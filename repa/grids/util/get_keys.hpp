@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2019 Steffen Hirschmann
+ * Copyright 2017-2020 Steffen Hirschmann
  *
  * This file is part of Repa.
  *
@@ -16,10 +16,22 @@
  * You should have received a copy of the GNU General Public License
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 #pragma once
 
-#include "repa/grid_types.hpp"
-#include "repa/grid_variants.hpp"
-#include "repa/pargrid.hpp"
-#include "repa/pargrid_factory.hpp"
+#include <set>
+
+namespace repa {
+namespace util {
+
+template <typename Map>
+std::set<typename Map::key_type> get_keys(const Map &m)
+{
+    std::set<std::string> keys;
+    for (const auto &v : m) {
+        keys.insert(v.first);
+    }
+    return keys;
+}
+
+} // namespace util
+} // namespace repa

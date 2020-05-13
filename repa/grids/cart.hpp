@@ -37,6 +37,7 @@ struct CartGrid : public ParallelLCGrid {
     CartGrid(const boost::mpi::communicator &comm,
              Vec3d box_size,
              double min_cell_size);
+    void after_construction() override;
     local_cell_index_type n_local_cells() override;
     ghost_cell_index_type n_ghost_cells() override;
     rank_index_type n_neighbors() override;

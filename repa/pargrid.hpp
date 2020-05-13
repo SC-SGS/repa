@@ -20,6 +20,7 @@
 #pragma once
 
 #include <boost/mpi/communicator.hpp>
+#include <boost/optional.hpp>
 #include <vector>
 
 #include "common_types.hpp"
@@ -44,6 +45,13 @@ struct ExtraParams {
      * Not required, but strongly recommended.
      */
     std::function<Vec3d(void)> subdomain_midpoint = nullptr;
+
+    /**
+     * For unstructured methods.
+     * Descriptor of the initial partitioning to use.
+     * Currently, "Linear", "Cart1D" and "Cart3D" are available.
+     */
+    boost::optional<std::string> init_part;
 };
 
 /** Some typedefs to document what an integer is supposed to mean
@@ -129,7 +137,7 @@ struct ParallelLCGrid {
     {
     }
 
-    virtual ~ParallelLCGrid(){};
+    virtual ~ParallelLCGrid() = default;
 
     /** Returns the number of local cells.
      */
@@ -233,7 +241,7 @@ struct ParallelLCGrid {
                 + std::string("'"))
         {
         }
-        virtual const char *what() const noexcept
+        const char *what() const noexcept override
         {
             return w.c_str();
         }

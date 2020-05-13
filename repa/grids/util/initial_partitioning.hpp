@@ -21,6 +21,7 @@
 #include "../../pargrid.hpp"
 #include "../globox.hpp"
 #include "linearize.hpp"
+#include "mpi_cart.hpp"
 #include "vec_arith.hpp"
 #include <cmath>
 
@@ -29,7 +30,7 @@ namespace util {
 
 using namespace repa::grids; // cell index types
 
-enum InitialPartitionType { LINEAR, CARTESIAN1D, CARTESIAN3D };
+enum InitialPartitionType : int { LINEAR, CARTESIAN1D, CARTESIAN3D };
 
 namespace impl {
 
@@ -162,6 +163,31 @@ private:
     const globox::GlobalBox<global_cell_index_type> &gbox;
     const boost::mpi::communicator &comm;
 };
+
+boost::mpi::communicator
+make_init_part_communicator(const boost::mpi::communicator &comm,
+                            InitialPartitionType init_part);
+
+struct UnknownInitialPartitionTypeError {
+    UnknownInitialPartitionTypeError() : w(std::string("Unknown grid type."))
+    {
+    }
+    UnknownInitialPartitionTypeError(std::string s)
+        : w(std::string("Unknown grid type: `") + s + std::string("'"))
+    {
+    }
+    virtual const char *what() const
+    {
+        return w.c_str();
+    }
+
+private:
+    std::string w;
+};
+
+/** Returns the InitialPartitionType with a descriptive string
+ */
+util::InitialPartitionType parse_part_type(const std::string &desc);
 
 } // namespace util
 } // namespace repa

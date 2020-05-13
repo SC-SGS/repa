@@ -29,7 +29,8 @@ namespace grids {
 struct Graph : public GloMethod {
     Graph(const boost::mpi::communicator &comm,
           Vec3d box_size,
-          double min_cell_size);
+          double min_cell_size,
+          ExtraParams ep);
     ~Graph();
 
 private:

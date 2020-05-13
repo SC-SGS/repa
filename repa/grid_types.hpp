@@ -33,6 +33,7 @@ enum class GridType {
     CART,
     GRAPH,
     DIFF,
+    PS_DIFF,
     KD_TREE,
     HYB_GP_DIFF,
     GRIDBASED
