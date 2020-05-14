@@ -21,7 +21,7 @@ build-debug:
     stage: build
     script:
         - mkdir build && cd build
-        - cmake .. -DCMAKE_BUILD_TYPE=Debug -DWITH_COVERAGE=off -DMPIEXEC_PREFLAGS="--oversubscribe;--bind-to;none"
+        - cmake .. -DCMAKE_CXX_CLANG_TIDY="$(which clang-tidy)" -DCMAKE_BUILD_TYPE=Debug -DWITH_COVERAGE=off -DMPIEXEC_PREFLAGS="--oversubscribe;--bind-to;none"
         - make -j4
     artifacts:
         paths:
@@ -37,7 +37,7 @@ build-relwithdebinfo:
     stage: build
     script:
         - mkdir build && cd build
-        - cmake .. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_COVERAGE=off -DMPIEXEC_PREFLAGS="--oversubscribe;--bind-to;none"
+        - cmake .. -DCMAKE_CXX_CLANG_TIDY="$(which clang-tidy)" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DWITH_COVERAGE=off -DMPIEXEC_PREFLAGS="--oversubscribe;--bind-to;none"
         - make -j4
     artifacts:
         paths:
@@ -53,7 +53,7 @@ build-release:
     stage: build
     script:
         - mkdir build && cd build
-        - cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_COVERAGE=off -DMPIEXEC_PREFLAGS="--oversubscribe;--bind-to;none"
+        - cmake .. -DCMAKE_CXX_CLANG_TIDY="$(which clang-tidy)" -DCMAKE_BUILD_TYPE=Release -DWITH_COVERAGE=off -DMPIEXEC_PREFLAGS="--oversubscribe;--bind-to;none"
         - make -j4
     artifacts:
         paths:
