@@ -253,10 +253,14 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
     : ParallelLCGrid(comm, box_size, min_cell_size),
       mu(1.0),
       gbox(box_size, min_cell_size),
-      subdomain_midpoint(ep.subdomain_midpoint
-                             ? ep.subdomain_midpoint
-                             : decltype(subdomain_midpoint){std::bind(
-                                 &GridBasedGrid::get_subdomain_center, this)})
+      // Use cell midpoint as default cell contribution in determination of
+      // center of subdomain
+      get_subdomain_center_contribution_of_cell(
+          ep.subdomain_center_contribution_of_cell
+              ? ep.subdomain_center_contribution_of_cell
+              : [this](local_cell_index_type i) {
+                    return std::make_pair(1, gbox.midpoint(cells[i]));
+                })
 {
     util::tetra::init_tetra(min_cell_size, box_size);
 }
@@ -404,10 +408,16 @@ Vec3d GridBasedGrid::get_subdomain_center()
 {
     using namespace util::vector_arithmetic;
     Vec3d c{0., 0., 0.};
+    int w = 0;
 
-    for (local_cell_index_type i = 0; i < n_local_cells(); ++i)
-        c += gbox.midpoint(cells[i]);
-    return c / static_cast<double>(n_local_cells());
+    for (local_cell_index_type i = 0; i < n_local_cells(); ++i) {
+        int wi;
+        Vec3d ci;
+        std::tie(wi, ci) = get_subdomain_center_contribution_of_cell(i);
+        c += ci;
+        w += wi;
+    }
+    return c / static_cast<double>(w);
 }
 
 static Vec3d calc_shift(double local_load,
@@ -498,7 +508,7 @@ bool GridBasedGrid::repartition(CellMetric m,
 
     const double lambda_p
         = std::accumulate(std::begin(weights), std::end(weights), 0.0);
-    const auto r_p = this->subdomain_midpoint();
+    const auto r_p = get_subdomain_center();
 
     auto shift_vector = calc_shift(lambda_p, r_p, gridpoint, neighcomm);
 
