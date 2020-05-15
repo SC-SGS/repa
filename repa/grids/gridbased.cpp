@@ -513,25 +513,24 @@ bool GridBasedGrid::repartition(CellMetric m,
     const double lambda_p
         = std::accumulate(std::begin(weights), std::end(weights), 0.0);
     const auto r_p = get_subdomain_center();
-
-    auto shift_vector = calc_shift(lambda_p, r_p, gridpoint, neighcomm);
-
-    // const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
-    const std::vector<rank_type> domains_to_check
-        = util::mpi_directed_neighbors(neighcomm).first;
+    const auto shift_vector = calc_shift(lambda_p, r_p, gridpoint, neighcomm);
 
     // Colored shifting scheme to avoid multiple node conflicts at once,
     // according to:
     // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
+
+    const std::vector<rank_type> subdomains_adjacent_to_gridpoint
+        = util::mpi_directed_neighbors(neighcomm).first;
+
     util::independent_process_sets(comm_cart)
         .for_each([&]() {
-            double neighborhood_valid = false;
+            bool neighborhood_valid = false;
             for (double factor = 1.0; !neighborhood_valid && factor > .2;
                  factor /= 2.) {
                 gridpoints[comm_cart.rank()] = shift_gridpoint(
                     gridpoint, shift_vector, mu * factor, comm_cart, box_l);
-                neighborhood_valid
-                    = check_validity_of_subdomains(domains_to_check);
+                neighborhood_valid = check_validity_of_subdomains(
+                    subdomains_adjacent_to_gridpoint);
             }
             // Restore old info in "gridpoints" vector or accept new gridpoint
             if (neighborhood_valid)
@@ -541,7 +540,7 @@ bool GridBasedGrid::repartition(CellMetric m,
         })
         .for_all_after_each_round([&]() {
             // Update gridpoint and gridpoints
-            // Currently allgather. Structly, only the changed gridpoints need
+            // Currently allgather. Strictly, only the changed gridpoints need
             // to be communicated
             gridpoints.clear();
             boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
