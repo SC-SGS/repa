@@ -33,6 +33,7 @@
 #include <random>
 
 #include <repa/grids/util/tetra.hpp>
+#include <repa/grids/util/vec_arith.hpp>
 
 using namespace repa::util;
 using repa::Vec3d;
@@ -90,12 +91,26 @@ ninsideDomains(array<octaVertices, domains> corners, int N, bool add)
     return counter;
 }
 
+/** Represents a cubical box subdivided into 8 subdomains.
+ * In 2d think of it as:
+ * 1---o---2
+ * |   |   |
+ * o---o---o
+ * |   |   |
+ * 3---o---4
+ *
+ * One box spanned by vertices 1,2,3,4 divided into smaller subdomains.
+ *
+ * The vertices of a subdomain can be accessed via "getVerticesAtPosition(int
+ * id)", where "id" enumerates the subdomains from 0 to 7.
+ */
 struct PointArray {
     static const int size = 3;
     array<array<array<Vec3d, size>, size>, size> point = {{{}}};
+
+    octaVertices getVerticesAtPosition(int id) const;
     PointArray();
-    Vec3d randomPoint();
-    octaVertices getVerticesAtPosition(int id);
+    static Vec3d randomPoint();
 };
 
 Vec3d PointArray::randomPoint()
@@ -137,9 +152,16 @@ PointArray::PointArray()
     point[1][1][1] = randomPoint();
 }
 
-octaVertices PointArray::getVerticesAtPosition(int id)
+static inline int extract_bit(int value, int bitno)
 {
-    int x = (id & 1) != 0, y = (id & 2) != 0, z = (id & 4) != 0;
+    return !!(value & (1 << bitno));
+}
+
+octaVertices PointArray::getVerticesAtPosition(int id) const
+{
+    const int x = extract_bit(id, 0);
+    const int y = extract_bit(id, 1);
+    const int z = extract_bit(id, 2);
     return {
         point[1 + x][1 + y][1 + z], point[0 + x][1 + y][1 + z],
         point[1 + x][0 + y][1 + z], point[0 + x][0 + y][1 + z],
@@ -461,20 +483,25 @@ BOOST_AUTO_TEST_CASE(check_points_over_boundaries)
         }
     }
 
-    Vec3d point{0, 0, 0};
     for (int i = 0; i < 8; i++) {
+        // The 0-th octagon must contain all corners because of the shift above.
         auto octa = tetra::Octagon(p.getVerticesAtPosition(i), 0.00001);
         BOOST_CHECK(octa.is_valid());
-        for (int id = 0; id < 8; id++) {
-            // Check if Octa contains points at the domain border
-            point = {double((id & 1) != 0), double((id & 2) != 0),
-                     double((id & 4) != 0)};
-            if (i == 0)
-                BOOST_CHECK(octa.contains(point));
-            if (i != 0)
-                BOOST_CHECK(!octa.contains(point));
+
+        static constexpr std::array<double, 2> _boundary = {{0.0, 1.0}};
+        for (double x : _boundary) {
+            for (double y : _boundary) {
+                for (double z : _boundary) {
+                    if (i == 0)
+                        BOOST_CHECK(octa.contains(Vec3d{x, y, z}));
+                    if (i != 0)
+                        BOOST_CHECK(!octa.contains(Vec3d{x, y, z}));
+                }
+            }
         }
+
         // check if domain contains midpoint
+        Vec3d point;
         for (int d = 0; d < 3; d++) {
             point[d] = 0.15 + 0.5 * double((i & int(std::pow(2, d))) != 0);
         }
