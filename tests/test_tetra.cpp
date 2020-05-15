@@ -33,7 +33,6 @@
 #include <random>
 
 #include <repa/grids/util/tetra.hpp>
-#include <repa/grids/util/vec_arith.hpp>
 
 using namespace repa::util;
 using repa::Vec3d;
