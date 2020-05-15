@@ -484,16 +484,18 @@ static Vec3d shift_gridpoint(Vec3d gp,
     // f values from periodic neighbors are not considered.
     // Therefore, they do not need periodic mirroring.
     for (int d = 0; d < 3; ++d) {
+        const bool is_boundary_gridpoint = coords[d] == dims[d] - 1;
+
         // On non-periodic grids, shift only non-boundary coordinates
-        if (!PERIODIC(d) && coords[d] == dims[d] - 1)
+        if (!PERIODIC(d) && is_boundary_gridpoint)
             continue;
 
-        double new_coordinate = gp[d] + shift_vector[d];
+        const double new_coordinate = gp[d] + shift_vector[d];
 
         // Reject shift over domain boundary if gp is not a gridpoint originally
-        // located on the boundary itself.
-        if ((new_coordinate < 0.0 || new_coordinate >= box_l[d])
-            && coords[d] != dims[d] - 1)
+        // located on the boundary (in dimension d) itself.
+        if (!is_boundary_gridpoint
+            && (new_coordinate < 0.0 || new_coordinate >= box_l[d]))
             continue;
 
         gp[d] = new_coordinate;
