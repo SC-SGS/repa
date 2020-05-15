@@ -351,7 +351,7 @@ rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
             return i;
     }
 
-    throw std::domain_error(
+    throw std::runtime_error(
         "Position globally unknown. This is a bug, please report it.");
 }
 
