@@ -480,9 +480,6 @@ static Vec3d shift_gridpoint(Vec3d gp,
     const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
 
-    // Note: Since we do not shift gridpoints over periodic boundaries,
-    // f values from periodic neighbors are not considered.
-    // Therefore, they do not need periodic mirroring.
     for (int d = 0; d < 3; ++d) {
         const bool is_boundary_gridpoint = coords[d] == dims[d] - 1;
 
