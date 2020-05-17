@@ -175,7 +175,7 @@ SOFVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
 
             _prev_deficiency.reserve(nneigh);
             for (int j = 0; j < nneigh; j++)
-                _prev_deficiency[j] = deficiency[j];
+                _prev_deficiency[neighbors[j]] = deficiency[j];
         }
         else {
             for (int j = 0; j < neighloads.size(); j++)
@@ -183,7 +183,7 @@ SOFVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
                                 + _beta * alpha * (load - neighloads[j]);
 
             for (int j = 0; j < nneigh; j++)
-                _prev_deficiency[j] = deficiency[j];
+                _prev_deficiency[neighbors[j]] = deficiency[j];
         }
     }
 
