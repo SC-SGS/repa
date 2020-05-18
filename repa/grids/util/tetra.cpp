@@ -201,12 +201,11 @@ private:
 public:
     _Octagon_Impl() = delete;
 
-    _Octagon_Impl(const Vertices &const_vertices, double max_cutoff)
+    _Octagon_Impl(Vertices vertices, double max_cutoff)
         : min_height(2. * std::sqrt(3.) * max_cutoff),
           isValid(true),
           periodic({false, false, false})
     {
-        Vertices vertices = const_vertices;
         shift_vertices_over_boundaries(vertices);
         Vec3i64 start = vertices[0];
         Vec3i64 end = vertices[7];
