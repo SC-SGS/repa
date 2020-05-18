@@ -73,28 +73,53 @@ std::pair<Vec3i64, Vec3i64> min_max_per_dim(const Vertices &vertices)
     return std::make_pair(min, max);
 }
 
+enum class WhichFunc { MIN, MAX };
+
+/** Returns the minimum and maximum per dimension of a subset of vertices.
+ * The subset is chosen via parameter "which_func". It is called with the
+ * current vertex number and dimension and returns if it should be taken
+ * into account for the maximum or minimum value.
+ */
+template <typename Pred>
+std::pair<Vec3i64, Vec3i64> min_max_per_dim_of_subset(const Vertices &vertices,
+                                                      Pred which_func)
+{
+    constexpr int64_t max_i64 = std::numeric_limits<int64_t>::max();
+    Vec3i64 min = {max_i64, max_i64, max_i64};
+    Vec3i64 max{0, 0, 0};
+    for (int i = 0; i < vertices.size(); ++i) {
+        for (int d = 0; d < 3; d++) {
+            if (which_func(i, d) == WhichFunc::MIN)
+                min[d] = std::min(vertices[i][d], min[d]);
+            else
+                max[d] = std::max(vertices[i][d], max[d]);
+        }
+    }
+    return std::make_pair(min, max);
+}
+
 /**
  * Returns the indices for the lower and upper points in the
  * requested dimension.
  */
-bool check_orientation_for_vertices(Vertices &vertices)
+bool has_valid_orientation(Vertices &vertices)
 {
-    bool valid = true;
-    for (int d = 0; d < 3; d++) {
-        int64_t biggest_lower = 0,
-                smallest_upper = std::numeric_limits<int64_t>::max();
-        const int d_bit = 1 << d;
-        for (int i = 0; i < 8; i++) {
-            if ((i & d_bit) == 0) {
-                smallest_upper = std::min(smallest_upper, vertices[i][d]);
-            }
-            else {
-                biggest_lower = std::max(biggest_lower, vertices[i][d]);
-            }
-        }
-        valid = valid && (smallest_upper > biggest_lower);
-    }
-    return valid;
+    Vec3i64 biggest_lower, smallest_upper;
+
+    auto max_of_lower__min_of_upper = [](int vertex_no, int dim) {
+        // Upper vertex: bit number "dim" is zero.
+        if ((vertex_no & (1 << dim)) == 0)
+            return WhichFunc::MIN;
+        else
+            return WhichFunc::MAX;
+    };
+
+    std::tie(smallest_upper, biggest_lower)
+        = min_max_per_dim_of_subset(vertices, max_of_lower__min_of_upper);
+
+    return smallest_upper[0] > biggest_lower[0]
+           && smallest_upper[1] > biggest_lower[1]
+           && smallest_upper[2] > biggest_lower[2];
 }
 
 struct Plane {
@@ -212,7 +237,7 @@ public:
         }
         periodic = shifted_above || shifted_below;
         min_dim = min;
-        isValid = isValid && check_orientation_for_vertices(vertices);
+        isValid = isValid && has_valid_orientation(vertices);
     }
 
     /** Returns 4 planes that represent the faces of a tetrahedron.
