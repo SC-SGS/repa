@@ -449,8 +449,7 @@ BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
 
 BOOST_AUTO_TEST_CASE(check_random_shift_over_boundaries)
 {
-    // tetra::precision = 100;
-    tetra::init_tetra(.01, {1, 1, 1});
+    tetra::init_tetra(.1, {1, 1, 1});
     PointArray p{};
     auto rnd = Randgen{};
 
@@ -473,8 +472,7 @@ BOOST_AUTO_TEST_CASE(check_random_shift_over_boundaries)
 
 BOOST_AUTO_TEST_CASE(check_points_over_boundaries)
 {
-    // tetra::precision = 100;
-    tetra::init_tetra(.01, {1., 1., 1.});
+    tetra::init_tetra(.1, {1., 1., 1.});
     PointArray p{};
 
     // Decrease all points in the PointArray by 0.1
