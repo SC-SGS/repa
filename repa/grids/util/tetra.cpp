@@ -226,7 +226,8 @@ public:
             isValid = false;
 #ifndef NDEBUG
             std::cerr << "Subdomain too large! This subdomain is larger than "
-                      << "the domain itself in at least one dimension!";
+                      << "the domain itself in at least one dimension!"
+                      << std::endl;
 #endif
         }
         if (any(shifted_below)) {
