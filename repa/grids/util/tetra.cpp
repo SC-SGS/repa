@@ -81,17 +81,18 @@ bool check_orientation_for_vertices(Vertices &vertices)
 {
     bool valid = true;
     for (int d = 0; d < 3; d++) {
-        std::vector<int64_t> lower, upper;
-        int d_bit = std::pow(2, d);
+        int64_t biggest_lower = 0,
+                smallest_upper = std::numeric_limits<int64_t>::max();
+        const int d_bit = 1 << d;
         for (int i = 0; i < 8; i++) {
-            if ((i & d_bit) == 0)
-                upper.push_back(vertices[i][d]);
-            else
-                lower.push_back(vertices[i][d]);
+            if ((i & d_bit) == 0) {
+                smallest_upper = std::min(smallest_upper, vertices[i][d]);
+            }
+            else {
+                biggest_lower = std::max(biggest_lower, vertices[i][d]);
+            }
         }
-        int smallest_upper = *std::min_element(upper.begin(), upper.end());
-        int greatest_lower = *std::max_element(lower.begin(), lower.end());
-        valid = valid && (smallest_upper > greatest_lower);
+        valid = valid && (smallest_upper > biggest_lower);
     }
     return valid;
 }
