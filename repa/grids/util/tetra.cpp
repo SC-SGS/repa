@@ -32,11 +32,12 @@ namespace tetra {
 using Vec3i64 = Vec3<int64_t>;
 using Vertices = std::array<Vec3i64, 8>;
 
-int16_t precision = 10;
-Vec3i64 box_size{0, 0, 0};
-
 // Anonymous namespace for internal linkage
 namespace {
+
+bool _module_initialized = false;
+int16_t precision = 10;
+Vec3i64 box_size{0, 0, 0};
 
 using namespace vector_arithmetic;
 
@@ -73,7 +74,7 @@ std::pair<Vec3i64, Vec3i64> min_max_per_dim(const Vertices &vertices)
 }
 
 /**
- * Returns the indexes for the lower and upper points in the
+ * Returns the indices for the lower and upper points in the
  * requested dimension.
  */
 bool check_orientation_for_vertices(Vertices &vertices)
@@ -143,6 +144,20 @@ void init_tetra(double min_cell_size, Vec3d box_s)
     precision = static_cast<int16_t>(10. / min_cell_size);
     box_size
         = util::vector_arithmetic::static_cast_vec<Vec3i64>(integerize(box_s));
+    _module_initialized = true;
+}
+
+/** Not good.
+ */
+void init_tetra()
+{
+    _module_initialized = true;
+}
+
+int16_t get_precision()
+{
+    assert(_module_initialized);
+    return precision;
 }
 
 struct _Octagon_Impl {
@@ -263,9 +278,10 @@ Octagon::~Octagon() = default;
 Octagon::Octagon(Octagon &&o) = default;
 
 Octagon::Octagon(const std::array<Vec3d, 8> &vertices, double max_cutoff)
-    : oi(
-        std::make_unique<_Octagon_Impl>(integerizedArray(vertices), max_cutoff))
 {
+    assert(_module_initialized);
+    oi = std::make_unique<_Octagon_Impl>(integerizedArray(vertices),
+                                         max_cutoff);
 }
 
 bool Octagon::is_valid() const

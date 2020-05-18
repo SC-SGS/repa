@@ -76,7 +76,7 @@ ninsideDomains(array<octaVertices, domains> corners, int N, bool add)
     for (int i = 0; i < N; ++i) {
         Vec3d p = {rnd(), rnd(), rnd()};
         if (add) {
-            double factor = 1. / tetra::precision;
+            double factor = 1. / tetra::get_precision();
             p = {rnd() + factor, rnd() + factor, rnd() + factor};
         }
         int count = 0;
@@ -114,9 +114,11 @@ struct PointArray {
 
 Vec3d PointArray::randomPoint()
 {
+    tetra::init_tetra();
     // In the following, we assume that the midpoint (.5, .5, .5) of the domain
     // [0,1]^3 can be represented exactly in tetra internally.
-    assert(std::floor(.5 * tetra::precision) == .5 * tetra::precision);
+    assert(std::floor(.5 * tetra::get_precision())
+           == .5 * tetra::get_precision());
 
     Randgen rnd = Randgen{};
     Vec3d randVec = Vec3d{0, 0, 0};
@@ -132,7 +134,7 @@ Vec3d PointArray::randomPoint()
         // cast from range (-1,1) to (0,1)
         randVec[i] = .5 + norm1 / 2;
         if (randVec[i] < .5) {
-            randVec[i] += 1. / tetra::precision;
+            randVec[i] += 1. / tetra::get_precision();
         }
     }
     return randVec;
@@ -176,7 +178,7 @@ octaVertices PointArray::getVerticesAtPosition(int id) const
  */
 BOOST_AUTO_TEST_CASE(test_tetra_1)
 {
-
+    tetra::init_tetra();
     tetra::Octagon r;
     BOOST_CHECK_EXCEPTION(r.contains({1., 2., 3.}), std::runtime_error,
                           empty_oct_message);
@@ -220,6 +222,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
  */
 BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_1)
 {
+    tetra::init_tetra();
     auto rnd = Randgen{};
     // p1-p4 define the randomized adjacent side of the Octagons
     Vec3d p1 = {rnd(), 1., 1.};
@@ -261,6 +264,7 @@ BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_1)
  */
 BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_2)
 {
+    tetra::init_tetra();
     auto rnd = Randgen{};
     // p1-p4 define the randomized adjacent side of the Octagons
     Vec3d p1 = {1., rnd(), 1.};
@@ -302,6 +306,7 @@ BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_2)
  */
 BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_3)
 {
+    tetra::init_tetra();
     auto rnd = Randgen{};
     // p1-p4 define the randomized adjacent side of the Octagons
     Vec3d p1 = {1., 1., rnd()};
@@ -342,6 +347,7 @@ BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_3)
  */
 BOOST_AUTO_TEST_CASE(test_tetra_3)
 {
+    tetra::init_tetra();
     using namespace repa;
 
     // Array with grid points of all Octagons.
@@ -374,6 +380,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
  */
 BOOST_AUTO_TEST_CASE(test_tetra_4)
 {
+    tetra::init_tetra();
     octaVertices cs = {{{1., 1., 1.},
                         {0., 1., 1.},
                         {1., 0., 1.},
@@ -499,7 +506,7 @@ BOOST_AUTO_TEST_CASE(check_points_over_boundaries)
             }
         }
 
-        // check if domain contains midpoint
+        // Check an arbitrary point not on the boundary
         Vec3d point;
         for (int d = 0; d < 3; d++) {
             point[d] = 0.15 + 0.5 * double((i & int(std::pow(2, d))) != 0);
