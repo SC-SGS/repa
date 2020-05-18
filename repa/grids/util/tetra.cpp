@@ -193,9 +193,22 @@ struct _Octagon_Impl {
 private:
     static const std::array<int, 6> vertexOrder;
     std::array<std::array<Plane, 4>, 6> tetrahedron_planes;
+
+    /** Minimum height to ensure.
+     */
     double min_height;
+    
+    /** Set to false if this octagon cannot be handled by the implementation
+     * or its heights are smaller than "min_height".
+     */
     bool isValid;
+
+    /** True if the octagon has been periodically shifted in this dimension
+     */
     Vec3<bool> periodic;
+
+    /** Minimum coordinate in each dimension
+     */
     Vec3i64 min_dim;
 
 public:
@@ -206,9 +219,14 @@ public:
           isValid(true),
           periodic({false, false, false})
     {
-        shift_vertices_over_boundaries(vertices);
-        Vec3i64 start = vertices[0];
-        Vec3i64 end = vertices[7];
+        initialize_periodicity_handling(vertices);
+
+        // Periodicity habdling requires octagons not to rotate.
+        // Otherwise, the periodic shifts in gridbased.cpp are wrong.
+        isValid = isValid && has_valid_orientation(vertices);
+        
+        const Vec3i64 start = vertices[0];
+        const Vec3i64 end = vertices[7];
         Vec3i64 last = vertices[5];
         for (int i = 0; i < 6; i++) {
             Vec3i64 next = vertices[vertexOrder[i]];
@@ -217,13 +235,23 @@ public:
         }
     }
 
-    void shift_vertices_over_boundaries(Vertices &vertices)
+    /** Recognizes if an octagon expands over the periodic boundary and
+     * prepares the object to handle contains() queries from particles
+     * in different periodic images.
+     * 
+     * Internally:
+     * - Shifts all vertices towards the upper periodic boundary
+     * - Sets "periodic" flags
+     * - Sets the minimum coordinate of any grid point.
+     */
+    void initialize_periodicity_handling(Vertices &vertices)
     {
         using namespace util::vector_arithmetic;
         Vec3i64 min, max;
         std::tie(min, max) = min_max_per_dim(vertices);
         const Vec3<bool> shifted_above = max >= box_size;
         const Vec3<bool> shifted_below = min < Vec3i64{0, 0, 0};
+
         if (any((max - min) > box_size)) {
             isValid = false;
 #ifndef NDEBUG
@@ -232,6 +260,7 @@ public:
                       << std::endl;
 #endif
         }
+
         if (any(shifted_below)) {
             for (Vec3i64 &vertex : vertices) {
                 vertex += static_cast_vec<Vec3i64>(shifted_below) * box_size;
@@ -240,7 +269,6 @@ public:
         }
         periodic = shifted_above || shifted_below;
         min_dim = min;
-        isValid = isValid && has_valid_orientation(vertices);
     }
 
     /** Returns 4 planes that represent the faces of a tetrahedron.
