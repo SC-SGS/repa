@@ -114,7 +114,6 @@ struct PointArray {
 
 Vec3d PointArray::randomPoint()
 {
-    tetra::init_tetra();
     // In the following, we assume that the midpoint (.5, .5, .5) of the domain
     // [0,1]^3 can be represented exactly in tetra internally.
     assert(std::floor(.5 * tetra::get_precision())
