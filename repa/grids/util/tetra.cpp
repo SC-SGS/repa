@@ -32,6 +32,15 @@ namespace tetra {
 using Vec3i64 = Vec3<int64_t>;
 using Vertices = std::array<Vec3i64, 8>;
 
+/** Constants for a bitset error value.
+ */
+enum TetraValidityError {
+    E_TETRA_OK = 0,       // All good
+    E_TETRA_ROTATED = 1,  // Wrong orientation
+    E_TETRA_TOOLARGE = 2, // Too large in at least one direction
+    E_TETRA_INVALID = 4   // Invalid node order, not a convex object
+};
+
 // Anonymous namespace for internal linkage
 namespace {
 
@@ -197,11 +206,11 @@ private:
     /** Minimum height to ensure.
      */
     double min_height;
-    
+
     /** Set to false if this octagon cannot be handled by the implementation
      * or its heights are smaller than "min_height".
      */
-    bool isValid;
+    int valid_status;
 
     /** True if the octagon has been periodically shifted in this dimension
      */
@@ -216,15 +225,16 @@ public:
 
     _Octagon_Impl(Vertices vertices, double max_cutoff)
         : min_height(2. * std::sqrt(3.) * max_cutoff),
-          isValid(true),
+          valid_status(E_TETRA_OK),
           periodic({false, false, false})
     {
         initialize_periodicity_handling(vertices);
 
         // Periodicity habdling requires octagons not to rotate.
         // Otherwise, the periodic shifts in gridbased.cpp are wrong.
-        isValid = isValid && has_valid_orientation(vertices);
-        
+        if (!has_valid_orientation(vertices))
+            valid_status |= E_TETRA_ROTATED;
+
         const Vec3i64 start = vertices[0];
         const Vec3i64 end = vertices[7];
         Vec3i64 last = vertices[5];
@@ -238,7 +248,7 @@ public:
     /** Recognizes if an octagon expands over the periodic boundary and
      * prepares the object to handle contains() queries from particles
      * in different periodic images.
-     * 
+     *
      * Internally:
      * - Shifts all vertices towards the upper periodic boundary
      * - Sets "periodic" flags
@@ -253,7 +263,7 @@ public:
         const Vec3<bool> shifted_below = min < Vec3i64{0, 0, 0};
 
         if (any((max - min) > box_size)) {
-            isValid = false;
+            valid_status |= E_TETRA_TOOLARGE;
 #ifndef NDEBUG
             std::cerr << "Subdomain too large! This subdomain is larger than "
                       << "the domain itself in at least one dimension!"
@@ -278,11 +288,12 @@ public:
     generate_tetra(const std::array<Vec3i64, 4> &vertices)
     {
         auto cur_tetra = planes_of_tetrahedron(vertices);
-        if (has_validity_check())
-            isValid = isValid && cur_tetra[0].isXAbove(vertices[3], min_height)
-                      && cur_tetra[1].isXAbove(vertices[1], min_height)
-                      && cur_tetra[2].isXAbove(vertices[2], min_height)
-                      && cur_tetra[3].isXAbove(vertices[0], min_height);
+        if (has_validity_check()
+            && !(cur_tetra[0].isXAbove(vertices[3], min_height)
+                 && cur_tetra[1].isXAbove(vertices[1], min_height)
+                 && cur_tetra[2].isXAbove(vertices[2], min_height)
+                 && cur_tetra[3].isXAbove(vertices[0], min_height)))
+            valid_status |= E_TETRA_INVALID;
         return cur_tetra;
     }
 
@@ -322,7 +333,7 @@ public:
 
     bool is_valid() const
     {
-        return isValid;
+        return valid_status == E_TETRA_OK;
     }
 };
 
