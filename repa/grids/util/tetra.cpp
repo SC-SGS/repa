@@ -38,7 +38,8 @@ enum TetraValidityError {
     E_TETRA_OK = 0,       // All good
     E_TETRA_ROTATED = 1,  // Wrong orientation
     E_TETRA_TOOLARGE = 2, // Too large in at least one direction
-    E_TETRA_INVALID = 4   // Invalid node order, not a convex object
+    E_TETRA_INVALID
+    = 4 // Invalid node order, not a convex object, not of minimum required size
 };
 
 // Anonymous namespace for internal linkage
@@ -207,8 +208,8 @@ private:
      */
     double min_height;
 
-    /** Set to false if this octagon cannot be handled by the implementation
-     * or its heights are smaller than "min_height".
+    /** Bitset of values from TetraValidityError. 0 if this octagon is valid and
+     * can be handled by this implementation. Not zero otherwise.
      */
     int valid_status;
 
