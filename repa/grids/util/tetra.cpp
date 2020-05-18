@@ -167,17 +167,20 @@ planes_of_tetrahedron(const std::array<Vec3i64, 4> &vertices)
 
 void init_tetra(double min_cell_size, Vec3d box_s)
 {
-    precision = static_cast<int16_t>(10. / min_cell_size);
+    double prec = 10. / min_cell_size;
+
+    assert(min_cell_size > 0.0);
+    assert(prec <= static_cast<double>(std::numeric_limits<int16_t>::max()));
+
+    precision = static_cast<int16_t>(prec);
     box_size
         = util::vector_arithmetic::static_cast_vec<Vec3i64>(integerize(box_s));
     _module_initialized = true;
 }
 
-/** Not good.
- */
 void init_tetra()
 {
-    _module_initialized = true;
+    init_tetra(1.0, {1.0, 1.0, 1.0});
 }
 
 int16_t get_precision()
