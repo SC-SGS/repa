@@ -220,8 +220,8 @@ public:
         using namespace util::vector_arithmetic;
         Vec3i64 min, max;
         std::tie(min, max) = min_max_per_dim(vertices);
-        Vec3<bool> shifted_above = max >= box_size;
-        Vec3<bool> shifted_below = min < Vec3i64{0, 0, 0};
+        const Vec3<bool> shifted_above = max >= box_size;
+        const Vec3<bool> shifted_below = min < Vec3i64{0, 0, 0};
         if (any((max - min) > box_size)) {
             isValid = false;
 #ifndef NDEBUG
