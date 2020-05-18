@@ -454,13 +454,13 @@ BOOST_AUTO_TEST_CASE(check_random_shift_over_boundaries)
     PointArray p{};
     auto rnd = Randgen{};
 
-    // Decrease all points in the PointArray by 0.1
+    Vec3d addit = {(rnd() - .5) / 5, (rnd() - .5) / 5, (rnd() - .5) / 5};
+
     for (int x = 0; x < 3; x++) {
         for (int y = 0; y < 3; y++) {
             for (int z = 0; z < 3; z++) {
                 for (int d = 0; d < 3; d++) {
-                    // add x in [-0.1, 0.1[
-                    p.point[x][y][z][d] += (rnd() - .5) / 5;
+                    p.point[x][y][z][d] += addit[d];
                 }
             }
         }
