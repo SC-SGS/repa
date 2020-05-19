@@ -239,16 +239,41 @@ Vec3d GridBasedGrid::get_subdomain_center()
 {
     using namespace util::vector_arithmetic;
     Vec3d c{0., 0., 0.};
-    int w = 0;
+    double w = 0;
+
+    Vec3d max_per_dim{0., 0., 0.};
+    Vec3d min_per_dim = box_l;
+    auto vertices = bounding_box(comm_cart.rank());
+    for (int d = 0; d < 3; d++)
+        for (Vec3d vertex : vertices) {
+            max_per_dim[d] = std::max(vertex[d], max_per_dim[d]);
+            min_per_dim[d] = std::min(vertex[d], max_per_dim[d]);
+        }
+
+    // Because this algorithm can't handle negative values, the subdomains with
+    // negative minimum are shifted upwards and after calculation back down.
+    Vec3<bool> shift_dom_up = min_per_dim < 0.;
 
     for (local_cell_index_type i = 0; i < n_local_cells(); ++i) {
         int wi;
         Vec3d ci;
         std::tie(wi, ci) = get_subdomain_center_contribution_of_cell(i);
-        c += ci;
-        w += wi;
+        double wi_d = static_cast<double>(wi);
+
+        // Compute in which dimension the cell must be shifted.
+        Vec3d cell_pos = ci / wi_d;
+        Vec3<bool> shift_cell_not_down = cell_pos <= max_per_dim;
+        Vec3<bool> shift_cell_up = cell_pos < min_per_dim;
+        Vec3d shift_cell = static_cast_vec<Vec3d>(
+            (shift_dom_up && shift_cell_not_down) || shift_cell_up);
+
+        // Add shifted cell to sum of all cells
+        c += ci + shift_cell * box_l * wi_d;
+        w += wi_d;
     }
-    return c / static_cast<double>(w);
+    c -= static_cast_vec<Vec3d>(shift_dom_up) * box_l * w;
+
+    return c / w;
 }
 
 static Vec3d calc_shift(double local_load,
@@ -346,7 +371,8 @@ bool GridBasedGrid::sub_repartition(CellMetric m, CellCellMetric ccm)
     const double lambda_p
         = std::accumulate(std::begin(weights), std::end(weights), 0.0);
     const auto r_p = get_subdomain_center();
-    const auto shift_vector = calc_shift(lambda_p, r_p, gridpoint, neighcomm);
+    const auto shift_vector
+        = calc_shift(lambda_p, r_p, gridpoint, neighcomm, box_l);
 
     // Colored shifting scheme to avoid multiple node conflicts at once,
     // according to:
