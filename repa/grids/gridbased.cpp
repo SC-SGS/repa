@@ -254,7 +254,8 @@ Vec3d GridBasedGrid::get_subdomain_center()
 static Vec3d calc_shift(double local_load,
                         Vec3d subdomain_midpoint,
                         Vec3d cur_gridpoint,
-                        MPI_Comm neighcomm)
+                        MPI_Comm neighcomm,
+                        Vec3d box_l)
 {
     using namespace util::vector_arithmetic;
 
@@ -283,6 +284,13 @@ static Vec3d calc_shift(double local_load,
     for (rank_index_type i = 0; i < nneigh; ++i) {
         // Form "u"
         r[i] -= cur_gridpoint;
+        for (int d = 0; d < 3; d++) {
+            double &r_d = r[i][d];
+            // Shift the gridpoint, when the shifted gridpoint is nearer.
+            if (std::abs(r_d) > (box_l[d] / 2)) {
+                r_d += (r_d < 0) ? box_l[d] : -box_l[d];
+            }
+        }
         const double len = util::norm2(r[i]);
         // Form "f"
         r[i] *= (lambda_hat[i] - 1) / len;
