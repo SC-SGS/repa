@@ -512,6 +512,38 @@ BOOST_AUTO_TEST_CASE(check_points_over_boundaries)
     }
 }
 
+BOOST_AUTO_TEST_CASE(test_rotated_tetra)
+{
+    tetra::init_tetra(.1, {1., 1., 1.});
+    PointArray p{};
+
+    octaVertices vertices = p.getVerticesAtPosition(0);
+    auto o = tetra::Octagon(vertices, 0.01);
+    BOOST_CHECK(o.is_valid());
+
+    octaVertices rotate1Dim{};
+    std::vector<int> upper, lower;
+    for (int rotate = 0; rotate < 3; rotate++) {
+        // get the points to rotate
+        int rotate_bit = std::pow(2, 2 - rotate);
+        for (int i = 0; i < 8; i++) {
+            if ((i & rotate_bit) == 0)
+                upper.push_back(i);
+            else
+                lower.push_back(i);
+        }
+        int before = 3;
+        // Change the position of the points.
+        for (int i = 0; i < 4; i++) {
+            Vec3d up_before = vertices[before], low_before = vertices[before];
+            rotate1Dim[upper[i]] = up_before;
+            rotate1Dim[lower[i]] = low_before;
+            before = i;
+        }
+        BOOST_CHECK(!tetra::Octagon(rotate1Dim, 0.01).is_valid());
+    }
+}
+
 int main(int argc, char **argv)
 {
     return boost::unit_test::unit_test_main(init_unit_test, argc, argv);
