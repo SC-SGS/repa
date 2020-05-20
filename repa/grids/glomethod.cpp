@@ -76,10 +76,15 @@ std::vector<GhostExchangeDesc> GloMethod::get_boundary_info()
 
 local_cell_index_type GloMethod::position_to_cell_index(Vec3d pos)
 {
-    if (position_to_rank(pos) != comm_cart.rank())
-        throw std::domain_error("Particle not in local box");
-
-    return global_to_local[gbox.cell_at_pos(pos)];
+    try {
+        const auto c = global_to_local.at(gbox.cell_at_pos(pos));
+        if (c >= n_local_cells())
+            throw std::domain_error("Particle not in local subdomain");
+        return c;
+    }
+    catch (const std::out_of_range &e) {
+        throw std::domain_error("Particle not in local subdomain");
+    }
 }
 
 rank_type GloMethod::position_to_rank(Vec3d pos)
