@@ -509,6 +509,13 @@ BOOST_AUTO_TEST_CASE(check_points_over_boundaries)
             point[d] = 0.15 + 0.5 * double((i & int(std::pow(2, d))) != 0);
         }
         BOOST_CHECK(octa.contains(point));
+
+        // Since all subdomains are shifted downwards, the points on the upper
+        // boundary should be accepted by the lower domain in this dimension.
+        for (int d = 0; d < 3; d++) {
+            point[d] = 0.45 + 0.5 * double((i & int(std::pow(2, d))) == 0);
+        }
+        BOOST_CHECK(octa.contains(point));
     }
 }
 
