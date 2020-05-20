@@ -554,22 +554,22 @@ P4estGrid::P4estGrid(const boost::mpi::communicator &comm,
     _impl->reinitialize();
 }
 
-local_cell_index_type P4estGrid::n_local_cells()
+local_cell_index_type P4estGrid::n_local_cells() const
 {
     return _impl->m_num_local_cells;
 }
 
-ghost_cell_index_type P4estGrid::n_ghost_cells()
+ghost_cell_index_type P4estGrid::n_ghost_cells() const
 {
     return _impl->m_num_ghost_cells;
 }
 
-rank_index_type P4estGrid::n_neighbors()
+rank_index_type P4estGrid::n_neighbors() const
 {
     return _impl->m_neighranks.size();
 }
 
-rank_type P4estGrid::neighbor_rank(rank_index_type i)
+rank_type P4estGrid::neighbor_rank(rank_index_type i) const
 {
     assert(i >= 0 && i < n_neighbors());
     return _impl->m_neighranks[i];
@@ -655,12 +655,12 @@ rank_index_type P4estGrid::position_to_neighidx(Vec3d pos)
     return std::distance(std::begin(_impl->m_neighranks), it);
 }
 
-Vec3d P4estGrid::cell_size()
+Vec3d P4estGrid::cell_size() const
 {
     return _impl->m_cell_size;
 }
 
-Vec3i P4estGrid::grid_size()
+Vec3i P4estGrid::grid_size() const
 {
     return _impl->m_grid_size;
 }

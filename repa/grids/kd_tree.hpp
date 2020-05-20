@@ -106,17 +106,12 @@ public:
                Vec3d box_size,
                double min_cell_size);
 
-    virtual local_cell_index_type n_local_cells() override;
-
-    virtual ghost_cell_index_type n_ghost_cells() override;
-
-    virtual rank_index_type n_neighbors() override;
-
-    virtual rank_type neighbor_rank(rank_index_type i) override;
-
-    virtual Vec3d cell_size() override;
-
-    virtual Vec3i grid_size() override;
+    virtual local_cell_index_type n_local_cells() const override;
+    virtual ghost_cell_index_type n_ghost_cells() const override;
+    virtual rank_index_type n_neighbors() const override;
+    virtual rank_type neighbor_rank(rank_index_type i) const override;
+    virtual Vec3d cell_size() const override;
+    virtual Vec3i grid_size() const override;
 
     virtual local_or_ghost_cell_index_type
     cell_neighbor_index(local_cell_index_type cellidx,

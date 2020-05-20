@@ -32,32 +32,32 @@
 namespace repa {
 namespace grids {
 
-local_cell_index_type GloMethod::n_local_cells()
+local_cell_index_type GloMethod::n_local_cells() const
 {
     return localCells;
 }
 
-ghost_cell_index_type GloMethod::n_ghost_cells()
+ghost_cell_index_type GloMethod::n_ghost_cells() const
 {
     return ghostCells;
 }
 
-rank_index_type GloMethod::n_neighbors()
+rank_index_type GloMethod::n_neighbors() const
 {
     return neighbors.size();
 }
 
-rank_type GloMethod::neighbor_rank(rank_index_type i)
+rank_type GloMethod::neighbor_rank(rank_index_type i) const
 {
     return neighbors[i];
 }
 
-Vec3d GloMethod::cell_size()
+Vec3d GloMethod::cell_size() const
 {
     return gbox.cell_size();
 }
 
-Vec3i GloMethod::grid_size()
+Vec3i GloMethod::grid_size() const
 {
     return gbox.grid_size();
 }

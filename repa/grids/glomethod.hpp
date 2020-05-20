@@ -33,13 +33,14 @@ struct GloMethod : public ParallelLCGrid {
               Vec3d box_size,
               double min_cell_size,
               ExtraParams ep);
+    virtual ~GloMethod();
     void after_construction() override;
-    local_cell_index_type n_local_cells() override;
-    ghost_cell_index_type n_ghost_cells() override;
-    rank_index_type n_neighbors() override;
-    rank_type neighbor_rank(rank_index_type i) override;
-    Vec3d cell_size() override;
-    Vec3i grid_size() override;
+    local_cell_index_type n_local_cells() const override;
+    ghost_cell_index_type n_ghost_cells() const override;
+    rank_index_type n_neighbors() const override;
+    rank_type neighbor_rank(rank_index_type i) const override;
+    Vec3d cell_size() const override;
+    Vec3i grid_size() const override;
     local_or_ghost_cell_index_type
     cell_neighbor_index(local_cell_index_type cellidx,
                         fs_neighidx neigh) override;
@@ -53,7 +54,6 @@ struct GloMethod : public ParallelLCGrid {
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;
-    virtual ~GloMethod();
 
     global_cell_index_type
     global_hash(local_or_ghost_cell_index_type cellidx) override;
