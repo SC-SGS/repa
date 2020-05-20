@@ -196,7 +196,7 @@ rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos) const
             return i;
     }
 
-    throw std::domain_error(
+    throw std::runtime_error(
         "Position globally unknown. This is a bug, please report it.");
 }
 
@@ -219,8 +219,7 @@ rank_type GridBasedGrid::rank_of_cell(global_cell_index_type cellidx) const
             return neighbor_rank(i);
     }
 
-    throw std::domain_error("Position unknown. Possibly a position outside of "
-                            "the neighborhood of this process.");
+    return UNKNOWN_RANK;
 }
 
 Vec3d GridBasedGrid::get_subdomain_center()
