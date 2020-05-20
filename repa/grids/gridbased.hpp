@@ -23,7 +23,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "globox.hpp"
 #include "glomethod.hpp"
 #include "util/tetra.hpp"
 
