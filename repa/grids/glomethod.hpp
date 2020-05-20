@@ -47,10 +47,7 @@ struct GloMethod : public ParallelLCGrid {
     local_cell_index_type position_to_cell_index(Vec3d pos) override;
     rank_type position_to_rank(Vec3d pos) override;
     /**
-     * For diffusive method:
      * @throws std::domain_error if "pos" is not in ghost layer.
-     * For graph partitioning method:
-     * @throws std::domain_error if "pos" is not on a neighboring process.
      */
     rank_index_type position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
