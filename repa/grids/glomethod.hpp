@@ -65,7 +65,14 @@ protected:
     local_cell_index_type localCells;
     // Number of ghost cells
     ghost_cell_index_type ghostCells;
-    // All neighbor ranks (ranks of subdomains neighboring this subdomain)
+    /** All neighbor ranks (ranks of subdomains neighboring this subdomain)
+     * Do not use raw access to this vector in the implementation of GloMethod.
+     * Use n_neighbors() and neighbor_rank(rank_index_type) instead.
+     * At least one subclass (GridBasedGrid) uses its own implementaion of the
+     * aforementioned menthods which is inconsistent to the ones stored in this
+     * vector (might be sorted differently *and* "neighbors" is not available
+     * during initialization).
+     */
     std::vector<rank_type> neighbors;
     // Communication descriptors
     std::vector<GhostExchangeDesc> exchangeVector;
