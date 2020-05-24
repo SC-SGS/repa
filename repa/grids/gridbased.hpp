@@ -34,13 +34,6 @@ namespace grids {
  * The vertices of the partitioning grid are shifted towards local load
  * centers for overloaded subdomains.
  * This keeps the communication structure between processes constant.
- *
- * Note that the number of neighbors
- * is constant and the neighbors themselves do *not*
- * change over time.
- * However, since we do not know how many neighbors a subdomain
- * will have (i.e. if nproc < 26 vs. nproc is prime vs. nproc = 10^3)
- * we still do not keep them in a rigid data structure of size 26.
  */
 struct GridBasedGrid : public GloMethod {
     GridBasedGrid(const boost::mpi::communicator &comm,
@@ -49,6 +42,13 @@ struct GridBasedGrid : public GloMethod {
                   ExtraParams ep);
     ~GridBasedGrid() override;
     void command(std::string s) override;
+
+    // Neighborhood is not determined via GloMethod. Because of the constancy
+    // (see below), this grid implementation provides its own implementation of
+    // neighborhood. DO NOT REMOVE these. GridBasedGrid::rank_of_cell needs this
+    // neighborhood.
+    rank_index_type n_neighbors() const override;
+    rank_type neighbor_rank(rank_index_type i) const override;
 
 private:
     // Indicator if the decomposition currently is a regular grid,
@@ -66,6 +66,14 @@ private:
     // Triangulation data structure for this subdomain
     util::tetra::Octagon my_dom;
 
+    /** Note that the number of neighbors
+     * is constant and the neighbors themselves do *not*
+     * change over time.
+     * However, since we do not know how many neighbors a subdomain
+     * will have (i.e. if nproc < 26 vs. nproc is prime vs. nproc = 10^3)
+     * we still do not keep them in a rigid data structure of size 26.
+     */
+    std::vector<rank_type> const_neighborhood;
     // Triangulation data structure for the neighboring subdomains
     std::vector<util::tetra::Octagon> neighbor_doms;
 
@@ -92,7 +100,7 @@ private:
     void init_octagons();
 
     // Initializes the neighbor ranks data structures
-    boost::mpi::communicator create_graph_comm() const;
+    void create_cartesian_neighborhood();
 
     // Returns the center of this subdomain
     Vec3d get_subdomain_center();

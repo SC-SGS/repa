@@ -76,6 +76,16 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r) const
     return result;
 }
 
+rank_index_type GridBasedGrid::n_neighbors() const
+{
+    return const_neighborhood.size();
+}
+
+rank_type GridBasedGrid::neighbor_rank(rank_index_type i) const
+{
+    return const_neighborhood[i];
+}
+
 void GridBasedGrid::pre_init(bool firstcall)
 {
     if (firstcall) {
@@ -108,14 +118,13 @@ void GridBasedGrid::init_regular_partitioning()
     using namespace util::vector_arithmetic;
     gridpoint = (node_pos + 1) * (box_l / node_grid);
 
-    neighcomm = create_graph_comm(); // Necessary only once. Communication
+    create_cartesian_neighborhood(); // Necessary only once. Communication
                                      // structure does not change
     init_octagons();
 }
 
-boost::mpi::communicator GridBasedGrid::create_graph_comm() const
+void GridBasedGrid::create_cartesian_neighborhood()
 {
-
     const Vec3i coord = util::mpi_cart_get_coords(comm_cart);
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
 
@@ -133,6 +142,8 @@ boost::mpi::communicator GridBasedGrid::create_graph_comm() const
                 if (r == comm_cart.rank())
                     continue;
 
+                util::push_back_unique(const_neighborhood, r);
+
                 if (all(off >= 0))
                     util::push_back_unique(source_neigh, r);
                 if (all(off <= 0))
@@ -143,8 +154,8 @@ boost::mpi::communicator GridBasedGrid::create_graph_comm() const
 
     source_neigh.push_back(comm_cart.rank());
     dest_neigh.push_back(comm_cart.rank());
-    return util::directed_graph_communicator(comm_cart, source_neigh,
-                                             dest_neigh);
+    neighcomm = util::directed_graph_communicator(comm_cart, source_neigh,
+                                                  dest_neigh);
 }
 
 void GridBasedGrid::init_octagons()
