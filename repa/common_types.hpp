@@ -60,13 +60,6 @@ namespace __ensure_impl {
                              : __ensure_impl::__ensure_fail(                   \
                                  #expr, __FILE__, __LINE__, __func__, msg))
 
-namespace _impl_tt {
-template <typename T, typename...>
-struct head {
-    typedef T type;
-};
-} // namespace _impl_tt
-
 /** Strong alias type for "T".
  * Use a unique, empty struct as "TypeTag".
  * "Min_Val" and "Max_Val" can be used to limit the allowed range of values.
@@ -347,10 +340,9 @@ struct Vec : VecExpression<T, N, Vec<T, N>> {
     // Only accept this very general template if all arguments are convertible
     // to "T".
     template <typename... Args,
-              typename = _impl_tt::head<
-                  typename std::enable_if<
-                      std::is_convertible<Args, T>::value>::type...,
-                  typename std::enable_if<sizeof...(Args) == N>::type>>
+              typename
+              = std::enable_if<sizeof...(Args) == N
+                               && (std::is_convertible_v<Args, T> && ...)>>
     explicit constexpr Vec(Args... values) : m_data({{values...}})
     {
     }
