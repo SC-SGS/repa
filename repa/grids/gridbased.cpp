@@ -212,7 +212,8 @@ rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos) const
         "Position globally unknown. This is a bug, please report it.");
 }
 
-rank_type GridBasedGrid::rank_of_cell(global_cell_index_type cellidx) const
+util::ioptional<rank_type>
+GridBasedGrid::rank_of_cell(global_cell_index_type cellidx) const
 {
     // Cell ownership is based on the cell midpoint.
     const auto mp = gbox.midpoint(cellidx);
@@ -231,7 +232,7 @@ rank_type GridBasedGrid::rank_of_cell(global_cell_index_type cellidx) const
             return neighbor_rank(i);
     }
 
-    return UNKNOWN_RANK;
+    return {};
 }
 
 Vec3d GridBasedGrid::get_subdomain_center()

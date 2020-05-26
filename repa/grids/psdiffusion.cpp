@@ -130,8 +130,8 @@ bool PSDiffusion::coords_based_allow_sending(local_cell_index_type c,
     // be new neighbors to "neighrank".
     for (const global_cell_index_type &d :
          gbox.full_shell_neigh_without_center(cells[c])) {
-        rank_type rank_d = rank_of_cell(d);
-        if (rank_d == rank_of_cell(cells[c]) || rank_d == neighrank)
+        rank_type rank_d = rank_of_cell(d).value();
+        if (rank_d == rank_of_cell(cells[c]).value() || rank_d == neighrank)
             continue;
         Vec3i c2 = map_coords_to_opposite_side(
             c0, util::mpi_cart_get_coords(init_topology_comm, rank_d),

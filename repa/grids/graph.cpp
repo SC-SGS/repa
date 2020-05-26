@@ -280,7 +280,8 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 #endif
 
 #ifdef GRAPH_DEBUG
-    std::fill(std::begin(partition), std::end(partition), UNKNOWN_RANK);
+    std::fill(std::begin(partition), std::end(partition),
+              static_cast<rank_type>(-1));
 #endif
 
     util::all_gatherv_displ(comm_cart, parti.cref(), vtxdist, partition);
@@ -288,7 +289,6 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 #ifdef GRAPH_DEBUG
     assert(partition.size() == nglocells);
     for (int r : partition) {
-        assert(r != UNKNOWN_RANK);
         assert(0 <= r && r < comm_cart.size());
     }
 #endif

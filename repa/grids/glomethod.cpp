@@ -94,12 +94,12 @@ local_cell_index_type GloMethod::position_to_cell_index(Vec3d pos)
 
 rank_type GloMethod::position_to_rank(Vec3d pos)
 {
-    auto r = rank_of_cell(gbox.cell_at_pos(pos));
+    const auto r = rank_of_cell(gbox.cell_at_pos(pos));
 
-    if (r == UNKNOWN_RANK)
+    if (!r)
         throw std::runtime_error("Cell not in scope of process");
     else
-        return r;
+        return *r;
 }
 
 rank_index_type GloMethod::position_to_neighidx(Vec3d pos)
@@ -176,7 +176,7 @@ void GloMethod::init(bool firstcall)
 
     // Extract the local cells from "partition".
     for (const global_cell_index_type i : util::range(nglocells)) {
-        if (rank_of_cell(i) == comm_cart.rank()) {
+        if (auto r = rank_of_cell(i); r && *r == comm_cart.rank()) {
             // Vector of own cells
             cells.push_back(i);
             // Index mapping from global to local
@@ -200,8 +200,8 @@ void GloMethod::init(bool firstcall)
     for (const local_cell_index_type i : util::range(localCells)) {
         for (const global_cell_index_type neighborIndex :
              gbox.full_shell_neigh_without_center(cells[i])) {
-            const rank_type owner = rank_of_cell(neighborIndex);
-            assert(owner != UNKNOWN_RANK);
+            const rank_type owner = rank_of_cell(neighborIndex).value();
+
             if (owner == comm_cart.rank())
                 continue;
 

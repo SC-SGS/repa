@@ -49,8 +49,9 @@ using RankVector = std::vector<repa::rank_type>;
  * The different operations are given as vectors and the values and
  * i-vector-vector are passed as std::pair.
  */
-static void mark_new_owners_from_sendvolume(
-    std::vector<repa::rank_type> &partition,
+template <typename PartitionEntryType>
+void mark_new_owners_from_sendvolume(
+    std::vector<PartitionEntryType> &partition,
     const std::pair<const SendVolIndices &, const RankVector &> &sendvolume)
 {
     const auto &indicess = std::get<0>(sendvolume);
@@ -67,8 +68,9 @@ static void mark_new_owners_from_sendvolume(
 }
 
 #ifndef NDEBUG
+template <typename PartitionEntryType>
 static bool is_correct_distributed_partitioning(
-    const std::vector<repa::rank_type> &partition,
+    const std::vector<PartitionEntryType> &partition,
     const boost::mpi::communicator &comm)
 {
     // Check that every cell has exactly one owner
@@ -83,19 +85,20 @@ static bool is_correct_distributed_partitioning(
                        [](int el) { return el == 1; });
 }
 
-template <typename GBox>
-bool is_ghost_layer_fully_known(const std::vector<repa::rank_type> &partition,
-                                const boost::mpi::communicator &comm,
-                                const GBox &gbox)
+template <typename GBox, typename PartitionEntryType>
+bool is_ghost_layer_fully_known(
+    const std::vector<PartitionEntryType> &partition,
+    const boost::mpi::communicator &comm,
+    const GBox &gbox)
 {
     // Check that the neighborhood of every owned cell is known.
     for (const auto i :
          repa::util::range(repa::global_cell_index_type{partition.size()})) {
-        if (partition[i] != comm.rank())
+        if (const auto r = partition[i]; !r || *r != comm.rank())
             continue;
 
         for (const auto ni : gbox.full_shell_neigh(i)) {
-            if (partition[ni] == UNKNOWN_RANK)
+            if (!partition[ni])
                 return false;
         }
     }
@@ -149,13 +152,14 @@ void Diffusion::clear_unknown_cell_ownership()
         return partition[neighcell] == comm_cart.rank();
     };
 
-    fill_if_index(std::begin(partition), std::end(partition), UNKNOWN_RANK,
-                  [this, is_my_cell](size_t glocellidx) {
-                      auto neighborhood = gbox.full_shell_neigh(
-                          global_cell_index_type{glocellidx});
-                      return std::none_of(std::begin(neighborhood),
-                                          std::end(neighborhood), is_my_cell);
-                  });
+    fill_if_index(
+        std::begin(partition), std::end(partition),
+        util::ioptional<rank_type>{}, [this, is_my_cell](size_t glocellidx) {
+            auto neighborhood
+                = gbox.full_shell_neigh(global_cell_index_type{glocellidx});
+            return std::none_of(std::begin(neighborhood),
+                                std::end(neighborhood), is_my_cell);
+        });
 }
 
 bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
@@ -197,8 +201,10 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         using namespace std::placeholders;
         std::for_each(std::begin(neighbor_sendinformation),
                       std::end(neighbor_sendinformation),
-                      std::bind(_impl::mark_new_owners_from_sendvolume,
-                                std::ref(partition), _1));
+                      [this](const auto &neighbor_info) {
+                          _impl::mark_new_owners_from_sendvolume(partition,
+                                                                 neighbor_info);
+                      });
     }
     assert(_impl::is_correct_distributed_partitioning(partition, comm_cart));
 

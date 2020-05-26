@@ -89,7 +89,8 @@ private:
     std::array<Vec3d, 8> bounding_box(rank_type r) const;
 
     bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
-    rank_type rank_of_cell(global_cell_index_type idx) const override;
+    util::ioptional<rank_type>
+    rank_of_cell(global_cell_index_type idx) const override;
     void pre_init(bool firstcall) override;
     void post_init(bool firstcall) override;
 
