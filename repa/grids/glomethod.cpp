@@ -27,7 +27,6 @@
 
 #include "util/push_back_unique.hpp"
 #include "util/range.hpp"
-#include "util/simple_variant.hpp"
 
 #ifndef NDEBUG
 #define GLOMETHOD_DEBUG
