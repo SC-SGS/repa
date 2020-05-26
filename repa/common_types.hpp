@@ -71,9 +71,9 @@ struct head {
  * Use a unique, empty struct as "TypeTag".
  * "Min_Val" and "Max_Val" can be used to limit the allowed range of values.
  * This range is enforced on debug builds only.
- * 
+ *
  * Uninitialized accesses to objects is detected for debug builds.
- * 
+ *
  * For NDEBUG builds, this class boils down to a simple "T".
  */
 template <typename T,

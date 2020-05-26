@@ -48,7 +48,7 @@ inline constexpr T default_empty_value_v = default_empty_value<T>::value;
  * Note that the template parameter "EmptyValue" cannot be stored in an
  * ioptional.
  * The empty value used by default is given by impl::default_empty_value.
- * 
+ *
  * Note that this class is only a drop-in replacement for std::optional
  * if you do not rely on exceptions. If you do rely on optional throwing
  * exceptions on erroneous value() calls, don't use this class.
@@ -71,9 +71,8 @@ struct ioptional {
     }
     constexpr ioptional(const ioptional &) = default;
     constexpr ioptional(ioptional &&) = default;
-    constexpr ioptional &operator=(const ioptional&) = default;
-    constexpr ioptional &operator=(ioptional&&) = default;
-
+    constexpr ioptional &operator=(const ioptional &) = default;
+    constexpr ioptional &operator=(ioptional &&) = default;
 
     /** Returns if a value is held.
      */
@@ -82,7 +81,8 @@ struct ioptional {
         return _value != EmptyValue;
     }
 
-    constexpr operator bool() const {
+    constexpr operator bool() const
+    {
         return has_value();
     }
 

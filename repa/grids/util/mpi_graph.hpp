@@ -55,14 +55,12 @@ inline std::vector<int> mpi_undirected_neighbors(MPI_Comm neighcomm)
 
     auto nneigh = util::mpi_undirected_neighbor_count(neighcomm);
 
-    std::vector<int> srcneigh(nneigh, -1),
-        dstneigh(nneigh, -1), dummy(nneigh);
+    std::vector<int> srcneigh(nneigh, -1), dstneigh(nneigh, -1), dummy(nneigh);
     MPI_Dist_graph_neighbors(neighcomm, nneigh, srcneigh.data(), dummy.data(),
                              nneigh, dstneigh.data(), dummy.data());
 
     assert(srcneigh == dstneigh); // Undirected sanity check
-    assert(std::find(srcneigh.begin(), srcneigh.end(), -1)
-           == srcneigh.end());
+    assert(std::find(srcneigh.begin(), srcneigh.end(), -1) == srcneigh.end());
     return srcneigh;
 }
 
@@ -80,10 +78,8 @@ mpi_directed_neighbors(MPI_Comm neighcomm)
                              dummy1.data(), outdegree, dstneigh.data(),
                              dummy2.data());
 
-    assert(std::find(srcneigh.begin(), srcneigh.end(), -1)
-           == srcneigh.end());
-    assert(std::find(dstneigh.begin(), dstneigh.end(), -1)
-           == dstneigh.end());
+    assert(std::find(srcneigh.begin(), srcneigh.end(), -1) == srcneigh.end());
+    assert(std::find(dstneigh.begin(), dstneigh.end(), -1) == dstneigh.end());
     return std::make_pair(srcneigh, dstneigh);
 }
 
