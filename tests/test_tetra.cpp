@@ -485,6 +485,8 @@ BOOST_AUTO_TEST_CASE(check_points_over_boundaries)
             }
         }
     }
+    // Since point[1][1][1] is randomized, it's set manually here.
+    p.point[1][1][1] = {0.4, 0.4, 0.4};
 
     for (int i = 0; i < 8; i++) {
         // The 0-th octagon must contain all corners because of the shift above.
