@@ -132,14 +132,15 @@ void HybridGPDiff::switch_implementation()
     switch (switch_to_state) {
     case State::GRAPH:
         active_implementation = &graph_impl;
-        std::copy(std::begin(diff_impl.partition),
-                  std::end(diff_impl.partition),
-                  std::begin(graph_impl.partition));
+        // Copy mapping empty optionals to "-1".
+        for (size_t i = 0; i < diff_impl.partition.size(); ++i)
+            graph_impl.partition[i] = diff_impl.partition[i].value_or(-1);
         MPI_Allreduce(MPI_IN_PLACE, graph_impl.partition.data(),
                       graph_impl.partition.size(),
                       MPI_ELEM_DECLTYPE_T(graph_impl.partition), MPI_MAX,
                       comm_cart);
 #ifndef NDEBUG
+        // Check that all -1 are gone.
         for (const auto &el : graph_impl.partition)
             assert(el >= 0 && el < comm.size());
 #endif
