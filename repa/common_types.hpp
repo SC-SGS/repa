@@ -67,6 +67,15 @@ struct head {
 };
 } // namespace _impl_tt
 
+/** Strong alias type for "T".
+ * Use a unique, empty struct as "TypeTag".
+ * "Min_Val" and "Max_Val" can be used to limit the allowed range of values.
+ * This range is enforced on debug builds only.
+ * 
+ * Uninitialized accesses to objects is detected for debug builds.
+ * 
+ * For NDEBUG builds, this class boils down to a simple "T".
+ */
 template <typename T,
           typename TypeTag,
           T Min_Val = std::numeric_limits<T>::min(),
@@ -83,15 +92,22 @@ struct StrongAlias {
         assert(_value >= Min_Val);
     }
 
+    /** Marks object as uninitialized.
+     */
     constexpr StrongAlias() : _value(T{0})
     {
+        REPA_ON_DEBUG(_initialized = false;)
     }
 
     explicit constexpr StrongAlias(T value) : _value(value)
     {
         assert_value_domain();
+        REPA_ON_DEBUG(_initialized = true);
     }
 
+    /** Enforces that either "S"'s domain is smaller than "T"'s or performs
+     * a runtime check for debug builds if "value" fits into "T".
+     */
     template <typename S,
               typename = std::enable_if_t<
                   !std::is_same_v<T, S> && std::is_integral_v<S>>>
@@ -111,21 +127,41 @@ struct StrongAlias {
                       <= static_cast<MinType>(value));
         _value = static_cast<T>(value);
         assert_value_domain();
+        REPA_ON_DEBUG(_initialized = true);
     }
 
-    constexpr StrongAlias(const StrongAlias &) = default;
-    constexpr StrongAlias(StrongAlias &&) = default;
-    StrongAlias &operator=(const StrongAlias &) = default;
-    StrongAlias &operator=(StrongAlias &&) = default;
+    constexpr StrongAlias(const StrongAlias &other) : _value(other._value)
+    {
+        assert(other._initialized);
+        REPA_ON_DEBUG(_initialized = true);
+    }
+
+    constexpr StrongAlias(StrongAlias &&other)
+        : _value(std::forward<T>(other._value))
+    {
+        assert(other._initialized);
+        REPA_ON_DEBUG(_initialized = true);
+    }
+
+    StrongAlias &operator=(StrongAlias other)
+    {
+        // Copy swap idiom.
+        assert(other._initialized);
+        REPA_ON_DEBUG(_initialized = true);
+        std::swap(_value, other._value);
+        return *this;
+    }
 
     constexpr operator T() const
     {
+        assert(_initialized);
         return _value;
     }
 
     // For-loops need this
     StrongAlias operator++()
     {
+        assert(_initialized);
         ++_value;
         assert_value_domain();
         return *this;
@@ -133,6 +169,7 @@ struct StrongAlias {
 
     StrongAlias operator++(int)
     {
+        assert(_initialized);
         auto tmp = *this;
         _value++;
         assert_value_domain();
@@ -141,6 +178,7 @@ struct StrongAlias {
 
     StrongAlias &operator+=(const StrongAlias &other)
     {
+        assert(_initialized);
         _value += other._value;
         assert_value_domain();
         return *this;
@@ -148,6 +186,7 @@ struct StrongAlias {
 
     StrongAlias &operator-=(const StrongAlias &other)
     {
+        assert(_initialized && other._initialized);
         _value -= other._value;
         assert_value_domain();
         return *this;
@@ -155,6 +194,7 @@ struct StrongAlias {
 
     StrongAlias operator+(const StrongAlias &other) const
     {
+        assert(_initialized && other._initialized);
         StrongAlias r{*this};
         r += other;
         return r;
@@ -162,6 +202,7 @@ struct StrongAlias {
 
     StrongAlias operator-(const StrongAlias &other) const
     {
+        assert(_initialized && other._initialized);
         StrongAlias r{*this};
         r -= other;
         return r;
@@ -169,43 +210,67 @@ struct StrongAlias {
 
     bool operator==(const StrongAlias &other) const
     {
+        assert(_initialized && other._initialized);
         return _value == other._value;
     }
 
     bool operator!=(const StrongAlias &other) const
     {
+        assert(_initialized && other._initialized);
         return _value != other._value;
     }
 
     bool operator<=(const StrongAlias &other) const
     {
+        assert(_initialized && other._initialized);
         return _value <= other._value;
     }
 
     bool operator<(const StrongAlias &other) const
     {
+        assert(_initialized && other._initialized);
         return _value < other._value;
     }
 
     bool operator>=(const StrongAlias &other) const
     {
+        assert(_initialized && other._initialized);
         return _value >= other._value;
     }
     bool operator>(const StrongAlias &other) const
     {
+        assert(_initialized && other._initialized);
         return _value > other._value;
     }
 
     friend class boost::serialization::access;
 
     template <class Archive>
-    void serialize(Archive &ar, const unsigned int file_version)
+    void save(Archive &ar, const unsigned int file_version) const
     {
+        assert(_initialized);
         ar &_value;
     }
 
+    template <class Archive>
+    void load(Archive &ar, const unsigned int file_version)
+    {
+        ar &_value;
+        REPA_ON_DEBUG(_initialized = true);
+    }
+
+    BOOST_SERIALIZATION_SPLIT_MEMBER()
+
+#ifndef NDEBUG
+    bool is_initialized() const
+    {
+        return _initialized;
+    }
+#endif
+
 private:
     T _value;
+    REPA_ON_DEBUG(bool _initialized);
 };
 
 template <typename T>
