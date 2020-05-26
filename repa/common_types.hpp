@@ -33,7 +33,7 @@
 namespace repa {
 
 #ifndef NDEBUG
-#define REPA_ON_DEBUG(stmt) stmt
+#define REPA_ON_DEBUG(stmt) (stmt)
 #else
 #define REPA_ON_DEBUG(stmt) ((void)0)
 #endif
@@ -96,7 +96,7 @@ struct StrongAlias {
      */
     constexpr StrongAlias() : _value(T{0})
     {
-        REPA_ON_DEBUG(_initialized = false;)
+        REPA_ON_DEBUG(_initialized = false);
     }
 
     explicit constexpr StrongAlias(T value) : _value(value)
@@ -113,8 +113,10 @@ struct StrongAlias {
                   !std::is_same_v<T, S> && std::is_integral_v<S>>>
     explicit constexpr StrongAlias(S value)
     {
-        REPA_ON_DEBUG(typedef std::uint64_t MaxType);
-        REPA_ON_DEBUG(typedef std::int64_t MinType);
+#ifndef NDEBUG
+        typedef std::uint64_t MaxType;
+        typedef std::int64_t MinType;
+#endif
         // Either T has a larger domain than S or runtime check if "value" fits
         // into T.
         assert(static_cast<MaxType>(std::numeric_limits<T>::max())
@@ -270,7 +272,9 @@ struct StrongAlias {
 
 private:
     T _value;
-    REPA_ON_DEBUG(bool _initialized);
+#ifndef NDEBUG
+    bool _initialized;
+#endif
 };
 
 template <typename T>
