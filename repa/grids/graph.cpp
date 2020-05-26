@@ -260,7 +260,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
     // Result parameters
     idx_t edgecut;
-    std::vector<idx_t> part(nvtx, static_cast<idx_t>(UNKNOWN_RANK));
+    std::vector<idx_t> part(nvtx, static_cast<idx_t>(-1));
 
     auto metis_ret = ParMETIS_V3_PartKway(
         vtxdist.data(), xadj.data(), adjncy.data(), vwgt.data(), adjwgt.data(),
@@ -274,7 +274,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 #ifdef GRAPH_DEBUG
     assert(parti.size() == nvtx);
     for (auto r : parti) {
-        assert(r != static_cast<idx_t>(UNKNOWN_RANK));
+        assert(r != static_cast<idx_t>(-1));
         assert(0 <= r && r < comm_cart.size());
     }
 #endif
