@@ -52,7 +52,7 @@ using RankVector = std::vector<repa::rank_type>;
 template <typename PartitionEntryType>
 void mark_new_owners_from_sendvolume(
     std::vector<PartitionEntryType> &partition,
-    const std::pair<const SendVolIndices &, const RankVector &> &sendvolume)
+    const std::pair<SendVolIndices, RankVector> &sendvolume)
 {
     const auto &indicess = std::get<0>(sendvolume);
     const auto &new_values = std::get<1>(sendvolume);
@@ -75,14 +75,16 @@ static bool is_correct_distributed_partitioning(
 {
     // Check that every cell has exactly one owner
     std::vector<int> nowners(partition.size(), 0);
-    for (size_t i = 0; i < nowners.size(); ++i)
+    for (size_t i = 0; i < partition.size(); ++i)
         if (partition[i] == comm.rank())
             nowners[i]++;
 
     MPI_Allreduce(MPI_IN_PLACE, nowners.data(), nowners.size(), MPI_INT,
                   MPI_SUM, comm);
-    return std::all_of(std::begin(nowners), std::end(nowners),
-                       [](int el) { return el == 1; });
+    auto x = std::all_of(std::begin(nowners), std::end(nowners),
+                         [](int el) { return el == 1; });
+    assert(x);
+    return x;
 }
 
 template <typename GBox, typename PartitionEntryType>
@@ -94,11 +96,11 @@ bool is_ghost_layer_fully_known(
     // Check that the neighborhood of every owned cell is known.
     for (const auto i :
          repa::util::range(repa::global_cell_index_type{partition.size()})) {
-        if (const auto r = partition[i]; !r || *r != comm.rank())
+        if (partition[i] != comm.rank())
             continue;
 
         for (const auto ni : gbox.full_shell_neigh(i)) {
-            if (!partition[ni])
+            if (!partition[ni].has_value())
                 return false;
         }
     }
@@ -342,7 +344,7 @@ Diffusion::get_neighborhood_information(
             for (global_cell_index_type n :
                  gbox.full_shell_neigh_without_center(
                      sendVectors[i][j].basecell)) {
-                sendVectors[i][j].neighranks[k] = partition[n];
+                sendVectors[i][j].neighranks[k] = partition[n].value();
                 k++;
             }
         }

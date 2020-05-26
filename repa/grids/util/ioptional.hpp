@@ -81,7 +81,7 @@ struct ioptional {
         return _value != EmptyValue;
     }
 
-    constexpr operator bool() const
+    constexpr explicit operator bool() const
     {
         return has_value();
     }
@@ -129,6 +129,34 @@ struct ioptional {
             return _value;
         else
             return std::forward<T>(t);
+    }
+
+    template <typename Exception, typename... Args>
+    constexpr T value_or_throw(Args... args) const
+    {
+        if (has_value())
+            return _value;
+        else
+            throw Exception{std::forward<Args...>(args...)};
+    }
+
+    /** Resets the state to empty, destroying any contained value.
+     */
+    constexpr void reset()
+    {
+        _value = EmptyValue;
+    }
+
+    /** Returns true if both ioptionals are empty or hold the same value.
+     */
+    constexpr bool operator==(const ioptional &other) const
+    {
+        return _value == other._value;
+    }
+
+    constexpr bool operator!=(const ioptional &other) const
+    {
+        return _value != other._value;
     }
 
 private:
