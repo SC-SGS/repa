@@ -20,7 +20,6 @@
 #pragma once
 
 #include "common_types.hpp"
-#include "pargrid.hpp" // UNKNOWN_RANK
 #include <boost/mpi/communicator.hpp>
 #include <mpi.h>
 
