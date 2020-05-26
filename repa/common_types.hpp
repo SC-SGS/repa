@@ -35,7 +35,7 @@ namespace repa {
 #ifndef NDEBUG
 #define REPA_ON_DEBUG(stmt) stmt
 #else
-#define REPA_ON_DEBUG(stmt) ((void) 0)
+#define REPA_ON_DEBUG(stmt) ((void)0)
 #endif
 
 namespace __ensure_impl {
@@ -68,7 +68,9 @@ struct head {
 } // namespace _impl_tt
 
 template <typename T,
-          typename TypeTag, T Min_Val = std::numeric_limits<T>::min(), T Max_Val = std::numeric_limits<T>::max(),
+          typename TypeTag,
+          T Min_Val = std::numeric_limits<T>::min(),
+          T Max_Val = std::numeric_limits<T>::max(),
           // We currently want to offer this template only for arithmetic types.
           typename = std::enable_if_t<std::is_arithmetic_v<T>>>
 struct StrongAlias {
@@ -165,26 +167,32 @@ struct StrongAlias {
         return r;
     }
 
-    bool operator==(const StrongAlias &other) const {
+    bool operator==(const StrongAlias &other) const
+    {
         return _value == other._value;
     }
 
-    bool operator!=(const StrongAlias &other) const {
+    bool operator!=(const StrongAlias &other) const
+    {
         return _value != other._value;
     }
 
-    bool operator<=(const StrongAlias &other) const {
+    bool operator<=(const StrongAlias &other) const
+    {
         return _value <= other._value;
     }
 
-    bool operator<(const StrongAlias &other) const {
+    bool operator<(const StrongAlias &other) const
+    {
         return _value < other._value;
     }
 
-    bool operator>=(const StrongAlias &other) const {
+    bool operator>=(const StrongAlias &other) const
+    {
         return _value >= other._value;
     }
-    bool operator>(const StrongAlias &other) const {
+    bool operator>(const StrongAlias &other) const
+    {
         return _value > other._value;
     }
 

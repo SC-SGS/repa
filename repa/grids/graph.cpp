@@ -173,8 +173,8 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     for (idx_t i = 0; i < nvtx; ++i) {
         xadj[i] = 26 * i;
         for (int n = 0; n < 26; ++n) {
-            adjncy[26 * i + n]
-                = gbox.neighbor(global_cell_index_type{vtxdist[comm_cart.rank()] + i}, n + 1);
+            adjncy[26 * i + n] = gbox.neighbor(
+                global_cell_index_type{vtxdist[comm_cart.rank()] + i}, n + 1);
         }
     }
     xadj[nvtx] = 26 * nvtx;

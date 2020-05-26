@@ -90,10 +90,9 @@ private:
 } // namespace __cart_impl
 
 template <typename GBox, typename AssignFunc>
-void init_part_cartesian3d(
-    const GBox &gbox,
-    const boost::mpi::communicator &comm,
-    AssignFunc &&assign_cell)
+void init_part_cartesian3d(const GBox &gbox,
+                           const boost::mpi::communicator &comm,
+                           AssignFunc &&assign_cell)
 {
     using util::vector_arithmetic::static_cast_vec;
 
@@ -115,10 +114,9 @@ void init_part_cartesian3d(
 }
 
 template <typename GBox, typename AssignFunc>
-void init_part_cartesian1d(
-    const GBox &gbox,
-    const boost::mpi::communicator &comm,
-    AssignFunc &&assign_cell)
+void init_part_cartesian1d(const GBox &gbox,
+                           const boost::mpi::communicator &comm,
+                           AssignFunc &&assign_cell)
 {
     assert(comm.has_cartesian_topology());
     const auto nglobalcells = gbox.ncells();
@@ -138,8 +136,7 @@ void init_part_cartesian1d(
 
 template <typename GBox>
 struct InitPartitioning {
-    InitPartitioning(const GBox &gbox,
-                     const boost::mpi::communicator &comm)
+    InitPartitioning(const GBox &gbox, const boost::mpi::communicator &comm)
         : gbox(gbox), comm(comm)
     {
     }
@@ -171,11 +168,11 @@ private:
 } // namespace impl
 
 template <typename GBox>
-auto make_initial_partitioner(const GBox &gbox, const boost::mpi::communicator &comm)
+auto make_initial_partitioner(const GBox &gbox,
+                              const boost::mpi::communicator &comm)
 {
     return impl::InitPartitioning<GBox>{gbox, comm};
 }
-
 
 boost::mpi::communicator
 make_init_part_communicator(const boost::mpi::communicator &comm,

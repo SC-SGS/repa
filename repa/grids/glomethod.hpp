@@ -90,8 +90,7 @@ protected:
 
     // Stores the mapping of a global linearized index to a
     // local linearized index or an ghost linearized index.
-    std::unordered_map<global_cell_index_type,
-                       local_or_ghost_cell_index_type>
+    std::unordered_map<global_cell_index_type, local_or_ghost_cell_index_type>
         global_to_local;
 
     // Called before init()

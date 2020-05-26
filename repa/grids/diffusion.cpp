@@ -84,10 +84,9 @@ static bool is_correct_distributed_partitioning(
 }
 
 template <typename GBox>
-bool is_ghost_layer_fully_known(
-    const std::vector<repa::rank_type> &partition,
-    const boost::mpi::communicator &comm,
-    const GBox &gbox)
+bool is_ghost_layer_fully_known(const std::vector<repa::rank_type> &partition,
+                                const boost::mpi::communicator &comm,
+                                const GBox &gbox)
 {
     // Check that the neighborhood of every owned cell is known.
     for (const auto i :
