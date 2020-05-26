@@ -54,6 +54,20 @@ struct ExtraParams {
     boost::optional<std::string> init_part;
 };
 
+namespace type_tags {
+
+#define TYPE_TAG_DEFINE(tag_name)                                              \
+    struct tag_name {                                                          \
+    }
+
+TYPE_TAG_DEFINE(RankIndex);
+TYPE_TAG_DEFINE(LocalCellIndex);
+TYPE_TAG_DEFINE(GhostCellIndex);
+TYPE_TAG_DEFINE(LocalOrGhostCellIndex);
+TYPE_TAG_DEFINE(GlobalCellIndex);
+
+} // namespace type_tags
+
 /** Some typedefs to document what an integer is supposed to mean
  */
 
@@ -68,17 +82,22 @@ typedef int rank_type;
 /** Index of a neighboring process (rank) (0..n_neighbors-1)
  * or the total number of neighbor ranks (n_neighbors).
  */
-typedef int rank_index_type;
+// typedef int rank_index_type;
+
+using rank_index_type = StrongAlias<int, type_tags::RankIndex, -1>;
+// used as conversion
 
 /** Index of a local cell (0..n_local_cells-1) or the
  * total number of local cells (n_local_cells).
  */
-typedef int local_cell_index_type;
+// typedef int local_cell_index_type;
+using local_cell_index_type = StrongAlias<int, type_tags::LocalCellIndex, -1>;
 
 /** Index of a ghost cell (0..n_ghost_cells-1) or the
  * total number of ghost cells (n_ghost_cells).
  */
-typedef int ghost_cell_index_type;
+// typedef int ghost_cell_index_type;
+using ghost_cell_index_type = StrongAlias<int, type_tags::GhostCellIndex, -1>;
 
 /** Index of a local (0..n_local_cells-1) or
  * ghost cell
@@ -86,13 +105,71 @@ typedef int ghost_cell_index_type;
  * or the total number of cells on this
  * process (n_local_cells + n_ghost_cells).
  */
-typedef int local_or_ghost_cell_index_type;
+// using local_or_ghost_cell_index_type
+//    = simple_variant<local_cell_index_type, ghost_cell_index_type>;
+// typedef int local_or_ghost_cell_index_type;
+using local_or_ghost_cell_index_type
+    = StrongAlias<int, type_tags::LocalOrGhostCellIndex, -1>;
+
+template <typename T>
+struct LocalIndexAsserter {
+    LocalIndexAsserter(T &base) : base(base)
+    {
+    }
+
+    local_cell_index_type
+    local_index_only(const local_or_ghost_cell_index_type i)
+    {
+        assert(is_local(i));
+        return local_cell_index_type{
+            static_cast<local_or_ghost_cell_index_type::value_type>(i)};
+    }
+
+    /*
+    ghost_cell_index_type
+    ghost_index_only(const local_or_ghost_cell_index_type i)
+    {
+        assert(is_ghost(i));
+        return ghost_cell_index_type{
+            static_cast<local_or_ghost_cell_index_type::value_type>(i)};
+    }
+    */
+
+    local_or_ghost_cell_index_type
+    as_local_or_ghost_index(local_cell_index_type i)
+    {
+        return local_or_ghost_cell_index_type{
+            static_cast<local_cell_index_type::value_type>(i)};
+    }
+
+    local_or_ghost_cell_index_type
+    as_local_or_ghost_index(ghost_cell_index_type i)
+    {
+        return local_or_ghost_cell_index_type{
+            base.n_local_cells()
+            + static_cast<local_cell_index_type::value_type>(i)};
+    }
+
+    bool is_ghost(local_or_ghost_cell_index_type i)
+    {
+        return i >= base.n_local_cells();
+    }
+
+    bool is_local(local_or_ghost_cell_index_type i)
+    {
+        return i < base.n_local_cells();
+    }
+
+private:
+    T &base;
+};
 
 /** Global cell index (unique across all
  * processes) or the number total number of
  * cells across all processes.
  */
-typedef int global_cell_index_type;
+// typedef int global_cell_index_type;
+using global_cell_index_type = StrongAlias<int, type_tags::GlobalCellIndex>;
 
 namespace grids {
 

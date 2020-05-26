@@ -78,7 +78,7 @@ protected:
     std::vector<GhostExchangeDesc> exchangeVector;
 
     // Defines the linearization and global cell neighborhoods.
-    globox::GlobalBox<global_cell_index_type, global_cell_index_type> gbox;
+    globox::GlobalBox<global_cell_index_type, int> gbox;
 
     // Stores the initial partitioning enum
     const util::InitialPartitionType initial_partitioning;
@@ -90,7 +90,8 @@ protected:
 
     // Stores the mapping of a global linearized index to a
     // local linearized index or an ghost linearized index.
-    std::unordered_map<global_cell_index_type, local_cell_index_type>
+    std::unordered_map<global_cell_index_type,
+                       local_or_ghost_cell_index_type>
         global_to_local;
 
     // Called before init()
@@ -131,6 +132,8 @@ protected:
     // Reinitializes the subdomain and communication data structures
     // after repartitioning.
     void init(bool firstcall = false);
+
+    LocalIndexAsserter<GloMethod> index_convert;
 };
 } // namespace grids
 } // namespace repa

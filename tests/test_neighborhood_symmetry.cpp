@@ -45,18 +45,20 @@ static bool has_neighbor(repa::grids::ParallelLCGrid *grid,
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     (void)t;
-    for (int c = 0; c < grid->n_local_cells(); ++c) {
+    for (auto c = repa::local_cell_index_type{0}; c < grid->n_local_cells();
+         ++c) {
         for (int j = 0; j < 27; ++j) {
-            int d = grid->cell_neighbor_index(c, j);
+            const auto d = grid->cell_neighbor_index(c, j);
             // Test if "d" is valid.
             BOOST_TEST(
                 ((0 <= d)
                  && (d <= grid->n_local_cells() + grid->n_ghost_cells())));
 
             // If "d" is a inner cell and neighbors "c", then "c" must also
-            // neighbor "d".
+            // neighbor "d". -- Manual convert local_or_ghost -> local
             if (d < grid->n_local_cells()) {
-                BOOST_TEST(has_neighbor(grid, d, c));
+                BOOST_TEST(
+                    has_neighbor(grid, repa::local_cell_index_type{d}, c));
             }
         }
     }

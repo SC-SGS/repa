@@ -25,11 +25,11 @@
 namespace repa {
 namespace util {
 
-template <typename T>
-void push_back_unique(std::vector<T> &v, T val)
+template <typename T1, typename T2>
+void push_back_unique(std::vector<T1> &v, T2 val)
 {
-    if (std::find(std::begin(v), std::end(v), val) == std::end(v))
-        v.push_back(val);
+    if (std::find(std::begin(v), std::end(v), T1(val)) == std::end(v))
+        v.emplace_back(val);
 }
 
 } // namespace util

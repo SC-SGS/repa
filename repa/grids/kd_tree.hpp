@@ -68,9 +68,6 @@ private:
     /** Maps neighbor id (nidx) to rank. */
     std::vector<rank_type> m_neighbor_processes;
 
-    /** Maps rank to neighbor id (nidx) or -1 if rank is no neighbor. */
-    std::vector<rank_index_type> m_neighbor_processes_inverse;
-
     std::vector<GhostExchangeDesc> m_boundary_info;
 
     void init_local_domain_bounds();
@@ -133,6 +130,8 @@ public:
 
     global_cell_index_type
     global_hash(local_or_ghost_cell_index_type cellidx) override;
+
+    LocalIndexAsserter<KDTreeGrid> index_convert;
 };
 
 } // namespace grids

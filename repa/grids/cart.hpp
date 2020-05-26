@@ -93,8 +93,6 @@ private:
     // rank cell_to_neighidx(const Vec3i& c);
     rank_type proc_offset_to_rank(const Vec3i &offset) const;
 
-    void
-    fill_comm_cell_lists(std::vector<int> &v, const Vec3i &lc, const Vec3i &hc);
     void create_index_permutations();
     void create_grid();
     void prepare_communication();
@@ -102,6 +100,8 @@ private:
 
     bool is_ghost_cell(const Vec3i &c) const;
     bool self_comm_necessary() const;
+
+    LocalIndexAsserter<CartGrid> index_convert;
 };
 } // namespace grids
 } // namespace repa

@@ -50,11 +50,12 @@ Graph::Graph(const boost::mpi::communicator &comm,
 {
     // Initial partitioning
     partition.resize(gbox.ncells());
-    util::InitPartitioning{gbox, comm_cart}(
-        initial_partitioning, [this](global_cell_index_type idx, rank_type r) {
-            assert(r >= 0 && r < this->comm.size());
-            this->partition[idx] = r;
-        });
+    util::make_initial_partitioner(gbox, comm_cart)
+        .apply(initial_partitioning,
+               [this](global_cell_index_type idx, rank_type r) {
+                   assert(r >= 0 && r < this->comm.size());
+                   this->partition[idx] = r;
+               });
 }
 
 Graph::~Graph()
@@ -124,7 +125,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     // Sending vertex weights
     std::vector<boost::mpi::request> sreq;
     std::vector<std::vector<Weights>> my_weights(comm_cart.size());
-    for (local_cell_index_type i = 0; i < localCells; ++i) {
+    for (const auto i : util::range(localCells)) {
         // "Rank" is responsible for cell "gidx" / "i" (local)
         // during graph parititioning
         global_cell_index_type gidx = cells[i];
@@ -173,7 +174,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
         xadj[i] = 26 * i;
         for (int n = 0; n < 26; ++n) {
             adjncy[26 * i + n]
-                = gbox.neighbor(vtxdist[comm_cart.rank()] + i, n + 1);
+                = gbox.neighbor(global_cell_index_type{vtxdist[comm_cart.rank()] + i}, n + 1);
         }
     }
     xadj[nvtx] = 26 * nvtx;

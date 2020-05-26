@@ -49,7 +49,7 @@ bool contains(Container cont, typename Container::value_type value)
 static void test_boundary_has_comm(repa::grids::ParallelLCGrid *grid)
 {
     // Checks that boundary cells have an associated sent operation
-    auto check_is_send_cell = [](int c, const auto &gexds) {
+    auto check_is_send_cell = [](auto c, const auto &gexds) {
         return std::find_if(
                    std::begin(gexds), std::end(gexds),
                    [c](const auto &gexd) { return contains(gexd.send, c); })
@@ -57,7 +57,8 @@ static void test_boundary_has_comm(repa::grids::ParallelLCGrid *grid)
     };
 
     auto gexds = grid->get_boundary_info();
-    for (int c = 0; c < grid->n_local_cells(); ++c) {
+    for (auto c = repa::local_cell_index_type{0}; c < grid->n_local_cells();
+         ++c) {
         for (int j = 0; j < 27; ++j) {
             int d = grid->cell_neighbor_index(c, j);
 
@@ -92,7 +93,8 @@ static void test_ghost_has_local(repa::grids::ParallelLCGrid *grid)
     // Test that all ghost cells have a neighboring inner cell
     std::vector<bool> used(grid->n_ghost_cells(), false);
 
-    for (int c = 0; c < grid->n_local_cells(); ++c) {
+    for (auto c = repa::local_cell_index_type{0}; c < grid->n_local_cells();
+         ++c) {
         for (int j = 0; j < 27; ++j) {
             int d = grid->cell_neighbor_index(c, j);
 

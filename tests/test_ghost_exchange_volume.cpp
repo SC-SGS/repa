@@ -73,11 +73,12 @@ static bool if_then(bool b1, bool b2)
     return b2 || !b1;
 }
 
-static std::vector<int> neighranks(repa::grids::ParallelLCGrid *grid)
+static std::vector<repa::rank_type>
+neighranks(repa::grids::ParallelLCGrid *grid)
 {
-    std::vector<int> res;
+    std::vector<repa::rank_type> res;
     res.reserve(grid->n_neighbors());
-    for (int i = 0; i < grid->n_neighbors(); ++i)
+    for (auto i = repa::rank_index_type{0}; i < grid->n_neighbors(); ++i)
         res.push_back(grid->neighbor_rank(i));
     return res;
 }
@@ -87,8 +88,8 @@ static void test(const testenv::TEnv &t,
                  repa::GridType gt)
 {
     const auto &comm = t.comm();
-    auto gexds = grid->get_boundary_info();
-    auto neighborranks = neighranks(grid);
+    const auto gexds = grid->get_boundary_info();
+    const auto neighborranks = neighranks(grid);
 
     // Validity of exchange descriptors
     for (const auto &g : gexds) {
@@ -102,7 +103,7 @@ static void test(const testenv::TEnv &t,
     // not required due to the changes in 17f4be5 and 85de5a9
     for (auto rank : neighborranks) {
         BOOST_TEST(if_then(
-            gt != repa::GridType::GRIDBASED,
+            true, // gt != repa::GridType::GRIDBASED,
             std::find_if(std::begin(gexds), std::end(gexds), [rank](auto gexd) {
                 return gexd.dest == rank;
             }) != std::end(gexds)));
@@ -110,18 +111,14 @@ static void test(const testenv::TEnv &t,
 
     // Vice versa ("Reverse consistency")
     for (const auto &gexd : gexds) {
-        BOOST_TEST(
-            (std::find_if(std::begin(neighborranks), std::end(neighborranks),
-                          [&gexd](auto rank) { return gexd.dest == rank; })
-             != std::end(neighborranks)));
+        BOOST_CHECK(gexd.dest == comm.rank()
+                    || std::find(std::begin(neighborranks),
+                                 std::end(neighborranks), gexd.dest)
+                           != std::end(neighborranks));
     }
 
     // Validity of cell indices
     for (const auto &g : gexds) {
-        // Verify consistency of ghost communications with neighbors
-        BOOST_TEST((std::find(std::begin(neighborranks),
-                              std::end(neighborranks), g.dest)
-                    != std::end(neighborranks)));
         for (auto sendc : g.send) {
             BOOST_TEST(((0 <= sendc) && (sendc < grid->n_local_cells())));
         }
@@ -134,7 +131,7 @@ static void test(const testenv::TEnv &t,
 
     // Note, although gathered on all processes, all indices will still be in
     // local to the respective process they came from.
-    std::vector<decltype(gexds)> gexdss;
+    std::vector<std::remove_const_t<decltype(gexds)>> gexdss;
     boost::mpi::all_gather(comm, gexds, gexdss);
 
     auto find_comm = [](const std::vector<repa::grids::GhostExchangeDesc> &gs,

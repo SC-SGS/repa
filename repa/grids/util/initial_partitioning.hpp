@@ -22,6 +22,7 @@
 #include "../globox.hpp"
 #include "linearize.hpp"
 #include "mpi_cart.hpp"
+#include "range.hpp"
 #include "vec_arith.hpp"
 #include <cmath>
 
@@ -34,8 +35,8 @@ enum InitialPartitionType : int { LINEAR, CARTESIAN1D, CARTESIAN3D };
 
 namespace impl {
 
-template <typename AssignFunc>
-void init_part_linear(const globox::GlobalBox<global_cell_index_type> &gbox,
+template <typename GBox, typename AssignFunc>
+void init_part_linear(const GBox &gbox,
                       const boost::mpi::communicator &comm,
                       AssignFunc &&assign_cell)
 {
@@ -44,8 +45,8 @@ void init_part_linear(const globox::GlobalBox<global_cell_index_type> &gbox,
     local_cell_index_type ncells_per_proc = static_cast<local_cell_index_type>(
         std::ceil(static_cast<double>(nglobalcells) / comm.size()));
 
-    for (global_cell_index_type i = 0; i < nglobalcells; ++i) {
-        assign_cell(i, i / ncells_per_proc);
+    for (const global_cell_index_type i : range(nglobalcells)) {
+        assign_cell(i, rank_type{i / ncells_per_proc});
     }
 }
 
@@ -68,7 +69,9 @@ struct Cart_CellProcessIndexConverter {
 
     Cart_CellProcessIndexConverter(const repa::Vec3i &cell_grid,
                                    const repa::Vec3i &dims)
-        : dims(dims), cells_per_proc(_vdiv(cell_grid, dims))
+        : dims(dims),
+          cells_per_proc(
+              _vdiv(vector_arithmetic::static_cast_vec<Vec3i>(cell_grid), dims))
     {
     }
 
@@ -86,12 +89,14 @@ private:
 
 } // namespace __cart_impl
 
-template <typename AssignFunc>
+template <typename GBox, typename AssignFunc>
 void init_part_cartesian3d(
-    const globox::GlobalBox<global_cell_index_type> &gbox,
+    const GBox &gbox,
     const boost::mpi::communicator &comm,
     AssignFunc &&assign_cell)
 {
+    using util::vector_arithmetic::static_cast_vec;
+
     assert(comm.has_cartesian_topology());
     const auto nglobalcells = gbox.ncells();
     const auto cellgrid = gbox.grid_size();
@@ -101,17 +106,17 @@ void init_part_cartesian3d(
     const __cart_impl::Cart_CellProcessIndexConverter to_procidx{cellgrid,
                                                                  dims};
 
-    for (global_cell_index_type i = 0; i < nglobalcells; ++i) {
+    for (const global_cell_index_type i : range(nglobalcells)) {
         const auto procidx = to_procidx(util::unlinearize(i, cellgrid));
         int rank;
         MPI_Cart_rank(comm, procidx.data(), &rank);
-        assign_cell(i, rank);
+        assign_cell(i, rank_type{rank});
     }
 }
 
-template <typename AssignFunc>
+template <typename GBox, typename AssignFunc>
 void init_part_cartesian1d(
-    const globox::GlobalBox<global_cell_index_type> &gbox,
+    const GBox &gbox,
     const boost::mpi::communicator &comm,
     AssignFunc &&assign_cell)
 {
@@ -121,27 +126,26 @@ void init_part_cartesian1d(
 
     const double layers_per_proc = cellgrid[0] / comm.size();
 
-    for (global_cell_index_type i = 0; i < nglobalcells; ++i) {
+    for (const global_cell_index_type i : range(nglobalcells)) {
         const int xindex = util::unlinearize(i, gbox.grid_size())[0];
         // Use std::round to get a more equal distribution.
         const int procidx
             = std::min(static_cast<int>(std::round(xindex / layers_per_proc)),
                        comm.size() - 1);
-        assign_cell(i, procidx);
+        assign_cell(i, rank_type{procidx});
     }
 }
 
-} // namespace impl
-
+template <typename GBox>
 struct InitPartitioning {
-    InitPartitioning(const globox::GlobalBox<global_cell_index_type> &gbox,
+    InitPartitioning(const GBox &gbox,
                      const boost::mpi::communicator &comm)
         : gbox(gbox), comm(comm)
     {
     }
 
     template <typename AssignFunc>
-    InitPartitioning &operator()(InitialPartitionType pt, AssignFunc &&f)
+    InitPartitioning &apply(InitialPartitionType pt, AssignFunc &&f)
     {
         switch (pt) {
         case InitialPartitionType::LINEAR:
@@ -160,9 +164,18 @@ struct InitPartitioning {
     }
 
 private:
-    const globox::GlobalBox<global_cell_index_type> &gbox;
+    const GBox &gbox;
     const boost::mpi::communicator &comm;
 };
+
+} // namespace impl
+
+template <typename GBox>
+auto make_initial_partitioner(const GBox &gbox, const boost::mpi::communicator &comm)
+{
+    return impl::InitPartitioning<GBox>{gbox, comm};
+}
+
 
 boost::mpi::communicator
 make_init_part_communicator(const boost::mpi::communicator &comm,

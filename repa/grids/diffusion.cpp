@@ -32,6 +32,7 @@
 #include "util/mpi_neighbor_allgather.hpp"
 #include "util/mpi_neighbor_alltoall.hpp"
 #include "util/push_back_unique.hpp"
+#include "util/range.hpp"
 
 #ifndef NDEBUG
 #define DIFFUSION_DEBUG
@@ -82,18 +83,19 @@ static bool is_correct_distributed_partitioning(
                        [](int el) { return el == 1; });
 }
 
-static bool is_ghost_layer_fully_known(
+template <typename GBox>
+bool is_ghost_layer_fully_known(
     const std::vector<repa::rank_type> &partition,
     const boost::mpi::communicator &comm,
-    const repa::grids::globox::GlobalBox<repa::global_cell_index_type,
-                                         repa::global_cell_index_type> &gbox)
+    const GBox &gbox)
 {
     // Check that the neighborhood of every owned cell is known.
-    for (repa::global_cell_index_type i = 0; i < partition.size(); ++i) {
+    for (const auto i :
+         repa::util::range(repa::global_cell_index_type{partition.size()})) {
         if (partition[i] != comm.rank())
             continue;
 
-        for (auto ni : gbox.full_shell_neigh(i)) {
+        for (const auto ni : gbox.full_shell_neigh(i)) {
             if (partition[ni] == UNKNOWN_RANK)
                 return false;
         }
@@ -144,13 +146,14 @@ static const std::unordered_map<std::string, diff_variants::FlowCalcKind>
 
 void Diffusion::clear_unknown_cell_ownership()
 {
-    auto is_my_cell = [this](local_or_ghost_cell_index_type neighcell) {
+    auto is_my_cell = [this](global_cell_index_type neighcell) {
         return partition[neighcell] == comm_cart.rank();
     };
 
     fill_if_index(std::begin(partition), std::end(partition), UNKNOWN_RANK,
                   [this, is_my_cell](size_t glocellidx) {
-                      auto neighborhood = gbox.full_shell_neigh(glocellidx);
+                      auto neighborhood = gbox.full_shell_neigh(
+                          global_cell_index_type{glocellidx});
                       return std::none_of(std::begin(neighborhood),
                                           std::end(neighborhood), is_my_cell);
                   });
@@ -226,11 +229,12 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
 {
     // Initial partitioning
     partition.resize(gbox.ncells());
-    util::InitPartitioning{gbox, comm_cart}(
-        initial_partitioning, [this](global_cell_index_type idx, rank_type r) {
-            assert(r >= 0 && r < this->comm.size());
-            this->partition[idx] = r;
-        });
+    util::make_initial_partitioner(gbox, comm_cart)
+        .apply(initial_partitioning,
+               [this](global_cell_index_type idx, rank_type r) {
+                   assert(r >= 0 && r < this->comm.size());
+                   this->partition[idx] = r;
+               });
 }
 
 Diffusion::~Diffusion()

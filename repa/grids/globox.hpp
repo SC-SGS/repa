@@ -126,9 +126,13 @@ struct GlobalBox {
                       box_l[1] / m_cell_grid[1],
                       box_l[2] / m_cell_grid[2])
     {
-        m_cell_grid_corr[0] = linearize(cell_index_type{m_cell_grid[0], 0, 0});
-        m_cell_grid_corr[1] = linearize(cell_index_type{0, m_cell_grid[1], 0});
-        m_cell_grid_corr[2] = linearize(cell_index_type{0, 0, m_cell_grid[2]});
+        constexpr auto zero = index_type_3d{0};
+        m_cell_grid_corr[0]
+            = linearize(cell_index_type{m_cell_grid[0], zero, zero});
+        m_cell_grid_corr[1]
+            = linearize(cell_index_type{zero, m_cell_grid[1], zero});
+        m_cell_grid_corr[2]
+            = linearize(cell_index_type{zero, zero, m_cell_grid[2]});
 
         std::transform(std::begin(util::NeighborOffsets3D::raw),
                        std::end(util::NeighborOffsets3D::raw),
@@ -152,9 +156,9 @@ struct GlobalBox {
             // Can be out of bounds by at most 1, i.e. subtracting m_cell_grid
             // once suffices.
             if (idx[d] == 0 && no[d] < 0)
-                ni += m_cell_grid_corr[d];
+                ni += index_type_1d{m_cell_grid_corr[d]};
             else if (idx[d] == m_cell_grid[d] - 1 && no[d] > 0)
-                ni -= m_cell_grid_corr[d];
+                ni -= index_type_1d{m_cell_grid_corr[d]};
         }
         return ni;
     }
@@ -194,8 +198,7 @@ struct GlobalBox {
      */
     inline index_type_1d ncells() const noexcept
     {
-        return static_cast<index_type_1d>(m_cell_grid[0]) * m_cell_grid[1]
-               * m_cell_grid[2];
+        return index_type_1d{m_cell_grid[0] * m_cell_grid[1] * m_cell_grid[2]};
     }
 
     /** Returns the resulting cell size, greater or equal to max_range.
@@ -229,14 +232,14 @@ private:
     template <typename T>
     inline index_type_1d linearize(const Vec3<T> &cell) const noexcept
     {
-        return util::linearize(cell, m_cell_grid);
+        return index_type_1d{util::linearize(cell, m_cell_grid)};
     }
 
     inline cell_index_type unlinearize(index_type_1d pos) const
     {
         return util::unlinearize(pos, m_cell_grid);
     }
-};
+}; // namespace globox
 
 } // namespace globox
 } // namespace grids

@@ -30,6 +30,7 @@
 #include "util/mpi_cart_coloring.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/push_back_unique.hpp"
+#include "util/range.hpp"
 #include "util/vdist.hpp"
 #include "util/vec_arith.hpp"
 
@@ -78,7 +79,7 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r) const
 
 rank_index_type GridBasedGrid::n_neighbors() const
 {
-    return const_neighborhood.size();
+    return rank_index_type{const_neighborhood.size()};
 }
 
 rank_type GridBasedGrid::neighbor_rank(rank_index_type i) const
@@ -167,7 +168,7 @@ void GridBasedGrid::init_octagons()
     neighbor_doms.clear();
     neighbor_doms.reserve(n_neighbors());
 
-    for (rank_index_type nidx = 0; nidx < n_neighbors(); ++nidx) {
+    for (const auto nidx : util::range(n_neighbors())) {
         neighbor_doms.push_back(
             util::tetra::Octagon(bounding_box(neighbor_rank(nidx))));
     }
@@ -225,7 +226,7 @@ rank_type GridBasedGrid::rank_of_cell(global_cell_index_type cellidx) const
     if (my_dom.contains(mp))
         return comm.rank();
 
-    for (rank_index_type i = 0; i < neighbor_doms.size(); ++i) {
+    for (const auto i : util::range(rank_index_type{neighbor_doms.size()})) {
         if (neighbor_doms[i].contains(mp))
             return neighbor_rank(i);
     }
@@ -238,7 +239,7 @@ Vec3d GridBasedGrid::get_subdomain_center()
     using namespace util::vector_arithmetic;
     Vec3d c{0., 0., 0.};
 
-    for (local_cell_index_type i = 0; i < n_local_cells(); ++i)
+    for (const auto i : util::range(n_local_cells()))
         c += gbox.midpoint(cells[i]);
     return c / static_cast<double>(n_local_cells());
 }
@@ -252,8 +253,8 @@ static Vec3d calc_shift(double local_load,
 
     // The node displacement is calculated according to
     // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
-    const rank_index_type nneigh
-        = util::mpi_undirected_neighbor_count(neighcomm);
+    const auto nneigh
+        = rank_index_type{util::mpi_undirected_neighbor_count(neighcomm)};
     const double lambda_p = local_load;
     const auto r_p = subdomain_midpoint;
 
@@ -272,7 +273,7 @@ static Vec3d calc_shift(double local_load,
     MPI_Neighbor_allgather(r_p.data(), sizeof(Vec3d), MPI_BYTE, r.data(),
                            sizeof(Vec3d), MPI_BYTE, neighcomm);
 
-    for (rank_index_type i = 0; i < nneigh; ++i) {
+    for (const auto i : util::range(nneigh)) {
         // Form "u"
         r[i] -= cur_gridpoint;
         const double len = util::norm2(r[i]);

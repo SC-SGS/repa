@@ -26,6 +26,7 @@
 #include "util/mpi_cart.hpp"
 #include "util/neighbor_offsets.hpp"
 #include "util/push_back_unique.hpp"
+#include "util/range.hpp"
 #include "util/vec_arith.hpp"
 
 #include "_compat.hpp"
@@ -91,18 +92,23 @@ void CartGrid::fill_neighranks()
 
 void CartGrid::create_index_permutations()
 {
-    local_or_ghost_cell_index_type ncells = n_local_cells() + n_ghost_cells();
+    auto ncells
+        = local_or_ghost_cell_index_type{n_local_cells() + n_ghost_cells()};
     m_to_pargrid_order.resize(ncells);
     m_from_pargrid_order.resize(ncells);
 
-    local_cell_index_type localidx = 0;
-    local_or_ghost_cell_index_type ghostidx = n_local_cells();
-    for (local_or_ghost_cell_index_type i = 0; i < ncells; ++i) {
+    auto localidx = local_cell_index_type{0};
+    auto ghostidx = ghost_cell_index_type{0};
+    for (const auto i : util::range(ncells)) {
         const auto c = util::unlinearize(i, m_ghost_grid_size);
-        local_or_ghost_cell_index_type &idx
-            = is_ghost_cell(c) ? ghostidx : localidx;
-        m_from_pargrid_order[idx] = i;
-        m_to_pargrid_order[i] = idx++;
+
+        local_or_ghost_cell_index_type lgidx;
+        if (is_ghost_cell(c))
+            lgidx = index_convert.as_local_or_ghost_index(ghostidx++);
+        else
+            lgidx = index_convert.as_local_or_ghost_index(localidx++);
+        m_from_pargrid_order[lgidx] = i;
+        m_to_pargrid_order[i] = lgidx;
     }
 }
 
@@ -127,10 +133,13 @@ void CartGrid::create_grid()
     m_inv_cell_size = 1.0 / m_cell_size;
 }
 
-void CartGrid::fill_comm_cell_lists(
-    std::vector<local_or_ghost_cell_index_type> &v,
-    const Vec3i &lc,
-    const Vec3i &hc)
+namespace {
+
+template <typename T, typename LFunc>
+void fill_comm_cell_lists(std::vector<T> &v,
+                          const Vec3i &lc,
+                          const Vec3i &hc,
+                          LFunc &&linearize)
 {
     Vec3i c;
     for (c[0] = lc[0]; c[0] <= hc[0]; c[0]++) {
@@ -141,6 +150,8 @@ void CartGrid::fill_comm_cell_lists(
         }
     }
 }
+
+} // namespace
 
 void CartGrid::prepare_communication()
 {
@@ -164,7 +175,9 @@ void CartGrid::prepare_communication()
             m_exdescs[i].dest = rank;
             std::tie(lc, hc)
                 = impl::determine_send_receive_bounds(offset, 0, m_grid_size);
-            fill_comm_cell_lists(m_exdescs[i].send, lc, hc);
+            fill_comm_cell_lists(m_exdescs[i].send, lc, hc, [this](auto c) {
+                return index_convert.local_index_only(linearize(c));
+            });
         }
 
         // Receive in opposite direction. Otherwise send and receive order on
@@ -176,7 +189,8 @@ void CartGrid::prepare_communication()
             m_exdescs[i].dest = neigh;
             std::tie(lc, hc)
                 = impl::determine_send_receive_bounds(opposite, 1, m_grid_size);
-            fill_comm_cell_lists(m_exdescs[i].recv, lc, hc);
+            fill_comm_cell_lists(m_exdescs[i].recv, lc, hc,
+                                 [this](auto c) { return linearize(c); });
         }
     }
 }
@@ -184,7 +198,7 @@ void CartGrid::prepare_communication()
 CartGrid::CartGrid(const boost::mpi::communicator &comm,
                    Vec3d box_size,
                    double min_cell_size)
-    : ParallelLCGrid(comm, box_size, min_cell_size)
+    : ParallelLCGrid(comm, box_size, min_cell_size), index_convert(*this)
 {
 }
 
@@ -198,19 +212,20 @@ void CartGrid::after_construction()
 
 local_cell_index_type CartGrid::n_local_cells() const
 {
-    return m_grid_size[0] * m_grid_size[1] * m_grid_size[2];
+    return local_cell_index_type{m_grid_size[0] * m_grid_size[1]
+                                 * m_grid_size[2]};
 }
 
 ghost_cell_index_type CartGrid::n_ghost_cells() const
 {
     const int ggs
         = m_ghost_grid_size[0] * m_ghost_grid_size[1] * m_ghost_grid_size[2];
-    return ggs - n_local_cells();
+    return ghost_cell_index_type{ggs - n_local_cells()};
 }
 
 rank_index_type CartGrid::n_neighbors() const
 {
-    return m_neighranks.size();
+    return rank_index_type{m_neighranks.size()};
 }
 
 rank_type CartGrid::neighbor_rank(rank_index_type i) const
@@ -222,7 +237,8 @@ local_or_ghost_cell_index_type
 CartGrid::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
 {
     using namespace util::vector_arithmetic;
-    const auto coord = unlinearize(cellidx);
+    const auto coord
+        = unlinearize(index_convert.as_local_or_ghost_index(cellidx));
     const Vec3i neighbor_coord
         = (coord + util::NeighborOffsets3D::raw[neigh]) % m_ghost_grid_size;
     return linearize(neighbor_coord);
@@ -254,8 +270,9 @@ local_cell_index_type CartGrid::position_to_cell_index(Vec3d pos)
         || any(relative_pos.as_expr() >= m_localbox.as_expr()))
         throw std::domain_error("Particle not in local box");
 
-    return linearize(static_cast_vec<Vec3i>(relative_pos * m_inv_cell_size)
-                     + 1); // +1 to skip the ghost cells
+    return index_convert.local_index_only(
+        linearize(static_cast_vec<Vec3i>(relative_pos * m_inv_cell_size)
+                  + 1)); // +1 to skip the ghost cells
 }
 
 rank_type CartGrid::position_to_rank(Vec3d pos)
@@ -275,7 +292,7 @@ rank_index_type CartGrid::neighbor_idx(rank_type r) const
     if (*it != r)
         throw std::domain_error("Rank not a neighbor.");
 
-    return std::distance(std::begin(m_neighranks), it);
+    return rank_index_type{std::distance(std::begin(m_neighranks), it)};
 }
 
 rank_index_type CartGrid::position_to_neighidx(Vec3d pos)
@@ -317,11 +334,11 @@ CartGrid::global_hash(local_or_ghost_cell_index_type cellidx)
     using namespace util::vector_arithmetic;
 
     const Vec3i idx3d = unlinearize(cellidx);
-    const Vec3i whole_domain = grid_size();
+    const Vec3i whole_domain = m_grid_size;
     const Vec3i prefix = m_procgrid_pos * m_grid_size - 1; // -1 for ghosts
     const Vec3i glo3didx = (idx3d + prefix) % whole_domain;
 
-    return util::linearize(glo3didx, whole_domain);
+    return global_cell_index_type{util::linearize(glo3didx, whole_domain)};
 }
 
 } // namespace grids

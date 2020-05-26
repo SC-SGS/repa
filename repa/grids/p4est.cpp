@@ -33,6 +33,7 @@
 #include "_compat.hpp"
 #include "util/neighbor_offsets.hpp"
 #include "util/p4est_deleter.hpp"
+#include "util/range.hpp"
 #include "util/vec_arith.hpp"
 
 #ifdef __BMI2__
@@ -61,7 +62,7 @@ struct CellInfo {
                         // local cell, 2: ghost cell)
                         // boundary Cells with shell-type 2 are set if the are
                         // in the periodic halo
-    std::array<int, 26>
+    std::array<local_or_ghost_cell_index_type, 26>
         neighbor; // unique index of the fullshell neighborhood cells (as in
                   // p8est); only 26 because cell itself is not included.
     const Vec3i coord; // cartesian coordinates of the cell
@@ -71,7 +72,7 @@ struct CellInfo {
     CellInfo(rank_type rank, CellType shell, const Vec3i &coord)
         : owner_rank(rank), cell_type(shell), coord(coord)
     {
-        neighbor.fill(-1);
+        neighbor.fill(local_or_ghost_cell_index_type{-1});
     }
 };
 
@@ -136,11 +137,12 @@ static global_cell_index_type cell_morton_idx(Vec3i idx)
     static constexpr unsigned mask_x = 0x49249249;
     static constexpr unsigned mask_y = 0x92492492;
     static constexpr unsigned mask_z = 0x24924924;
-    return _pdep_u32(idx[0], mask_x) | _pdep_u32(idx[1], mask_y)
-           | _pdep_u32(idx[2], mask_z);
+    return global_cell_index_type{_pdep_u32(idx[0], mask_x)
+                                  | _pdep_u32(idx[1], mask_y)
+                                  | _pdep_u32(idx[2], mask_z)};
 #else
-    global_cell_index_type res = 0;
-    global_cell_index_type res_bit = 1;
+    global_cell_index_type::value_type res = 0;
+    global_cell_index_type::value_type res_bit = 1;
     constexpr size_t max_nbits_per_dim = sizeof(global_cell_index_type) * 8 / 3;
 
     for (size_t bit = 0; bit < max_nbits_per_dim; ++bit) {
@@ -151,7 +153,7 @@ static global_cell_index_type cell_morton_idx(Vec3i idx)
             res_bit <<= 1;
         }
     }
-    return res;
+    return global_cell_index_type{res};
 #endif
 }
 
@@ -183,15 +185,15 @@ static inline Vec3i coord_to_cellindex(Vec3d coord, int tree_level)
 //    return static_cast_vec<Vec3i>(coord * (1 << tree_level));
 //}
 
-template <typename T>
-T virtual_regular_grid_end(T grid_level, const Vec3<T> &grid_size)
+template <typename Ret, typename T>
+Ret virtual_regular_grid_end(T grid_level, const Vec3<T> &grid_size)
 {
     // Next largest power of 2
     using namespace repa::util::vector_arithmetic;
-    T gs = 1 << grid_level;
+    Ret gs = 1 << grid_level;
     while (any(grid_size > gs))
         gs <<= 1;
-    return gs * gs * gs;
+    return Ret{gs * gs * gs};
 }
 
 static Vec3d quadrant_to_coords(const p8est_quadrant_t *q,
@@ -217,7 +219,7 @@ static Vec3d quadrant_to_coords(const p8est_quadrant_t *q,
  * along the SFC on a regular grid of size "grid_size" and level "grid_level".
  */
 static void assemble_virtual_regular_grid_partitioning(
-    std::vector<int> &first_morton_index_per_proc,
+    std::vector<global_cell_index_type> &first_morton_index_per_proc,
     int grid_level,
     repa::Vec3i grid_size,
     rank_type nproc,
@@ -234,8 +236,9 @@ static void assemble_virtual_regular_grid_partitioning(
                 grid_level)));
     }
     // Total number of quads of the virtual regular grid
-    first_morton_index_per_proc.push_back(
-        impl::virtual_regular_grid_end(grid_level, grid_size));
+    first_morton_index_per_proc.push_back(global_cell_index_type{
+        impl::virtual_regular_grid_end<global_cell_index_type::value_type>(
+            grid_level, grid_size)});
 }
 
 } // namespace impl
@@ -284,13 +287,18 @@ struct P4estGrid::_P4estGrid_impl {
     const boost::mpi::communicator &comm_cart;
     const Vec3d &box_l;
     const double max_range;
+
+    LocalIndexAsserter<P4estGrid> index_convert;
+
     _P4estGrid_impl(const boost::mpi::communicator &comm_cart,
                     const Vec3d &box_l,
-                    double max_range)
+                    double max_range,
+                    LocalIndexAsserter<P4estGrid> index_convert)
         : m_repartstate(comm_cart),
           comm_cart(comm_cart),
           box_l(box_l),
-          max_range(max_range)
+          max_range(max_range),
+          index_convert(index_convert)
     {
         impl::init_p4est_logging();
     }
@@ -353,8 +361,8 @@ void P4estGrid::_P4estGrid_impl::create_grid()
     auto p8est_mesh = std::unique_ptr<p8est_mesh_t>(p8est_mesh_new_ext(
         m_p8est.get(), p8est_ghost.get(), 1, 1, 0, P8EST_CONNECT_CORNER));
 
-    m_num_local_cells = m_p8est->local_num_quadrants;
-    m_num_ghost_cells = p8est_ghost->ghosts.elem_count;
+    m_num_local_cells = local_cell_index_type{m_p8est->local_num_quadrants};
+    m_num_ghost_cells = ghost_cell_index_type{p8est_ghost->ghosts.elem_count};
 
     init_grid_cells(p8est_ghost.get(), p8est_mesh.get());
 }
@@ -362,8 +370,8 @@ void P4estGrid::_P4estGrid_impl::create_grid()
 void P4estGrid::_P4estGrid_impl::init_grid_cells(p8est_ghost_t *p8est_ghost,
                                                  p8est_mesh_t *p8est_mesh)
 {
-    const local_or_ghost_cell_index_type num_cells
-        = m_num_local_cells + m_num_ghost_cells;
+    const auto num_cells
+        = local_or_ghost_cell_index_type{m_num_local_cells + m_num_ghost_cells};
 
     // "ni" is defined outside of all loops to avoid calling "sc_array_new" and
     // the corresponding destroy function on every loop iteration.
@@ -375,7 +383,7 @@ void P4estGrid::_P4estGrid_impl::init_grid_cells(p8est_ghost_t *p8est_ghost,
 #endif
     m_p8est_cell_info.clear();
     m_p8est_cell_info.reserve(num_cells);
-    for (local_cell_index_type i = 0; i < m_num_local_cells; ++i) {
+    for (const auto i : util::range(m_num_local_cells)) {
         const Vec3d xyz = impl::quadrant_to_coords(
             p8est_mesh_get_quadrant(m_p8est.get(), p8est_mesh,
                                     static_cast<p4est_locidx_t>(i)),
@@ -405,7 +413,8 @@ void P4estGrid::_P4estGrid_impl::init_grid_cells(p8est_ghost_t *p8est_ghost,
 
             const int neighidx = *(int *)sc_array_index_int(ni.get(), 0);
             assert(neighidx >= 0 && neighidx < num_cells);
-            m_p8est_cell_info[i].neighbor[n] = neighidx;
+            m_p8est_cell_info[i].neighbor[n]
+                = local_or_ghost_cell_index_type{neighidx};
 
             if (neighidx >= m_p8est->local_num_quadrants) {
                 // Ghost cell on inner subdomain boundaries
@@ -416,7 +425,7 @@ void P4estGrid::_P4estGrid_impl::init_grid_cells(p8est_ghost_t *p8est_ghost,
     }
 
     // Collect info about ghost cells
-    for (ghost_cell_index_type g = 0; g < m_num_ghost_cells; ++g) {
+    for (const auto g : util::range(m_num_ghost_cells)) {
         const p8est_quadrant_t *q
             = p8est_quadrant_array_index(&p8est_ghost->ghosts, g);
         const Vec3d xyz = impl::quadrant_to_coords(q, m_p8est_conn.get(),
@@ -439,14 +448,15 @@ void P4estGrid::_P4estGrid_impl::init_grid_cells(p8est_ghost_t *p8est_ghost,
 
 void P4estGrid::_P4estGrid_impl::prepare_communication()
 {
-    const local_or_ghost_cell_index_type num_cells
-        = m_num_local_cells + m_num_ghost_cells;
+    const auto num_cells
+        = local_or_ghost_cell_index_type{m_num_local_cells + m_num_ghost_cells};
     // List of cell indices for each process for send/recv
     std::vector<std::vector<local_cell_index_type>> send_idx(comm_cart.size());
-    std::vector<std::vector<ghost_cell_index_type>> recv_idx(comm_cart.size());
+    std::vector<std::vector<local_or_ghost_cell_index_type>> recv_idx(
+        comm_cart.size());
 
     // Find all cells to be sent or received
-    for (local_or_ghost_cell_index_type i = 0; i < num_cells; ++i) {
+    for (const auto i : util::range(num_cells)) {
         const auto &cell_info = m_p8est_cell_info[i];
 
         switch (cell_info.cell_type) {
@@ -457,8 +467,7 @@ void P4estGrid::_P4estGrid_impl::prepare_communication()
         case impl::CellType::boundary:
             // Collect send information of boundary cells (check all neighboring
             // cells for neighboring processes)
-            for (local_or_ghost_cell_index_type neighcell :
-                 cell_info.neighbor) {
+            for (const auto neighcell : cell_info.neighbor) {
                 const auto &neigh_info = m_p8est_cell_info[neighcell];
                 if (neigh_info.cell_type != impl::CellType::ghost)
                     continue;
@@ -470,7 +479,8 @@ void P4estGrid::_P4estGrid_impl::prepare_communication()
                 // vector.
                 if (send_idx[neigh_info.owner_rank].empty()
                     || send_idx[neigh_info.owner_rank].back() != i)
-                    send_idx[neigh_info.owner_rank].push_back(i);
+                    send_idx[neigh_info.owner_rank].push_back(
+                        index_convert.local_index_only(i));
             }
             break;
         default:
@@ -549,7 +559,10 @@ P4estGrid::P4estGrid(const boost::mpi::communicator &comm,
                      Vec3d box_size,
                      double min_cell_size)
     : ParallelLCGrid(comm, box_size, min_cell_size),
-      _impl(std::make_unique<_P4estGrid_impl>(comm_cart, box_l, max_range))
+      index_convert(*this),
+      _impl(std::make_unique<_P4estGrid_impl>(
+          comm_cart, box_l, max_range, index_convert))
+
 {
     _impl->reinitialize();
 }
@@ -566,7 +579,7 @@ ghost_cell_index_type P4estGrid::n_ghost_cells() const
 
 rank_index_type P4estGrid::n_neighbors() const
 {
-    return _impl->m_neighranks.size();
+    return rank_index_type{_impl->m_neighranks.size()};
 }
 
 rank_type P4estGrid::neighbor_rank(rank_index_type i) const
@@ -589,7 +602,7 @@ P4estGrid::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
     assert(cellidx >= 0 && cellidx < n_local_cells());
 
     if (util::neighbor_type(neigh) == util::NeighborCellType::SELF)
-        return cellidx;
+        return index_convert.as_local_or_ghost_index(cellidx);
     else
         return _impl->m_p8est_cell_info[cellidx]
             .neighbor[to_p4est_order[neigh]];
@@ -621,7 +634,8 @@ local_cell_index_type P4estGrid::position_to_cell_index(Vec3d pos)
     if (it != shell_local_end &&
         // Exclude finding cell 0 (lower_bound) if 0 is not the wanted result
         impl::cell_morton_idx(it->coord) == needle)
-        return std::distance(std::begin(_impl->m_p8est_cell_info), it);
+        return local_cell_index_type{
+            std::distance(std::begin(_impl->m_p8est_cell_info), it)};
     else
         throw std::domain_error("Pos not in local domain.");
 }
@@ -652,7 +666,7 @@ rank_index_type P4estGrid::position_to_neighidx(Vec3d pos)
                                std::end(_impl->m_neighranks), rank);
     if (it == std::end(_impl->m_neighranks) || *it != rank)
         throw std::domain_error("Position not in a ghost cell.");
-    return std::distance(std::begin(_impl->m_neighranks), it);
+    return rank_index_type{std::distance(std::begin(_impl->m_neighranks), it)};
 }
 
 Vec3d P4estGrid::cell_size() const
@@ -678,7 +692,7 @@ P4estGrid::global_hash(local_or_ghost_cell_index_type cellidx)
 #ifdef GLOBAL_HASH_NEEDED
     return _impl->m_global_idx.at(cellidx);
 #else
-    return 0;
+    return global_cell_index_type{0};
 #endif
 }
 

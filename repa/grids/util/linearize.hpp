@@ -31,7 +31,7 @@ constexpr Ret linearize(const T1 &c, const T2 &grid) noexcept
 {
     // Cast in case "Ret" is a type capable of holding larger values than "T1"
     // or "T2".
-    return (static_cast<Ret>(c[0]) * grid[1] + c[1]) * grid[2] + c[2];
+    return Ret{(static_cast<Ret>(c[0]) * grid[1] + c[1]) * grid[2] + c[2]};
 }
 } // namespace __impl
 

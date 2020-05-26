@@ -34,12 +34,26 @@
 #include <boost/serialization/vector.hpp>
 #include <repa/repa.hpp>
 
-// Serialization for GhostExchangeDesc in order to gather and check them.
+/** Analogously to repa::GhostExchangeDecv, however, stores all indices as
+ * global ones in order to compare them across processes.
+ */
+struct GlobalizedGhostExchangeDesc {
+    repa::rank_type dest;
+    std::vector<repa::global_cell_index_type> recv;
+    std::vector<repa::global_cell_index_type> send;
+
+    GlobalizedGhostExchangeDesc() : dest(-1)
+    {
+    }
+};
+
+// Serialization for GlobalizedGhostExchangeDesc in order to gather and check
+// them.
 namespace boost {
 namespace serialization {
 template <typename Archive>
 void load(Archive &ar,
-          repa::grids::GhostExchangeDesc &g,
+          GlobalizedGhostExchangeDesc &g,
           const unsigned int /* file_version */)
 {
     ar >> g.dest;
@@ -49,7 +63,7 @@ void load(Archive &ar,
 
 template <typename Archive>
 void save(Archive &ar,
-          const repa::grids::GhostExchangeDesc &g,
+          const GlobalizedGhostExchangeDesc &g,
           const unsigned int /* file_version */)
 {
     ar << g.dest;
@@ -59,7 +73,7 @@ void save(Archive &ar,
 
 template <class Archive>
 void serialize(Archive &ar,
-               repa::grids::GhostExchangeDesc &g,
+               GlobalizedGhostExchangeDesc &g,
                const unsigned int file_version)
 {
     split_free(ar, g, file_version);
@@ -70,22 +84,32 @@ void serialize(Archive &ar,
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     const auto &comm = t.comm();
-    auto gexds = grid->get_boundary_info();
-    auto idx_to_glo = [grid](int idx) { return grid->global_hash(idx); };
+    auto idx_to_glo = [&grid](const auto idx) {
+        return grid->global_hash(repa::local_or_ghost_cell_index_type{idx});
+    };
+    std::vector<GlobalizedGhostExchangeDesc> ggexds;
 
-    // Transform to global hashes
-    for (auto &g : gexds) {
-        std::transform(std::begin(g.recv), std::end(g.recv), std::begin(g.recv),
-                       idx_to_glo);
-        std::transform(std::begin(g.send), std::end(g.send), std::begin(g.send),
-                       idx_to_glo);
+    {
+        const auto gexds = grid->get_boundary_info();
+        ggexds.resize(gexds.size());
+
+        // Transform to global hashes
+        for (size_t i = 0; i < gexds.size(); ++i) {
+            ggexds[i].dest = gexds[i].dest;
+            ggexds[i].recv.reserve(gexds[i].recv.size());
+            ggexds[i].send.reserve(gexds[i].send.size());
+            std::transform(std::begin(gexds[i].recv), std::end(gexds[i].recv),
+                           std::back_inserter(ggexds[i].recv), idx_to_glo);
+            std::transform(std::begin(gexds[i].send), std::end(gexds[i].send),
+                           std::begin(ggexds[i].send), idx_to_glo);
+        }
     }
 
-    std::vector<decltype(gexds)> gexdss;
-    boost::mpi::all_gather(comm, gexds, gexdss);
+    std::vector<decltype(ggexds)> ggexdss;
+    boost::mpi::all_gather(comm, ggexds, ggexdss);
 
-    auto find_comm = [](const std::vector<repa::grids::GhostExchangeDesc> &gs,
-                        int rank) -> const repa::grids::GhostExchangeDesc & {
+    auto find_comm = [](const std::vector<GlobalizedGhostExchangeDesc> &gs,
+                        int rank) -> const GlobalizedGhostExchangeDesc & {
         auto it
             = std::find_if(std::begin(gs), std::end(gs),
                            [rank](const auto &g) { return g.dest == rank; });
@@ -95,8 +119,8 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 
     // Check if send indices fit receive indices on the other side.
     for (int r = 0; r < comm.size(); ++r) {
-        for (const auto &rg : gexdss[r]) {
-            const auto &counterpart = find_comm(gexdss[rg.dest], r);
+        for (const auto &rg : ggexdss[r]) {
+            const auto &counterpart = find_comm(ggexdss[rg.dest], r);
 
             for (size_t i = 0; i < rg.send.size(); ++i) {
                 auto sglo = rg.send[i];

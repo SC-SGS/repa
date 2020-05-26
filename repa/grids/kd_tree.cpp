@@ -21,6 +21,7 @@
 #include "kd_tree.hpp"
 #include "util/linearize.hpp"
 #include "util/neighbor_offsets.hpp"
+#include "util/range.hpp"
 #include "util/vec_arith.hpp"
 
 #include <algorithm>
@@ -145,8 +146,8 @@ intersection_domains(const repa::grids::Domain &localdomain,
     // Datastructure for gathering the results
     std::vector<repa::grids::Domain> intersection_domains;
 
-    for (repa::rank_index_type nidx = 0; nidx < volume(neighborhood_to_check);
-         nidx++) {
+    for (const auto nidx : repa::util::range(
+             repa::rank_index_type{volume(neighborhood_to_check)})) {
         // Determine neighbor offset
         repa::Vec3i neighbor_offset
             = repa::util::unlinearize(nidx, neighborhood_to_check.second
@@ -232,30 +233,32 @@ void KDTreeGrid::init_local_domain_bounds()
 
 void KDTreeGrid::init_nb_of_cells()
 {
-    m_nb_of_local_cells = volume(m_local_subdomain);
-    m_nb_of_ghost_cells
-        = volume(m_local_ghostdomain) - volume(m_local_subdomain);
+    m_nb_of_local_cells = local_cell_index_type{volume(m_local_subdomain)};
+    m_nb_of_ghost_cells = ghost_cell_index_type{volume(m_local_ghostdomain)
+                                                - volume(m_local_subdomain)};
 }
 
 void KDTreeGrid::init_index_permutations()
 {
     // Number of local and ghost cells
-    local_or_ghost_cell_index_type nb_of_total_cells
-        = volume(m_local_ghostdomain);
+    const auto nb_of_total_cells
+        = local_or_ghost_cell_index_type{volume(m_local_ghostdomain)};
 
     m_index_permutations.resize(nb_of_total_cells);
     m_index_permutations_inverse.resize(nb_of_total_cells);
 
-    local_cell_index_type localidx = 0;
-    local_or_ghost_cell_index_type ghostidx = m_nb_of_local_cells;
-    for (local_or_ghost_cell_index_type cellidx = 0;
-         cellidx < nb_of_total_cells; cellidx++) {
+    auto localidx = local_cell_index_type{0};
+    auto ghostidx = ghost_cell_index_type{0};
+    for (const auto cellidx : util::range(nb_of_total_cells)) {
         const Vec3i cell = util::unlinearize(cellidx, m_local_ghostdomain_size);
-        local_or_ghost_cell_index_type &idx
-            = is_ghost_cell(cell, m_local_ghostdomain_size) ? ghostidx
-                                                            : localidx;
-        m_index_permutations_inverse[idx] = cellidx;
-        m_index_permutations[cellidx] = idx++;
+
+        local_or_ghost_cell_index_type lgidx;
+        if (is_ghost_cell(cell, m_local_ghostdomain_size))
+            lgidx = index_convert.as_local_or_ghost_index(ghostidx++);
+        else
+            lgidx = index_convert.as_local_or_ghost_index(localidx++);
+        m_index_permutations_inverse[lgidx] = cellidx;
+        m_index_permutations[cellidx] = lgidx++;
     }
 }
 
@@ -265,8 +268,8 @@ std::vector<Vec3i> KDTreeGrid::cells(const std::vector<Domain> &domains)
     using namespace util::vector_arithmetic;
     std::vector<Vec3i> result;
     for (const Domain &domain : domains) {
-        for (local_or_ghost_cell_index_type cellidx = 0;
-             cellidx < volume(domain); cellidx++) {
+        for (const auto cellidx :
+             util::range(local_or_ghost_cell_index_type{volume(domain)})) {
             const Vec3i cell_coords
                 = util::unlinearize(cellidx, domain.second - domain.first)
                   + domain.first;
@@ -278,10 +281,6 @@ std::vector<Vec3i> KDTreeGrid::cells(const std::vector<Domain> &domains)
 
 void KDTreeGrid::init_neighborhood_information()
 {
-    m_neighbor_processes_inverse.resize(comm_cart.size());
-    std::fill(std::begin(m_neighbor_processes_inverse),
-              std::end(m_neighbor_processes_inverse), UNKNOWN_RANK);
-
     (*m_kdtree)->walkp(
         [this](auto node) {
             return are_domains_intersecting({node.lu(), node.ro()},
@@ -314,8 +313,6 @@ void KDTreeGrid::init_neighborhood_information(rank_type neighbor_rank)
     init_send_cells(gexd, neighbor_ghostdomain);
 
     if (!gexd.send.empty()) { // send.empty() == recv.empty(), so test only one.
-        m_neighbor_processes_inverse[neighbor_rank]
-            = m_neighbor_processes.size();
         m_neighbor_processes.push_back(neighbor_rank);
         m_boundary_info.emplace_back(std::move(gexd));
     }
@@ -362,9 +359,9 @@ void KDTreeGrid::init_send_cells(GhostExchangeDesc &gexd,
     gexd.send.reserve(intersecting_cellvectors.size());
 
     for (const Vec3i &intersecting_cellvector : intersecting_cellvectors) {
-        const local_cell_index_type cellidx
-            = util::linearize(intersecting_cellvector - m_local_subdomain.first,
-                              m_local_subdomain_size);
+        const local_cell_index_type cellidx = local_cell_index_type{
+            util::linearize(intersecting_cellvector - m_local_subdomain.first,
+                            m_local_subdomain_size)};
 
         // Update datastructure
         gexd.send.push_back(cellidx);
@@ -374,7 +371,6 @@ void KDTreeGrid::init_send_cells(GhostExchangeDesc &gexd,
 void KDTreeGrid::clear_lookup_datastructures()
 {
     m_neighbor_processes.clear();
-    m_neighbor_processes_inverse.clear();
     m_index_permutations.clear();
     m_index_permutations_inverse.clear();
     m_boundary_info.clear();
@@ -396,7 +392,8 @@ KDTreeGrid::KDTreeGrid(const boost::mpi::communicator &comm,
       m_global_domain_size(get_grid_dimensions(box_l, max_range)),
       m_global_domain({Vec3i{0, 0, 0}, m_global_domain_size}),
       m_global_ghostdomain(to_ghost_domain_bounds(m_global_domain)),
-      m_cell_size(get_cell_size(box_l, m_global_domain_size))
+      m_cell_size(get_cell_size(box_l, m_global_domain_size)),
+      index_convert(*this)
 {
     // Use constant load to make initial tree evenly distributed
     auto load_function = [](Vec3i) { return 1; };
@@ -418,7 +415,7 @@ ghost_cell_index_type KDTreeGrid::n_ghost_cells() const
 
 rank_index_type KDTreeGrid::n_neighbors() const
 {
-    return m_neighbor_processes.size();
+    return rank_index_type{m_neighbor_processes.size()};
 }
 
 rank_type KDTreeGrid::neighbor_rank(rank_index_type i) const
@@ -471,8 +468,8 @@ local_cell_index_type KDTreeGrid::position_to_cell_index(Vec3d pos)
         throw std::domain_error("Position not in local subdomain");
     }
 
-    const local_cell_index_type cellidx = util::linearize(
-        cell_coords - m_local_subdomain.first, m_local_subdomain_size);
+    const local_cell_index_type cellidx = local_cell_index_type{util::linearize(
+        cell_coords - m_local_subdomain.first, m_local_subdomain_size)};
 
     assert(cellidx >= 0 && cellidx < m_nb_of_local_cells);
     return cellidx;
@@ -488,16 +485,15 @@ rank_type KDTreeGrid::position_to_rank(Vec3d pos)
 rank_index_type KDTreeGrid::position_to_neighidx(Vec3d pos)
 {
     using namespace util::vector_arithmetic;
-    const Vec3i cell_coords = static_cast_vec<Vec3i>(pos / m_cell_size);
-    const rank_type prank
-        = (*m_kdtree)->responsible_process(cell_coords.as_array());
-    const rank_index_type rank_idx = m_neighbor_processes_inverse[prank];
+    const auto rank = position_to_rank(pos);
+    const auto ri = std::find(std::begin(m_neighbor_processes),
+                              std::end(m_neighbor_processes), rank);
 
-    if (rank_idx == UNKNOWN_RANK) {
+    if (ri == std::end(m_neighbor_processes)) {
         throw std::domain_error("Position not within neighbor a process");
     }
 
-    return rank_idx;
+    return rank_index_type{std::distance(std::begin(m_neighbor_processes), ri)};
 }
 
 bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
@@ -522,7 +518,8 @@ KDTreeGrid::global_hash(local_or_ghost_cell_index_type cellidx)
                                           m_local_ghostdomain_size);
     const Vec3i offset = m_local_ghostdomain.first - 1;
     const Vec3i gloidx3d = (idx3d + offset) % m_global_domain_size;
-    return util::linearize(gloidx3d, m_global_domain_size);
+    return global_cell_index_type{
+        util::linearize(gloidx3d, m_global_domain_size)};
 }
 
 } // namespace grids

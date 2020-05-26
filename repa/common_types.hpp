@@ -32,6 +32,12 @@
 
 namespace repa {
 
+#ifndef NDEBUG
+#define REPA_ON_DEBUG(stmt) stmt
+#else
+#define REPA_ON_DEBUG(stmt) ((void) 0)
+#endif
+
 namespace __ensure_impl {
 [[noreturn]] inline void __ensure_fail(const char *expr,
                                        const char *file,
@@ -54,6 +60,156 @@ namespace __ensure_impl {
                              : __ensure_impl::__ensure_fail(                   \
                                  #expr, __FILE__, __LINE__, __func__, msg))
 
+namespace _impl_tt {
+template <typename T, typename...>
+struct head {
+    typedef T type;
+};
+} // namespace _impl_tt
+
+template <typename T,
+          typename TypeTag, T Min_Val = std::numeric_limits<T>::min(), T Max_Val = std::numeric_limits<T>::max(),
+          // We currently want to offer this template only for arithmetic types.
+          typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+struct StrongAlias {
+    using value_type = T;
+    using type_tag = TypeTag;
+
+    constexpr void assert_value_domain()
+    {
+        assert(_value <= Max_Val);
+        assert(_value >= Min_Val);
+    }
+
+    constexpr StrongAlias() : _value(T{0})
+    {
+    }
+
+    explicit constexpr StrongAlias(T value) : _value(value)
+    {
+        assert_value_domain();
+    }
+
+    template <typename S,
+              typename = std::enable_if_t<
+                  !std::is_same_v<T, S> && std::is_integral_v<S>>>
+    explicit constexpr StrongAlias(S value)
+    {
+        REPA_ON_DEBUG(typedef std::uint64_t MaxType);
+        REPA_ON_DEBUG(typedef std::int64_t MinType);
+        // Either T has a larger domain than S or runtime check if "value" fits
+        // into T.
+        assert(static_cast<MaxType>(std::numeric_limits<T>::max())
+                   >= static_cast<MaxType>(std::numeric_limits<S>::max())
+               || static_cast<MaxType>(std::numeric_limits<T>::max())
+                      >= static_cast<MaxType>(value));
+        assert(static_cast<MinType>(std::numeric_limits<T>::min())
+                   <= static_cast<MinType>(std::numeric_limits<S>::min())
+               || static_cast<MinType>(std::numeric_limits<T>::min())
+                      <= static_cast<MinType>(value));
+        _value = static_cast<T>(value);
+        assert_value_domain();
+    }
+
+    constexpr StrongAlias(const StrongAlias &) = default;
+    constexpr StrongAlias(StrongAlias &&) = default;
+    StrongAlias &operator=(const StrongAlias &) = default;
+    StrongAlias &operator=(StrongAlias &&) = default;
+
+    constexpr operator T() const
+    {
+        return _value;
+    }
+
+    // For-loops need this
+    StrongAlias operator++()
+    {
+        ++_value;
+        assert_value_domain();
+        return *this;
+    }
+
+    StrongAlias operator++(int)
+    {
+        auto tmp = *this;
+        _value++;
+        assert_value_domain();
+        return tmp;
+    }
+
+    StrongAlias &operator+=(const StrongAlias &other)
+    {
+        _value += other._value;
+        assert_value_domain();
+        return *this;
+    }
+
+    StrongAlias &operator-=(const StrongAlias &other)
+    {
+        _value -= other._value;
+        assert_value_domain();
+        return *this;
+    }
+
+    StrongAlias operator+(const StrongAlias &other) const
+    {
+        StrongAlias r{*this};
+        r += other;
+        return r;
+    }
+
+    StrongAlias operator-(const StrongAlias &other) const
+    {
+        StrongAlias r{*this};
+        r -= other;
+        return r;
+    }
+
+    bool operator==(const StrongAlias &other) const {
+        return _value == other._value;
+    }
+
+    bool operator!=(const StrongAlias &other) const {
+        return _value != other._value;
+    }
+
+    bool operator<=(const StrongAlias &other) const {
+        return _value <= other._value;
+    }
+
+    bool operator<(const StrongAlias &other) const {
+        return _value < other._value;
+    }
+
+    bool operator>=(const StrongAlias &other) const {
+        return _value >= other._value;
+    }
+    bool operator>(const StrongAlias &other) const {
+        return _value > other._value;
+    }
+
+    friend class boost::serialization::access;
+
+    template <class Archive>
+    void serialize(Archive &ar, const unsigned int file_version)
+    {
+        ar &_value;
+    }
+
+private:
+    T _value;
+};
+
+template <typename T>
+struct is_strong_alias_type {
+    static const bool value = false;
+};
+
+template <typename T, typename Tag>
+struct is_strong_alias_type<StrongAlias<T, Tag>> {
+    static const bool value = true;
+};
+
 /** Base type for Expression Templates in vec_arith.hpp
  */
 template <typename T, size_t N, typename Expr>
@@ -63,13 +219,6 @@ struct VecExpression {
         return static_cast<const Expr &>(*this)[i];
     }
 };
-
-namespace _impl_tt {
-template <typename T, typename...>
-struct head {
-    typedef T type;
-};
-} // namespace _impl_tt
 
 /** Behaves like a std::array.
  */
@@ -330,3 +479,19 @@ private:
 typedef IntegralRange<std::int_fast32_t, 0, 26> fs_neighidx;
 
 } // namespace repa
+
+template <typename T, typename Tag>
+struct std::common_type<repa::StrongAlias<T, Tag>, repa::StrongAlias<T, Tag>> {
+    typedef repa::StrongAlias<T, Tag> type;
+};
+
+template <typename T, typename Tag>
+struct std::hash<repa::StrongAlias<T, Tag>> {
+    auto operator()(const repa::StrongAlias<T, Tag> &val) const
+    {
+        return _hasher(static_cast<T>(val));
+    }
+
+private:
+    std::hash<T> _hasher;
+};
