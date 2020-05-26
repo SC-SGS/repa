@@ -467,7 +467,7 @@ void P4estGrid::_P4estGrid_impl::prepare_communication()
         case impl::CellType::boundary:
             // Collect send information of boundary cells (check all neighboring
             // cells for neighboring processes)
-            for (const auto neighcell : cell_info.neighbor) {
+            for (const auto &neighcell : cell_info.neighbor) {
                 const auto &neigh_info = m_p8est_cell_info[neighcell];
                 if (neigh_info.cell_type != impl::CellType::ghost)
                     continue;

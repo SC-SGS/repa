@@ -61,7 +61,7 @@ static void mark_new_owners_from_sendvolume(
         const auto &indices = indicess[set_num];
         const auto &n_value = new_values[set_num];
 
-        for (const auto i : indices)
+        for (const auto &i : indices)
             partition[i] = n_value;
     }
 }
