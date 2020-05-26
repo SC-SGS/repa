@@ -342,7 +342,7 @@ struct Vec : VecExpression<T, N, Vec<T, N>> {
     template <typename... Args,
               typename
               = std::enable_if_t<sizeof...(Args) == N
-                               && (std::is_convertible_v<Args, T> && ...)>>
+                                 && (std::is_convertible_v<Args, T> && ...)>>
     explicit constexpr Vec(Args... values) : m_data({{values...}})
     {
     }
