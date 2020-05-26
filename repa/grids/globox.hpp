@@ -51,9 +51,8 @@ public:
     using value_type = typename base_type::value_type;
     using difference_type = typename base_type::difference_type;
 
-    NeighborIterator() : cell(-1), idx(27), g(nullptr)
-    {
-    }
+    NeighborIterator() = delete;
+
     NeighborIterator(const GloBox *g, value_type cell, int start)
         : cell(cell), idx(start), g(g)
     {
@@ -169,7 +168,7 @@ struct GlobalBox {
     using NeighIt = NeighborIterator<GlobalBox>;
     boost::iterator_range<NeighIt> full_shell_neigh(index_type_1d index) const
     {
-        return {NeighIt(this, index, 0), NeighIt()};
+        return {NeighIt(this, index, 0), NeighIt(this, index, 27)};
     }
 
     /** Returns a range object that allows iterating over the full
@@ -178,7 +177,7 @@ struct GlobalBox {
     boost::iterator_range<NeighIt>
     full_shell_neigh_without_center(index_type_1d index) const
     {
-        return {NeighIt(this, index, 1), NeighIt()};
+        return {NeighIt(this, index, 1), NeighIt(this, index, 27)};
     }
 
     /** Returns the index of the cell at position "pos".
