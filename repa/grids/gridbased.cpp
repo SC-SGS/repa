@@ -240,8 +240,8 @@ Vec3d GridBasedGrid::get_subdomain_center()
     using namespace util::vector_arithmetic;
     Vec3d c{0., 0., 0.};
 
-    for (const auto i : util::range(n_local_cells()))
-        c += gbox.midpoint(cells[i]);
+    for (const auto i : cell_store.local_cells())
+        c += gbox.midpoint(cell_store.as_global_index(i));
     return c / static_cast<double>(n_local_cells());
 }
 

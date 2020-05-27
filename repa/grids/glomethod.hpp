@@ -24,6 +24,7 @@
 #include "pargrid.hpp"
 #include "util/initial_partitioning.hpp"
 #include "util/ioptional.hpp"
+#include "util/global_index_storage.hpp"
 #include <optional>
 #include <unordered_map>
 
@@ -63,10 +64,6 @@ struct GloMethod : public ParallelLCGrid {
 protected:
     virtual bool sub_repartition(CellMetric m, CellCellMetric ccm) = 0;
 
-    // Number of local cells
-    local_cell_index_type localCells;
-    // Number of ghost cells
-    ghost_cell_index_type ghostCells;
     /** All neighbor ranks (ranks of subdomains neighboring this subdomain)
      * Do not use raw access to this vector in the implementation of GloMethod.
      * Use n_neighbors() and neighbor_rank(rank_index_type) instead.
@@ -76,6 +73,7 @@ protected:
      * during initialization).
      */
     std::vector<rank_type> neighbors;
+
     // Communication descriptors
     std::vector<GhostExchangeDesc> exchangeVector;
 
@@ -86,14 +84,8 @@ protected:
     const util::InitialPartitionType initial_partitioning;
 
     // Stores the global index of local cells and the ghost cells of the
-    // subdomain associated to this process. This ordering is imposed via
-    // pargrid.hpp and ESPResSo.
-    std::vector<global_cell_index_type> cells;
-
-    // Stores the mapping of a global linearized index to a
-    // local linearized index or an ghost linearized index.
-    std::unordered_map<global_cell_index_type, local_or_ghost_cell_index_type>
-        global_to_local;
+    // subdomain associated to this process.
+    util::global_index_storage cell_store;
 
     // Called before init()
     // To override by subclasses if necessary
@@ -134,8 +126,6 @@ protected:
     // Reinitializes the subdomain and communication data structures
     // after repartitioning.
     void init(bool firstcall = false);
-
-    LocalIndexAsserter<GloMethod> index_convert;
 };
 } // namespace grids
 } // namespace repa

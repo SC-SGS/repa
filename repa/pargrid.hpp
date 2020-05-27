@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "common_types.hpp"
+#include "grids/util/simple_variant.hpp"
 
 #ifndef NDEBUG
 #define GLOBAL_HASH_NEEDED
@@ -78,87 +79,36 @@ typedef int rank_type;
 /** Index of a neighboring process (rank) (0..n_neighbors-1)
  * or the total number of neighbor ranks (n_neighbors).
  */
-using rank_index_type = StrongAlias<int, type_tags::RankIndex, -1>;
+using rank_index_type = StrongAlias<int, type_tags::RankIndex, 0>;
 
 /** Index of a local cell (0..n_local_cells-1) or the
  * total number of local cells (n_local_cells).
  */
-using local_cell_index_type = StrongAlias<int, type_tags::LocalCellIndex, -1>;
+using local_cell_index_type = StrongAlias<int, type_tags::LocalCellIndex>;
 
 /** Index of a ghost cell (0..n_ghost_cells-1) or the
  * total number of ghost cells (n_ghost_cells).
  */
-using ghost_cell_index_type = StrongAlias<int, type_tags::GhostCellIndex, -1>;
+using ghost_cell_index_type = StrongAlias<int, type_tags::GhostCellIndex>;
 
-/** Index of a local (0..n_local_cells-1) or
- * ghost cell
- * (n_local_cells..n_local_cells+n_ghost_cells-1)
- * or the total number of cells on this
- * process (n_local_cells + n_ghost_cells).
+/** Index of a local or ghost cell.
  */
-// using local_or_ghost_cell_index_type
-//    = simple_variant<local_cell_index_type, ghost_cell_index_type>;
 using local_or_ghost_cell_index_type
-    = StrongAlias<int, type_tags::LocalOrGhostCellIndex, -1>;
-
-template <typename T>
-struct LocalIndexAsserter {
-    LocalIndexAsserter(T &base) : base(base)
-    {
-    }
-
-    local_cell_index_type
-    local_index_only(const local_or_ghost_cell_index_type i)
-    {
-        assert(is_local(i));
-        return local_cell_index_type{
-            static_cast<local_or_ghost_cell_index_type::value_type>(i)};
-    }
-
-    /*
-    ghost_cell_index_type
-    ghost_index_only(const local_or_ghost_cell_index_type i)
-    {
-        assert(is_ghost(i));
-        return ghost_cell_index_type{
-            static_cast<local_or_ghost_cell_index_type::value_type>(i)};
-    }
-    */
-
-    local_or_ghost_cell_index_type
-    as_local_or_ghost_index(local_cell_index_type i)
-    {
-        return local_or_ghost_cell_index_type{
-            static_cast<local_cell_index_type::value_type>(i)};
-    }
-
-    local_or_ghost_cell_index_type
-    as_local_or_ghost_index(ghost_cell_index_type i)
-    {
-        return local_or_ghost_cell_index_type{
-            base.n_local_cells()
-            + static_cast<local_cell_index_type::value_type>(i)};
-    }
-
-    bool is_ghost(local_or_ghost_cell_index_type i)
-    {
-        return i >= base.n_local_cells();
-    }
-
-    bool is_local(local_or_ghost_cell_index_type i)
-    {
-        return i < base.n_local_cells();
-    }
-
-private:
-    T &base;
-};
+    = util::simple_variant<local_cell_index_type, ghost_cell_index_type>;
+// using local_or_ghost_cell_index_type
+//    = StrongAlias<int, type_tags::LocalOrGhostCellIndex, -1>;
 
 /** Global cell index (unique across all
  * processes) or the number total number of
  * cells across all processes.
  */
 using global_cell_index_type = StrongAlias<int, type_tags::GlobalCellIndex>;
+
+typedef std::function<std::vector<double>(void)> CellMetric;
+typedef std::function<double(local_cell_index_type,
+                             local_or_ghost_cell_index_type)>
+    CellCellMetric;
+typedef std::function<void(void)> Thunk;
 
 namespace grids {
 
@@ -174,7 +124,7 @@ namespace grids {
  */
 struct GhostExchangeDesc {
     rank_type dest; // Destination rank
-    std::vector<local_or_ghost_cell_index_type>
+    std::vector<ghost_cell_index_type>
         recv; // Ghost cell indices which are to be received
     std::vector<local_cell_index_type>
         send; // Local cell indices which are to be sent
@@ -183,7 +133,7 @@ struct GhostExchangeDesc {
     {
     }
     GhostExchangeDesc(rank_type dest,
-                      std::vector<local_or_ghost_cell_index_type> &&recv,
+                      std::vector<ghost_cell_index_type> &&recv,
                       std::vector<local_cell_index_type> &&send)
         : dest(dest), recv(std::move(recv)), send(std::move(send))
     {

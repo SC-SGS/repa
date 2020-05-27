@@ -39,7 +39,7 @@ test_exactly_one_assigned_process(const boost::mpi::communicator &comm,
                                   repa::grids::ParallelLCGrid *grid,
                                   const repa::Vec3d &pos)
 {
-    int cellidx;
+    repa::local_cell_index_type cellidx;
     bool has_cell = false;
     try {
         cellidx = grid->position_to_cell_index(pos);
@@ -50,12 +50,14 @@ test_exactly_one_assigned_process(const boost::mpi::communicator &comm,
 
     // Ensure a process claiming to be responsibe is indeed the owner.
     if (has_cell) {
-        BOOST_TEST(((0 <= cellidx) && (cellidx < grid->n_local_cells())));
+        BOOST_CHECK(grid->position_to_rank(pos) == comm.rank());
+        BOOST_CHECK((static_cast<int>(cellidx) >= 0
+                    && static_cast<int>(cellidx) < grid->n_local_cells()));
     }
 
     int nresp
         = boost::mpi::all_reduce(comm, has_cell ? 1 : 0, std::plus<int>{});
-    BOOST_TEST(nresp == 1);
+    BOOST_CHECK(nresp == 1);
 }
 
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)

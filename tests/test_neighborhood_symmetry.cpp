@@ -49,16 +49,25 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
          ++c) {
         for (int j = 0; j < 27; ++j) {
             const auto d = grid->cell_neighbor_index(c, j);
+
             // Test if "d" is valid.
-            BOOST_TEST(
-                ((0 <= d)
-                 && (d <= grid->n_local_cells() + grid->n_ghost_cells())));
+            d.visit(
+                [grid](repa::local_cell_index_type li) {
+                    BOOST_CHECK(
+                        (static_cast<int>(li) >= 0
+                         && static_cast<int>(li) < grid->n_local_cells()));
+                },
+                [grid](repa::ghost_cell_index_type gi) {
+                    BOOST_CHECK(
+                        (static_cast<int>(gi) >= 0
+                         && static_cast<int>(gi) < grid->n_ghost_cells()));
+                });
 
             // If "d" is a inner cell and neighbors "c", then "c" must also
-            // neighbor "d". -- Manual convert local_or_ghost -> local
-            if (d < grid->n_local_cells()) {
-                BOOST_TEST(
-                    has_neighbor(grid, repa::local_cell_index_type{d}, c));
+            // neighbor "d".
+            if (d.is<repa::local_cell_index_type>()) {
+                BOOST_CHECK(
+                    has_neighbor(grid, d.as<repa::local_cell_index_type>(), c));
             }
         }
     }

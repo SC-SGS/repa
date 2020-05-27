@@ -33,11 +33,36 @@ struct default_empty_value;
 
 template <>
 struct default_empty_value<rank_type> {
+    typedef rank_type type;
+    // Check that negative value can be held
+    static_assert(std::numeric_limits<type>::min() < 0);
     // Default empty value for ranks: -1
     // Be careful. MPI might assign a meaning to "-1". This value cannot be
     // stored in an ioptional.
-    static const rank_type value = rank_type{-1};
+    static const type value = type{-1};
 };
+
+template <>
+struct default_empty_value<local_cell_index_type> {
+    typedef local_cell_index_type::value_type type;
+    // Check that negative value can be held
+    static_assert(std::numeric_limits<type>::min() < 0);
+    // Negative cell indices are invalid
+    // Use ::value_type to allow an in-class initializer
+    static const type value = type{-0xff};
+};
+
+template <>
+struct default_empty_value<ghost_cell_index_type> {
+    typedef ghost_cell_index_type::value_type type;
+
+    // Check that negative value can be held
+    static_assert(std::numeric_limits<type>::min() < 0);
+    // Negative cell indices are invalid
+    // Use ::value_type to allow an in-class initializer
+    static const type value = type{-0xfe};
+};
+
 
 template <typename T>
 inline constexpr T default_empty_value_v = default_empty_value<T>::value;
@@ -53,21 +78,21 @@ inline constexpr T default_empty_value_v = default_empty_value<T>::value;
  * if you do not rely on exceptions. If you do rely on optional throwing
  * exceptions on erroneous value() calls, don't use this class.
  */
-template <typename T, T EmptyValue = impl::default_empty_value_v<T>>
+template <typename T, typename EmptyValueT = impl::default_empty_value<T>>
 struct ioptional {
 
-    constexpr ioptional() : _value(EmptyValue)
+    constexpr ioptional() : _value(EmptyValueT::value)
     {
     }
     constexpr ioptional(const T &t) : _value(t)
     {
         // Guard user from storing value with special meaning
-        assert(_value != EmptyValue);
+        assert(_value != EmptyValueT::value);
     }
     constexpr ioptional(T &&t) : _value(std::forward<T>(t))
     {
         // Guard user from storing value with special meaning
-        assert(_value != EmptyValue);
+        assert(_value != EmptyValueT::value);
     }
     constexpr ioptional(const ioptional &) = default;
     constexpr ioptional(ioptional &&) = default;
@@ -78,7 +103,7 @@ struct ioptional {
      */
     constexpr bool has_value() const
     {
-        return _value != EmptyValue;
+        return _value != EmptyValueT::value;
     }
 
     constexpr explicit operator bool() const
@@ -107,7 +132,7 @@ struct ioptional {
     constexpr T ensure_value() const
     {
         if (!has_value())
-            std::abort();
+            ensure_not_reached();
         return _value;
     }
 
@@ -144,7 +169,7 @@ struct ioptional {
      */
     constexpr void reset()
     {
-        _value = EmptyValue;
+        _value = EmptyValueT::value;
     }
 
     /** Returns true if both ioptionals are empty or hold the same value.

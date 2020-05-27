@@ -60,11 +60,11 @@ static void test_boundary_has_comm(repa::grids::ParallelLCGrid *grid)
     for (auto c = repa::local_cell_index_type{0}; c < grid->n_local_cells();
          ++c) {
         for (int j = 0; j < 27; ++j) {
-            int d = grid->cell_neighbor_index(c, j);
-
-            if (d >= grid->n_local_cells()) {
-                check_is_send_cell(c, gexds);
-            }
+            grid->cell_neighbor_index(c, j)
+                .visit_if<repa::local_cell_index_type>(
+                    [&](repa::local_cell_index_type neighidx) {
+                        check_is_send_cell(neighidx, gexds);
+                    });
         }
     }
 }
@@ -75,14 +75,14 @@ static void test_ghost_has_comm(repa::grids::ParallelLCGrid *grid)
     std::vector<bool> used(grid->n_ghost_cells(), false);
 
     for (const auto &g : grid->get_boundary_info()) {
-        for (int ghost : g.recv) {
+        for (const auto &ghost : g.recv) {
             // Ensure valid ghost cell index
             BOOST_TEST(
-                ((ghost >= grid->n_local_cells())
-                 && (ghost < grid->n_local_cells() + grid->n_ghost_cells())));
+                ((ghost.value() >= 0)
+                 && (ghost.value() < grid->n_ghost_cells())));
             // Each ghost cell can only have one receive operation.
-            BOOST_TEST(!used[ghost - grid->n_local_cells()]);
-            used.at(ghost - grid->n_local_cells()) = true;
+            BOOST_TEST(!used[ghost.value()]);
+            used.at(ghost.value()) = true;
         }
     }
     BOOST_TEST(all_true(std::begin(used), std::end(used)));
@@ -96,11 +96,9 @@ static void test_ghost_has_local(repa::grids::ParallelLCGrid *grid)
     for (auto c = repa::local_cell_index_type{0}; c < grid->n_local_cells();
          ++c) {
         for (int j = 0; j < 27; ++j) {
-            int d = grid->cell_neighbor_index(c, j);
-
-            if (d >= grid->n_local_cells()) {
-                used[d - grid->n_local_cells()] = true;
-            }
+            grid->cell_neighbor_index(c, j)
+                .visit_if<repa::ghost_cell_index_type>(
+                    [&](const auto ghostidx) { used[ghostidx] = true; });
         }
     }
     BOOST_TEST(all_true(std::begin(used), std::end(used)));

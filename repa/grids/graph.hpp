@@ -39,7 +39,7 @@ private:
     virtual util::ioptional<rank_type>
     rank_of_cell(global_cell_index_type idx) const override
     {
-        assert(idx >= 0 && idx < gbox.ncells());
+        assert(gbox.is_valid_global_index(idx));
         assert(partition[idx] >= 0 && partition[idx] < comm.size());
         return partition[idx];
     }

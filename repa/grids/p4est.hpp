@@ -54,7 +54,6 @@ struct P4estGrid : public ParallelLCGrid {
     global_hash(local_or_ghost_cell_index_type cellidx) override;
 
 private:
-    LocalIndexAsserter<P4estGrid> index_convert;
     struct _P4estGrid_impl;
     std::unique_ptr<_P4estGrid_impl> _impl;
 };

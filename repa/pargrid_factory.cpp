@@ -53,7 +53,7 @@ ParallelLCGrid *make_pargrid_impl(GridType gt,
         break;
 
     case GridType::CART:
-        r = new CartGrid(comm, box_size, min_cell_size);
+        r = new CartGrid(comm, box_size, min_cell_size, ep);
         break;
 
     case GridType::GRAPH:

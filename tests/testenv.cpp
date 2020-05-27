@@ -40,7 +40,8 @@ static void repartition_helper(repa::grids::ParallelLCGrid *grid,
                                testenv::TEnv::MetricFunc f)
 {
     auto noop = []() {};
-    auto ccm = [](int, int) { return 1.0; };
+    auto ccm = [](repa::local_cell_index_type,
+                  repa::local_or_ghost_cell_index_type) { return 1.0; };
     std::vector<double> metric_values
         = (f ? f : get_random_vec)(static_cast<size_t>(grid->n_local_cells()));
     auto metric = [&metric_values]() { return metric_values; };

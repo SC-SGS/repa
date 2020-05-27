@@ -446,6 +446,17 @@ T1 sumOfAbs(const VecExpression<T1, N, Expr1> &v)
     return result;
 }
 
+/** Product of the values of a Vector.
+ */
+template <typename T1, size_t N, typename Expr1>
+T1 product(const VecExpression<T1, N, Expr1> &v)
+{
+    T1 result{1};
+    for (size_t i = 0; i < N; ++i)
+        result *= v[i];
+    return result;
+}
+
 } // namespace vector_arithmetic
 } // namespace util
 } // namespace repa

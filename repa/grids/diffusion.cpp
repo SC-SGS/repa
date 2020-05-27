@@ -235,7 +235,7 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
           diff_variants::FlowCalcKind::WILLEBEEK))
 {
     // Initial partitioning
-    partition.resize(gbox.ncells());
+    partition.resize(gbox.global_cells().size());
     util::make_initial_partitioner(gbox, comm_cart)
         .apply(initial_partitioning,
                [this](global_cell_index_type idx, rank_type r) {
@@ -277,10 +277,15 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
         // Additional cell communication induced if this cell is sent away
         int nadditional_comm = 0;
         for (global_cell_index_type neighCell :
-             gbox.full_shell_neigh_without_center(cells[borderCells[i]])) {
-            if (partition[neighCell] == comm_cart.rank()
+             gbox.full_shell_neigh_without_center(
+                 cell_store.as_global_index(borderCells[i]))) {
+            // Count all local, non-border cells.
+            if (partition[neighCell] != comm_cart.rank())
+                continue;
+            if (const auto local_index = cell_store.as_local_index(neighCell);
+                local_index // Is a local and not a ghost cell
                 && std::find(std::begin(borderCells), std::end(borderCells),
-                             global_to_local.at(neighCell))
+                             *local_index)
                        != std::end(borderCells)) {
                 nadditional_comm++;
             }
@@ -319,7 +324,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
                 continue;
 
             if (weights[cidx] <= send_loads[neighidx]) {
-                to_send[neighidx].push_back(cells[cidx]);
+                to_send[neighidx].push_back(cell_store.as_global_index(cidx));
                 send_loads[neighidx] -= weights[cidx];
                 // This cell is done. Continue with the next.
                 break;

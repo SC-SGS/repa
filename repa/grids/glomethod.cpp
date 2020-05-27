@@ -37,12 +37,12 @@ namespace grids {
 
 local_cell_index_type GloMethod::n_local_cells() const
 {
-    return localCells;
+    return local_cell_index_type{cell_store.local_cells().size()};
 }
 
 ghost_cell_index_type GloMethod::n_ghost_cells() const
 {
-    return ghostCells;
+    return ghost_cell_index_type{cell_store.ghost_cells().size()};
 }
 
 rank_index_type GloMethod::n_neighbors() const
@@ -69,8 +69,8 @@ Vec3i GloMethod::grid_size() const
 local_or_ghost_cell_index_type
 GloMethod::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
 {
-    assert(cellidx >= 0 && cellidx < n_local_cells());
-    return global_to_local[gbox.neighbor(cells[cellidx], neigh)];
+    return cell_store.as_local_or_ghost_index(
+        gbox.neighbor(cell_store.as_global_index(cellidx), neigh));
 }
 
 std::vector<GhostExchangeDesc> GloMethod::get_boundary_info()
@@ -81,11 +81,10 @@ std::vector<GhostExchangeDesc> GloMethod::get_boundary_info()
 local_cell_index_type GloMethod::position_to_cell_index(Vec3d pos)
 {
     try {
-        const auto c = global_to_local.at(gbox.cell_at_pos(pos));
-        // FIXME: Explicitly coded ghost cells
-        if (c >= n_local_cells())
+        const auto c = cell_store.as_local_index(gbox.cell_at_pos(pos));
+        if (!c)
             throw std::domain_error("Particle not in local subdomain");
-        return index_convert.local_index_only(c);
+        return *c;
     }
     catch (const std::out_of_range &e) {
         throw std::domain_error("Particle not in local subdomain");
@@ -145,8 +144,7 @@ GloMethod::GloMethod(const boost::mpi::communicator &comm,
       gbox(box_size, min_cell_size),
       initial_partitioning(ep.init_part
                                ? util::parse_part_type(*ep.init_part)
-                               : util::InitialPartitionType::CARTESIAN3D),
-      index_convert(*this)
+                               : util::InitialPartitionType::CARTESIAN3D)
 {
 }
 
@@ -164,26 +162,14 @@ GloMethod::~GloMethod()
  */
 void GloMethod::init(bool firstcall)
 {
-    const global_cell_index_type nglocells = gbox.ncells();
-
     pre_init(firstcall);
-
-    localCells = local_cell_index_type{0};
-    ghostCells = ghost_cell_index_type{0};
-    cells.clear();
-    global_to_local.clear();
+    cell_store.clear();
     neighbors.clear();
 
     // Extract the local cells from "partition".
-    for (const global_cell_index_type i : util::range(nglocells)) {
+    for (const auto i : gbox.global_cells()) {
         if (auto r = rank_of_cell(i); r && *r == comm_cart.rank()) {
-            // Vector of own cells
-            cells.push_back(i);
-            // Index mapping from global to local
-            global_to_local[i]
-                = index_convert.as_local_or_ghost_index(localCells);
-            // Number of own cells
-            localCells++;
+            cell_store.push_back_local(i);
         }
     }
 
@@ -197,9 +183,10 @@ void GloMethod::init(bool firstcall)
         sendvol_per_rank(comm_cart.size());
 
     // Step 1. Determine ghost cells and communication volume
-    for (const local_cell_index_type i : util::range(localCells)) {
+    for (const auto i : cell_store.local_cells()) {
         for (const global_cell_index_type neighborIndex :
-             gbox.full_shell_neigh_without_center(cells[i])) {
+             gbox.full_shell_neigh_without_center(
+                 cell_store.as_global_index(i))) {
             const rank_type owner = rank_of_cell(neighborIndex).value();
 
             if (owner == comm_cart.rank())
@@ -208,14 +195,13 @@ void GloMethod::init(bool firstcall)
             init_new_foreign_cell(i, neighborIndex, owner);
 
             // Register "neighborIndex" as ghost cell
-            if (global_to_local.find(neighborIndex)
-                == std::end(global_to_local)) {
-                cells.push_back(neighborIndex);
-                global_to_local[neighborIndex]
-                    = index_convert.as_local_or_ghost_index(ghostCells);
-                ghostCells++;
+            if (!cell_store.holds_global_index(neighborIndex)) {
+                cell_store.push_back_ghost(neighborIndex);
             }
             else {
+                // Cannot be local cell, skipped above if this rank is owner.
+                assert(cell_store.as_local_or_ghost_index(neighborIndex)
+                           .is<ghost_cell_index_type>());
                 // Must have been registered before as ghost cell to be received
                 // from "owner".
                 assert(std::find(std::begin(recvvol_per_rank[owner]),
@@ -227,15 +213,12 @@ void GloMethod::init(bool firstcall)
             util::push_back_unique(neighbors, owner);
 
             util::push_back_unique(recvvol_per_rank[owner], neighborIndex);
-            util::push_back_unique(sendvol_per_rank[owner], cells[i]);
+            util::push_back_unique(sendvol_per_rank[owner],
+                                   cell_store.as_global_index(i));
         }
     }
 
     // Step 2. Sort the indices globally uniquely and map them to local ones.
-    auto glo_to_locghost
-        = [this](auto gloidx) { return global_to_local[gloidx]; };
-    auto locghost_to_loc
-        = [this](auto i) { return index_convert.local_index_only(i); };
     exchangeVector.clear();
     for (rank_type i = 0; i < comm_cart.size(); ++i) {
         // Move it so that it is directly deleted at the end of this scope
@@ -249,13 +232,14 @@ void GloMethod::init(bool firstcall)
 
         exchangeVector.emplace_back(
             i,
-            boost::copy_range<std::vector<local_or_ghost_cell_index_type>>(
+            boost::copy_range<std::vector<ghost_cell_index_type>>(
                 boost::sort(recv)
-                | boost::adaptors::transformed(glo_to_locghost)),
+                | boost::adaptors::transformed(
+                    cell_store.global_to_ghost_transformer())),
             boost::copy_range<std::vector<local_cell_index_type>>(
                 boost::sort(send)
-                | boost::adaptors::transformed(glo_to_locghost)
-                | boost::adaptors::transformed(locghost_to_loc)));
+                | boost::adaptors::transformed(
+                    cell_store.global_to_local_transformer())));
     }
 
     post_init(firstcall);
@@ -265,7 +249,7 @@ global_cell_index_type
 GloMethod::global_hash(local_or_ghost_cell_index_type cellidx)
 {
     // No need to define this away. Does currently not require extra data.
-    return cells[cellidx];
+    return cell_store.as_global_index(cellidx);
 }
 
 } // namespace grids

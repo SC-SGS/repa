@@ -119,13 +119,13 @@ static void test(const testenv::TEnv &t,
 
     // Validity of cell indices
     for (const auto &g : gexds) {
-        for (auto sendc : g.send) {
-            BOOST_TEST(((0 <= sendc) && (sendc < grid->n_local_cells())));
+        for (const auto &sendc : g.send) {
+            BOOST_TEST(((0 <= sendc.value())
+                        && (sendc.value() < grid->n_local_cells())));
         }
-        for (auto recvc : g.recv) {
-            BOOST_TEST(
-                ((grid->n_local_cells() <= recvc)
-                 && (recvc < grid->n_local_cells() + grid->n_ghost_cells())));
+        for (const auto &recvc : g.recv) {
+            BOOST_TEST(((recvc.value() >= 0)
+                        && (recvc.value() < grid->n_ghost_cells())));
         }
     }
 
@@ -139,10 +139,7 @@ static void test(const testenv::TEnv &t,
         auto it
             = std::find_if(std::begin(gs), std::end(gs),
                            [rank](const auto &g) { return g.dest == rank; });
-        // BOOST_TEST((it != std::end(gs)));
-        if (it == std::end(gs)) {
-            abort();
-        }
+        BOOST_TEST((it != std::end(gs)));
         return *it;
     };
 

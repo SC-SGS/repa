@@ -60,7 +60,9 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
     auto nlc = grid->n_local_cells();
 
     auto all_ones = [nlc]() { return std::vector<double>(nlc, 1.0); };
-    auto constant_one = [](int i, int j) { return 1.0; };
+    auto constant_one
+        = [](repa::local_cell_index_type i,
+             repa::local_or_ghost_cell_index_type j) { return 1.0; };
 
     auto cc = CallCounter{};
     bool grid_changed = false;

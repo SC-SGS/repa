@@ -27,6 +27,7 @@
 #include "_compat.hpp"
 #include "util/linearize.hpp"
 #include "util/neighbor_offsets.hpp"
+#include "util/range.hpp"
 
 namespace repa {
 namespace grids {
@@ -193,11 +194,16 @@ struct GlobalBox {
         return linearize(cell);
     }
 
-    /** Returns the number of cells
+    /** Returns an iterator range to all global cell indices
      */
-    inline index_type_1d ncells() const noexcept
+    inline auto global_cells() const
     {
-        return index_type_1d{m_cell_grid[0] * m_cell_grid[1] * m_cell_grid[2]};
+        return util::range(ncells());
+    }
+
+    inline bool is_valid_global_index(index_type_1d i) const
+    {
+        return i >= 0 && i < ncells();
     }
 
     /** Returns the resulting cell size, greater or equal to max_range.
@@ -238,6 +244,14 @@ private:
     {
         return util::unlinearize(pos, m_cell_grid);
     }
+
+    /** Returns the number of cells
+     */
+    inline index_type_1d ncells() const noexcept
+    {
+        return index_type_1d{m_cell_grid[0] * m_cell_grid[1] * m_cell_grid[2]};
+    }
+
 }; // namespace globox
 
 } // namespace globox

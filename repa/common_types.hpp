@@ -60,6 +60,11 @@ namespace __ensure_impl {
                              : __ensure_impl::__ensure_fail(                   \
                                  #expr, __FILE__, __LINE__, __func__, msg))
 
+/** Aborts program execution.
+ */
+#define ensure_not_reached()                                                   \
+    (ensure(false, "Logic error. Must not be reached."))
+
 /** Strong alias type for "T".
  * Use a unique, empty struct as "TypeTag".
  * "Min_Val" and "Max_Val" can be used to limit the allowed range of values.
@@ -148,6 +153,12 @@ struct StrongAlias {
     }
 
     constexpr operator T() const
+    {
+        assert(_initialized);
+        return _value;
+    }
+
+    constexpr T value() const
     {
         assert(_initialized);
         return _value;
@@ -486,10 +497,6 @@ using Vec3 = Vec<T, 3>;
 typedef Vec3<int> Vec3i;
 typedef Vec3<double> Vec3d;
 
-typedef std::function<std::vector<double>(void)> CellMetric;
-typedef std::function<double(int, int)> CellCellMetric;
-typedef std::function<void(void)> Thunk;
-
 /** Type that behaves like an integral POD and can be restricted to a
  * range. Range is tested at construction time. Should not compile to any
  * overhead on reasonable compilers and optimization levels.
@@ -549,14 +556,17 @@ typedef IntegralRange<std::int_fast32_t, 0, 26> fs_neighidx;
 
 } // namespace repa
 
-template <typename T, typename Tag>
-struct std::common_type<repa::StrongAlias<T, Tag>, repa::StrongAlias<T, Tag>> {
-    typedef repa::StrongAlias<T, Tag> type;
+/*
+template <typename T, typename Tag, T Min, T Max>
+struct std::common_type<repa::StrongAlias<T, Tag, Min, Max>,
+repa::StrongAlias<T, Tag, Min, Max>> { typedef repa::StrongAlias<T, Tag, Min,
+Max> type;
 };
+*/
 
-template <typename T, typename Tag>
-struct std::hash<repa::StrongAlias<T, Tag>> {
-    auto operator()(const repa::StrongAlias<T, Tag> &val) const
+template <typename T, typename Tag, T Min, T Max>
+struct std::hash<repa::StrongAlias<T, Tag, Min, Max>> {
+    auto operator()(const repa::StrongAlias<T, Tag, Min, Max> &val) const
     {
         return _hasher(static_cast<T>(val));
     }

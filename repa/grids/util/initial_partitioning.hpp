@@ -40,13 +40,15 @@ void init_part_linear(const GBox &gbox,
                       const boost::mpi::communicator &comm,
                       AssignFunc &&assign_cell)
 {
-    auto nglobalcells = gbox.ncells();
+    auto nglobalcells = gbox.global_cells().size();
 
-    local_cell_index_type ncells_per_proc = static_cast<local_cell_index_type>(
-        std::ceil(static_cast<double>(nglobalcells) / comm.size()));
+    const auto ncells_per_proc
+        = std::round(static_cast<double>(nglobalcells) / comm.size());
 
-    for (const global_cell_index_type i : range(nglobalcells)) {
-        assign_cell(i, rank_type{i / ncells_per_proc});
+    for (const auto i : gbox.global_cells()) {
+        assign_cell(
+            i, std::min<rank_type>(static_cast<rank_type>(i / ncells_per_proc),
+                                   comm.size() - 1));
     }
 }
 
@@ -97,7 +99,6 @@ void init_part_cartesian3d(const GBox &gbox,
     using util::vector_arithmetic::static_cast_vec;
 
     assert(comm.has_cartesian_topology());
-    const auto nglobalcells = gbox.ncells();
     const auto cellgrid = gbox.grid_size();
 
     Vec3i dims{0, 0, 0};
@@ -105,7 +106,7 @@ void init_part_cartesian3d(const GBox &gbox,
     const __cart_impl::Cart_CellProcessIndexConverter to_procidx{cellgrid,
                                                                  dims};
 
-    for (const global_cell_index_type i : range(nglobalcells)) {
+    for (const auto i : gbox.global_cells()) {
         const auto procidx = to_procidx(util::unlinearize(i, cellgrid));
         int rank;
         MPI_Cart_rank(comm, procidx.data(), &rank);
@@ -119,12 +120,11 @@ void init_part_cartesian1d(const GBox &gbox,
                            AssignFunc &&assign_cell)
 {
     assert(comm.has_cartesian_topology());
-    const auto nglobalcells = gbox.ncells();
     const auto cellgrid = gbox.grid_size();
 
     const double layers_per_proc = cellgrid[0] / comm.size();
 
-    for (const global_cell_index_type i : range(nglobalcells)) {
+    for (const auto i : gbox.global_cells()) {
         const int xindex = util::unlinearize(i, gbox.grid_size())[0];
         // Use std::round to get a more equal distribution.
         const int procidx

@@ -61,7 +61,7 @@ protected:
     virtual util::ioptional<rank_type>
     rank_of_cell(global_cell_index_type idx) const override
     {
-        assert(idx >= 0 && idx < gbox.ncells());
+        assert(gbox.is_valid_global_index(idx));
         auto r = partition[idx];
         assert(!r.has_value() || (*r >= 0 && *r < comm.size()));
         return r;

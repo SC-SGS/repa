@@ -49,7 +49,7 @@ Graph::Graph(const boost::mpi::communicator &comm,
     : GloMethod(comm, box_size, min_cell_size, ep)
 {
     // Initial partitioning
-    partition.resize(gbox.ncells());
+    partition.resize(gbox.global_cells().size());
     util::make_initial_partitioner(gbox, comm_cart)
         .apply(initial_partitioning,
                [this](global_cell_index_type idx, rank_type r) {
@@ -76,7 +76,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     const auto vertex_weights = m();
     assert(vertex_weights.size() == n_local_cells());
 
-    idx_t nglocells = static_cast<idx_t>(gbox.ncells());
+    idx_t nglocells = static_cast<idx_t>(gbox.global_cells().size());
     idx_t ncells_per_proc = static_cast<idx_t>(
         std::ceil(static_cast<double>(nglocells) / comm_cart.size()));
 
@@ -125,11 +125,11 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     // Sending vertex weights
     std::vector<boost::mpi::request> sreq;
     std::vector<std::vector<Weights>> my_weights(comm_cart.size());
-    for (const auto i : util::range(localCells)) {
+    for (const auto i : cell_store.local_cells()) {
         // "Rank" is responsible for cell "gidx" / "i" (local)
         // during graph parititioning
-        global_cell_index_type gidx = cells[i];
-        rank_type rank = gidx / ncells_per_proc;
+        const global_cell_index_type gidx = cell_store.as_global_index(i);
+        const rank_type rank = gidx / ncells_per_proc;
 
         Weights w;
         w[0] = static_cast<idx_t>(vertex_weights[i]);
@@ -141,10 +141,12 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
             w[n] = static_cast<idx_t>(ccm(i, neigh)) * w_fac + 1;
 #ifdef GRAPH_DEBUG
             assert(w[n] > 0);
-            if (neigh < n_local_cells()) {
+            if (neigh.is<local_cell_index_type>()) {
                 // Local symmetry -- only ensures local symmetry, however,
                 // symmetry is also required for cross-boundary edges.
-                assert(w[n] == ccm(neigh, i) * w_fac + 1);
+                assert(w[n]
+                       == ccm(neigh.as<local_cell_index_type>(), i) * w_fac
+                              + 1);
             }
 #endif
         }
