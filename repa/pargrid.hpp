@@ -78,21 +78,16 @@ typedef int rank_type;
 /** Index of a neighboring process (rank) (0..n_neighbors-1)
  * or the total number of neighbor ranks (n_neighbors).
  */
-// typedef int rank_index_type;
-
 using rank_index_type = StrongAlias<int, type_tags::RankIndex, -1>;
-// used as conversion
 
 /** Index of a local cell (0..n_local_cells-1) or the
  * total number of local cells (n_local_cells).
  */
-// typedef int local_cell_index_type;
 using local_cell_index_type = StrongAlias<int, type_tags::LocalCellIndex, -1>;
 
 /** Index of a ghost cell (0..n_ghost_cells-1) or the
  * total number of ghost cells (n_ghost_cells).
  */
-// typedef int ghost_cell_index_type;
 using ghost_cell_index_type = StrongAlias<int, type_tags::GhostCellIndex, -1>;
 
 /** Index of a local (0..n_local_cells-1) or
@@ -103,7 +98,6 @@ using ghost_cell_index_type = StrongAlias<int, type_tags::GhostCellIndex, -1>;
  */
 // using local_or_ghost_cell_index_type
 //    = simple_variant<local_cell_index_type, ghost_cell_index_type>;
-// typedef int local_or_ghost_cell_index_type;
 using local_or_ghost_cell_index_type
     = StrongAlias<int, type_tags::LocalOrGhostCellIndex, -1>;
 
@@ -164,7 +158,6 @@ private:
  * processes) or the number total number of
  * cells across all processes.
  */
-// typedef int global_cell_index_type;
 using global_cell_index_type = StrongAlias<int, type_tags::GlobalCellIndex>;
 
 namespace grids {
