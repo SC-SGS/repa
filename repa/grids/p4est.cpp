@@ -628,9 +628,9 @@ P4estGrid::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
             .neighbor[to_p4est_order[neigh]];
 }
 
-std::vector<GhostExchangeDesc> P4estGrid::get_boundary_info()
+util::const_span<GhostExchangeDesc> P4estGrid::get_boundary_info()
 {
-    return _impl->m_exdescs;
+    return util::make_const_span(_impl->m_exdescs);
 }
 
 local_cell_index_type P4estGrid::position_to_cell_index(Vec3d pos)

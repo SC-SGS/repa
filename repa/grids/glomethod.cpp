@@ -67,9 +67,9 @@ GloMethod::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
         gbox.neighbor(cell_store.as_global_index(cellidx), neigh));
 }
 
-std::vector<GhostExchangeDesc> GloMethod::get_boundary_info()
+util::const_span<GhostExchangeDesc> GloMethod::get_boundary_info()
 {
-    return exchangeVector;
+    return util::make_const_span(exchangeVector);
 }
 
 local_cell_index_type GloMethod::position_to_cell_index(Vec3d pos)

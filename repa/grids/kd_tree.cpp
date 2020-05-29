@@ -352,9 +352,9 @@ KDTreeGrid::cell_neighbor_index(local_cell_index_type cellidx,
     return cell_store.as_local_or_ghost_index(neighidx);
 }
 
-std::vector<GhostExchangeDesc> KDTreeGrid::get_boundary_info()
+util::const_span<GhostExchangeDesc> KDTreeGrid::get_boundary_info()
 {
-    return m_boundary_info;
+    return util::make_const_span(m_boundary_info);
 }
 
 local_cell_index_type KDTreeGrid::position_to_cell_index(Vec3d pos)

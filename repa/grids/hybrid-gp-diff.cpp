@@ -77,7 +77,7 @@ HybridGPDiff::cell_neighbor_index(local_cell_index_type cellidx,
     return active_implementation->cell_neighbor_index(cellidx, neigh);
 }
 
-std::vector<GhostExchangeDesc> HybridGPDiff::get_boundary_info()
+util::const_span<GhostExchangeDesc> HybridGPDiff::get_boundary_info()
 {
     return active_implementation->get_boundary_info();
 }

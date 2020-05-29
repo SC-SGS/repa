@@ -195,7 +195,7 @@ struct ParallelLCGrid {
     /** Returns the ghost exchange info.
      * @see GhostExchangeDesc
      */
-    virtual std::vector<GhostExchangeDesc> get_boundary_info() = 0;
+    virtual util::const_span<GhostExchangeDesc> get_boundary_info() = 0;
 
     /** Returns the index of a local cell at position "pos".
      * @throws std::domain_error if position is not in the local subdomain.

@@ -78,7 +78,8 @@ static void test(const testenv::TEnv &t,
                  repa::GridType gt)
 {
     const auto &comm = t.comm();
-    const auto gexds = grid->get_boundary_info();
+    const std::vector<repa::grids::GhostExchangeDesc> gexds{
+        grid->get_boundary_info().begin(), grid->get_boundary_info().end()};
     const auto neighborranks = grid->neighbor_ranks();
 
     // Validity of exchange descriptors

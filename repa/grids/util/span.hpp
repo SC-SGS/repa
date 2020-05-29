@@ -79,7 +79,7 @@ struct span {
         return std::make_reverse_iterator(begin());
     }
 
-    constexpr reference operator[](size_type i)
+    constexpr reference operator[](size_type i) const
     {
         assert(_data);
         assert(i < _size);

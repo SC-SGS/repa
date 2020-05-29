@@ -51,7 +51,7 @@ public:
     virtual local_or_ghost_cell_index_type
     cell_neighbor_index(local_cell_index_type cellidx,
                         fs_neighidx neigh) override;
-    virtual std::vector<GhostExchangeDesc> get_boundary_info() override;
+    virtual util::const_span<GhostExchangeDesc> get_boundary_info() override;
     virtual local_cell_index_type position_to_cell_index(Vec3d pos) override;
     virtual rank_type position_to_rank(Vec3d pos) override;
     virtual bool

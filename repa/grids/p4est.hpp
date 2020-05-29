@@ -39,7 +39,7 @@ struct P4estGrid : public ParallelLCGrid {
     local_or_ghost_cell_index_type
     cell_neighbor_index(local_cell_index_type cellidx,
                         fs_neighidx neigh) override;
-    std::vector<GhostExchangeDesc> get_boundary_info() override;
+    util::const_span<GhostExchangeDesc> get_boundary_info() override;
     local_cell_index_type position_to_cell_index(Vec3d pos) override;
     rank_type position_to_rank(Vec3d pos) override;
     bool repartition(CellMetric m,
