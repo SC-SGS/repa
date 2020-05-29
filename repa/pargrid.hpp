@@ -95,8 +95,6 @@ using ghost_cell_index_type = StrongAlias<int, type_tags::GhostCellIndex>;
  */
 using local_or_ghost_cell_index_type
     = util::simple_variant<local_cell_index_type, ghost_cell_index_type>;
-// using local_or_ghost_cell_index_type
-//    = StrongAlias<int, type_tags::LocalOrGhostCellIndex, -1>;
 
 /** Global cell index (unique across all
  * processes) or the number total number of
