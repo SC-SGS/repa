@@ -66,7 +66,6 @@ namespace type_tags {
 TYPE_TAG_DEFINE(RankIndex);
 TYPE_TAG_DEFINE(LocalCellIndex);
 TYPE_TAG_DEFINE(GhostCellIndex);
-TYPE_TAG_DEFINE(LocalOrGhostCellIndex);
 TYPE_TAG_DEFINE(GlobalCellIndex);
 
 } // namespace type_tags
