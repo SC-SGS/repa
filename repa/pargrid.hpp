@@ -224,19 +224,10 @@ struct ParallelLCGrid {
     repartition(CellMetric m, CellCellMetric ccm, Thunk exchange_start_callback)
         = 0;
 
-    struct UnknwonCommandError : public std::exception {
-        UnknwonCommandError(std::string s)
-            : w(std::string("Could not interpret command `") + s
-                + std::string("'"))
+    struct UnknwonCommandError : public std::runtime_error {
+        UnknwonCommandError(const std::string &s) : std::runtime_error(s)
         {
         }
-        const char *what() const noexcept override
-        {
-            return w.c_str();
-        }
-
-    private:
-        std::string w;
     };
     /** Deliver implementation-defined commands to the partitioner.
      *

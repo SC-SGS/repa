@@ -25,6 +25,7 @@
 #include "range.hpp"
 #include "vec_arith.hpp"
 #include <cmath>
+#include <stdexcept>
 
 namespace repa {
 namespace util {
@@ -178,21 +179,11 @@ boost::mpi::communicator
 make_init_part_communicator(const boost::mpi::communicator &comm,
                             InitialPartitionType init_part);
 
-struct UnknownInitialPartitionTypeError {
-    UnknownInitialPartitionTypeError() : w(std::string("Unknown grid type."))
+struct UnknownInitialPartitionTypeError : public std::runtime_error {
+    UnknownInitialPartitionTypeError(const std::string &s)
+        : std::runtime_error("Unknown initial partitioning: " + s)
     {
     }
-    UnknownInitialPartitionTypeError(std::string s)
-        : w(std::string("Unknown grid type: `") + s + std::string("'"))
-    {
-    }
-    virtual const char *what() const
-    {
-        return w.c_str();
-    }
-
-private:
-    std::string w;
 };
 
 /** Returns the InitialPartitionType with a descriptive string
