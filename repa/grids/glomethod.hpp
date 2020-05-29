@@ -22,9 +22,9 @@
 
 #include "globox.hpp"
 #include "pargrid.hpp"
+#include "util/global_index_storage.hpp"
 #include "util/initial_partitioning.hpp"
 #include "util/ioptional.hpp"
-#include "util/global_index_storage.hpp"
 #include <optional>
 #include <unordered_map>
 

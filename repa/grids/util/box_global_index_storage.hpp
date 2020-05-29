@@ -28,7 +28,6 @@
 #include "range.hpp"
 #include "vec_arith.hpp"
 
-
 namespace repa {
 namespace util {
 
@@ -87,7 +86,7 @@ struct box_global_index_storage {
                          <= _local_grid_size[_REPA_NNDIR(d)];
                          local_ghost_idx3d[_REPA_NNDIR(d)]++) {
 
-                        //const Vec3i gg
+                        // const Vec3i gg
                         //    = _local_lower_left_idx3d + local_ghost_idx3d;
                         // std::cout << "At cell {" << gg[0] << "," << gg[1] <<
                         // ","

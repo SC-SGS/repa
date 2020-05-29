@@ -63,7 +63,6 @@ struct default_empty_value<ghost_cell_index_type> {
     static const type value = type{-0xfe};
 };
 
-
 template <typename T>
 inline constexpr T default_empty_value_v = default_empty_value<T>::value;
 
