@@ -4,7 +4,7 @@
 #include <boost/range/adaptors.hpp>
 #include <boost/range/irange.hpp>
 
-#include "pargrid.hpp"
+#include "strong_alias.hpp"
 
 namespace repa {
 namespace util {
