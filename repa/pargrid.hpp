@@ -25,6 +25,7 @@
 
 #include "common_types.hpp"
 #include "grids/util/simple_variant.hpp"
+#include "grids/util/strong_alias.hpp"
 
 #ifndef NDEBUG
 #define GLOBAL_HASH_NEEDED
@@ -79,17 +80,17 @@ typedef int rank_type;
 /** Index of a neighboring process (rank) (0..n_neighbors-1)
  * or the total number of neighbor ranks (n_neighbors).
  */
-using rank_index_type = StrongAlias<int, type_tags::RankIndex, 0>;
+using rank_index_type = util::StrongAlias<int, type_tags::RankIndex, 0>;
 
 /** Index of a local cell (0..n_local_cells-1) or the
  * total number of local cells (n_local_cells).
  */
-using local_cell_index_type = StrongAlias<int, type_tags::LocalCellIndex>;
+using local_cell_index_type = util::StrongAlias<int, type_tags::LocalCellIndex>;
 
 /** Index of a ghost cell (0..n_ghost_cells-1) or the
  * total number of ghost cells (n_ghost_cells).
  */
-using ghost_cell_index_type = StrongAlias<int, type_tags::GhostCellIndex>;
+using ghost_cell_index_type = util::StrongAlias<int, type_tags::GhostCellIndex>;
 
 /** Index of a local or ghost cell.
  */
@@ -100,7 +101,8 @@ using local_or_ghost_cell_index_type
  * processes) or the number total number of
  * cells across all processes.
  */
-using global_cell_index_type = StrongAlias<int, type_tags::GlobalCellIndex>;
+using global_cell_index_type
+    = util::StrongAlias<int, type_tags::GlobalCellIndex>;
 
 typedef std::function<std::vector<double>(void)> CellMetric;
 typedef std::function<double(local_cell_index_type,
