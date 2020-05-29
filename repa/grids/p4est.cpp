@@ -603,15 +603,9 @@ ghost_cell_index_type P4estGrid::n_ghost_cells() const
     return _impl->m_num_ghost_cells;
 }
 
-rank_index_type P4estGrid::n_neighbors() const
+util::const_span<rank_type> P4estGrid::neighbor_ranks() const
 {
-    return rank_index_type{_impl->m_neighranks.size()};
-}
-
-rank_type P4estGrid::neighbor_rank(rank_index_type i) const
-{
-    assert(i >= 0 && i < n_neighbors());
-    return _impl->m_neighranks[i];
+    return util::make_const_span(_impl->m_neighranks);
 }
 
 local_or_ghost_cell_index_type

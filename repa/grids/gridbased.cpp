@@ -23,6 +23,8 @@
 
 #include <algorithm>
 #include <boost/mpi/collectives.hpp>
+#include <boost/range/algorithm.hpp>
+#include <boost/range/combine.hpp>
 #include <map>
 #include <regex>
 
@@ -77,14 +79,9 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r) const
     return result;
 }
 
-rank_index_type GridBasedGrid::n_neighbors() const
+util::const_span<rank_type> GridBasedGrid::neighbor_ranks() const
 {
-    return rank_index_type{const_neighborhood.size()};
-}
-
-rank_type GridBasedGrid::neighbor_rank(rank_index_type i) const
-{
-    return const_neighborhood[i];
+    return util::make_const_span(const_neighborhood);
 }
 
 void GridBasedGrid::pre_init(bool firstcall)
@@ -166,11 +163,10 @@ void GridBasedGrid::init_octagons()
     my_dom = util::tetra::Octagon(bounding_box(comm_cart.rank()));
 
     neighbor_doms.clear();
-    neighbor_doms.reserve(n_neighbors());
+    neighbor_doms.reserve(neighbor_ranks().size());
 
-    for (const auto nidx : util::range(n_neighbors())) {
-        neighbor_doms.push_back(
-            util::tetra::Octagon(bounding_box(neighbor_rank(nidx))));
+    for (const auto neigh : neighbor_ranks()) {
+        neighbor_doms.push_back(util::tetra::Octagon(bounding_box(neigh)));
     }
 }
 
@@ -227,12 +223,17 @@ GridBasedGrid::rank_of_cell(global_cell_index_type cellidx) const
     if (my_dom.contains(mp))
         return comm.rank();
 
-    for (const auto i : util::range(rank_index_type{neighbor_doms.size()})) {
-        if (neighbor_doms[i].contains(mp))
-            return neighbor_rank(i);
-    }
+    const auto ranks_and_subdomains
+        = boost::combine(neighbor_ranks(), neighbor_doms);
+    const auto it = boost::find_if(
+        ranks_and_subdomains, [&mp](const auto &rank_subdomain_pair) {
+            return rank_subdomain_pair.template get<1>().contains(mp);
+        });
 
-    return {};
+    if (it != std::end(ranks_and_subdomains))
+        return (*it).get<0>();
+    else
+        return {};
 }
 
 Vec3d GridBasedGrid::get_subdomain_center()

@@ -116,7 +116,8 @@ static void test_position(const boost::mpi::communicator &comm,
         // the ghost layer of this process.
         int nidx = -1;
         BOOST_CHECK_NO_THROW(nidx = grid->position_to_neighidx(pos));
-        BOOST_TEST(((nidx >= 0) && (nidx < grid->n_neighbors())));
+        BOOST_TEST(((nidx >= 0) && (nidx < grid->neighbor_ranks().size())));
+        BOOST_TEST(grid->neighbor_ranks()[nidx] == rank);
     }
     else {
         // Check that all other processes refuse to resolve "pos"

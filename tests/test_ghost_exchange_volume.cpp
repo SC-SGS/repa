@@ -73,23 +73,13 @@ static bool if_then(bool b1, bool b2)
     return b2 || !b1;
 }
 
-static std::vector<repa::rank_type>
-neighranks(repa::grids::ParallelLCGrid *grid)
-{
-    std::vector<repa::rank_type> res;
-    res.reserve(grid->n_neighbors());
-    for (auto i = repa::rank_index_type{0}; i < grid->n_neighbors(); ++i)
-        res.push_back(grid->neighbor_rank(i));
-    return res;
-}
-
 static void test(const testenv::TEnv &t,
                  repa::grids::ParallelLCGrid *grid,
                  repa::GridType gt)
 {
     const auto &comm = t.comm();
     const auto gexds = grid->get_boundary_info();
-    const auto neighborranks = neighranks(grid);
+    const auto neighborranks = grid->neighbor_ranks();
 
     // Validity of exchange descriptors
     for (const auto &g : gexds) {

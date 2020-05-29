@@ -31,26 +31,20 @@
 #include <boost/mpi/collectives.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
+#include <boost/range/adaptors.hpp>
+#include <boost/range/algorithm.hpp>
 #include <boost/serialization/vector.hpp>
 #include <repa/repa.hpp>
 
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     const auto &comm = t.comm();
-    std::vector<int> neighranks;
-    neighranks.reserve(grid->n_neighbors());
+    std::vector<int> neighranks{grid->neighbor_ranks().begin(),
+                                grid->neighbor_ranks().end()};
 
-    // Test validity and uniqueness (correct size).
-    for (auto i = repa::rank_index_type{0}; i < grid->n_neighbors(); ++i) {
-        auto n = grid->neighbor_rank(i);
-
-        BOOST_TEST(((n >= 0) && (n < comm.size())));
-
-        for (const auto n0 : neighranks) {
-            BOOST_TEST(n != n0);
-        }
-        neighranks.push_back(n);
-    }
+    // Test uniqueness.
+    BOOST_CHECK(boost::unique(boost::sort(neighranks)).size()
+                == neighranks.size());
 
     std::vector<decltype(neighranks)> nrankss;
     boost::mpi::all_gather(comm, neighranks, nrankss);

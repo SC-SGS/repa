@@ -55,14 +55,9 @@ ghost_cell_index_type HybridGPDiff::n_ghost_cells() const
     return active_implementation->n_ghost_cells();
 }
 
-rank_index_type HybridGPDiff::n_neighbors() const
+util::const_span<rank_type> HybridGPDiff::neighbor_ranks() const
 {
-    return active_implementation->n_neighbors();
-}
-
-rank_type HybridGPDiff::neighbor_rank(rank_index_type i) const
-{
-    return active_implementation->neighbor_rank(i);
+    return active_implementation->neighbor_ranks();
 }
 
 Vec3d HybridGPDiff::cell_size() const

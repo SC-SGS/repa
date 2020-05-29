@@ -47,8 +47,7 @@ struct GridBasedGrid : public GloMethod {
     // (see below), this grid implementation provides its own implementation of
     // neighborhood. DO NOT REMOVE these. GridBasedGrid::rank_of_cell needs this
     // neighborhood.
-    rank_index_type n_neighbors() const override;
-    rank_type neighbor_rank(rank_index_type i) const override;
+    util::const_span<rank_type> neighbor_ranks() const override;
 
 private:
     // Indicator if the decomposition currently is a regular grid,

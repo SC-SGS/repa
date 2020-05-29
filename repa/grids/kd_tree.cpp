@@ -329,15 +329,9 @@ ghost_cell_index_type KDTreeGrid::n_ghost_cells() const
     return ghost_cell_index_type{cell_store.ghost_cells().size()};
 }
 
-rank_index_type KDTreeGrid::n_neighbors() const
+util::const_span<rank_type> KDTreeGrid::neighbor_ranks() const
 {
-    return rank_index_type{m_neighbor_processes.size()};
-}
-
-rank_type KDTreeGrid::neighbor_rank(rank_index_type i) const
-{
-    assert(i >= 0 && i < m_neighbor_processes.size());
-    return m_neighbor_processes[i];
+    return util::make_const_span(m_neighbor_processes);
 }
 
 Vec3d KDTreeGrid::cell_size() const

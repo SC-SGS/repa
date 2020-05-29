@@ -45,8 +45,7 @@ public:
 
     virtual local_cell_index_type n_local_cells() const override;
     virtual ghost_cell_index_type n_ghost_cells() const override;
-    virtual rank_index_type n_neighbors() const override;
-    virtual rank_type neighbor_rank(rank_index_type i) const override;
+    virtual util::const_span<rank_type> neighbor_ranks() const override;
     virtual Vec3d cell_size() const override;
     virtual Vec3i grid_size() const override;
     virtual local_or_ghost_cell_index_type

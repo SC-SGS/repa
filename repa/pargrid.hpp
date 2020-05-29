@@ -25,6 +25,7 @@
 
 #include "common_types.hpp"
 #include "grids/util/simple_variant.hpp"
+#include "grids/util/span.hpp"
 #include "grids/util/strong_alias.hpp"
 
 #ifndef NDEBUG
@@ -163,17 +164,19 @@ struct ParallelLCGrid {
      */
     virtual ghost_cell_index_type n_ghost_cells() const = 0;
 
-    /** Returns the number of neighboring processes over faces, edges and
-     * corners
-     */
-    virtual rank_index_type n_neighbors() const = 0;
+    // /** Returns the number of neighboring processes over faces, edges and
+    //  * corners
+    //  */
+    // virtual rank_index_type n_neighbors() const = 0;
 
-    /** Returns the rank of a neighbor process.
-     * Is specified only for 0 > i or i >= n_neighbors().
-     * Might throw a std::domain_error otherwise.
-     * @param i index of neighbor process. 0 <= i < n_neighbors()
-     */
-    virtual rank_type neighbor_rank(rank_index_type i) const = 0;
+    // /** Returns the rank of a neighbor process.
+    //  * Is specified only for 0 > i or i >= n_neighbors().
+    //  * Might throw a std::domain_error otherwise.
+    //  * @param i index of neighbor process. 0 <= i < n_neighbors()
+    //  */
+    // virtual rank_type neighbor_rank(rank_index_type i) const = 0;
+
+    virtual util::const_span<rank_type> neighbor_ranks() const = 0;
 
     /** Returns the cell sizes of Linked Cell grid.
      */

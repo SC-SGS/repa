@@ -33,8 +33,7 @@ struct P4estGrid : public ParallelLCGrid {
               double min_cell_size);
     local_cell_index_type n_local_cells() const override;
     ghost_cell_index_type n_ghost_cells() const override;
-    rank_index_type n_neighbors() const override;
-    rank_type neighbor_rank(rank_index_type i) const override;
+    util::const_span<rank_type> neighbor_ranks() const override;
     Vec3d cell_size() const override;
     Vec3i grid_size() const override;
     local_or_ghost_cell_index_type
