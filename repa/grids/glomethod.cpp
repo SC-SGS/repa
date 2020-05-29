@@ -57,7 +57,6 @@ Vec3d GloMethod::cell_size() const
 
 Vec3i GloMethod::grid_size() const
 {
-    using namespace util::vector_arithmetic;
     return gbox.grid_size();
 }
 
