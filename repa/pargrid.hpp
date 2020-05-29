@@ -77,11 +77,6 @@ TYPE_TAG_DEFINE(GlobalCellIndex);
  */
 typedef int rank_type;
 
-/** Index of a neighboring process (rank) (0..n_neighbors-1)
- * or the total number of neighbor ranks (n_neighbors).
- */
-using rank_index_type = util::StrongAlias<int, type_tags::RankIndex, 0>;
-
 /** Index of a local cell (0..n_local_cells-1) or the
  * total number of local cells (n_local_cells).
  */
@@ -211,20 +206,6 @@ struct ParallelLCGrid {
      * position "pos". Works for the whole domain!
      */
     virtual rank_type position_to_rank(Vec3d pos) = 0;
-
-    /** Returns the index of a neighboring process which is responsible for the
-     * cell at position "pos".
-     * The implementation might require, that "pos" is in the ghost layer of
-     * this process *OR*---a more relaxed condition---is on any neighboring
-     * process. In any case, the position cannot be resolved and throws a
-     * std::domain_error. As a consequence, the user *MUST NOT* rely on this
-     * method throwing a std::domain_error means that the position is not in a
-     * ghost layer.
-     *
-     * @throws std::domain_error If position cannot be resolved by this process.
-     *                           See comment above!
-     */
-    virtual rank_index_type position_to_neighidx(Vec3d pos) = 0;
 
     /** *Maybe* repartitions the grid. Returns true if grid has been changed
      * (repartitioned). This means all data of this class is invalidated.

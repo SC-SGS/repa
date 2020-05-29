@@ -674,21 +674,6 @@ rank_type P4estGrid::position_to_rank(Vec3d pos)
     return std::distance(std::begin(_impl->m_node_first_cell_idx), it) - 1;
 }
 
-rank_index_type P4estGrid::position_to_neighidx(Vec3d pos)
-{
-    // Determine the neighbor rank for locally known cell
-    // Using position_to_rank here as it is the simpler code. Could also
-    // search the neighboring cells of the cell where pos lies in.
-    auto rank = position_to_rank(pos);
-
-    // Search this rank in the local neighbor list and return its index
-    auto it = std::lower_bound(std::begin(_impl->m_neighranks),
-                               std::end(_impl->m_neighranks), rank);
-    if (it == std::end(_impl->m_neighranks) || *it != rank)
-        throw std::domain_error("Position not in a ghost cell.");
-    return rank_index_type{std::distance(std::begin(_impl->m_neighranks), it)};
-}
-
 Vec3d P4estGrid::cell_size() const
 {
     return _impl->m_cell_size;

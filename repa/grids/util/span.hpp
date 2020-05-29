@@ -18,8 +18,8 @@
  */
 #pragma once
 
-#include <iterator>
 #include <cstddef> // std::nullptr
+#include <iterator>
 
 namespace repa {
 namespace util {
@@ -141,7 +141,6 @@ constexpr auto make_const_span(const Container &cont)
 {
     return make_const_span(cont.data(), cont.size());
 }
-
 
 } // namespace util
 } // namespace repa

@@ -31,6 +31,7 @@
 #include <boost/mpi/collectives.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
+#include <boost/range/algorithm.hpp>
 #include <boost/serialization/vector.hpp>
 #include <random>
 #include <repa/grids/util/vec_arith.hpp>
@@ -112,12 +113,9 @@ static void test_position(const boost::mpi::communicator &comm,
         BOOST_TEST(((0 <= cidx) && (cidx < grid->n_local_cells())));
     }
     else if (is_in_ghost_layer(comm, grid, pos)) {
-        // Check that position_to_neighidx can resolve "pos" if it is in
-        // the ghost layer of this process.
-        int nidx = -1;
-        BOOST_CHECK_NO_THROW(nidx = grid->position_to_neighidx(pos));
-        BOOST_TEST(((nidx >= 0) && (nidx < grid->neighbor_ranks().size())));
-        BOOST_TEST(grid->neighbor_ranks()[nidx] == rank);
+        // Check that "rank" is registeres as neighbor
+        BOOST_CHECK(boost::find(grid->neighbor_ranks(), rank)
+                    != grid->neighbor_ranks().end());
     }
     else {
         // Check that all other processes refuse to resolve "pos"

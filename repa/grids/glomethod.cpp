@@ -96,19 +96,6 @@ rank_type GloMethod::position_to_rank(Vec3d pos)
         return *r;
 }
 
-rank_index_type GloMethod::position_to_neighidx(Vec3d pos)
-{
-    rank_type rank = position_to_rank(pos);
-
-    // Need to use neighbor_ranks() because GridBasedGrid provides a custom
-    // implementation of it.
-    const auto neighborhood = neighbor_ranks();
-    if (const auto it = boost::find(neighborhood, rank))
-        return rank_index_type{std::distance(neighborhood.begin(), it)};
-    else
-        throw std::domain_error("Position not within a neighbor process.");
-}
-
 /*
  * Repartition.
  * Every node is responsible for a certain range of cells along the

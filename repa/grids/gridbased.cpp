@@ -255,8 +255,7 @@ static Vec3d calc_shift(double local_load,
 
     // The node displacement is calculated according to
     // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
-    const auto nneigh
-        = rank_index_type{util::mpi_undirected_neighbor_count(neighcomm)};
+    const int nneigh = util::mpi_undirected_neighbor_count(neighcomm);
     const double lambda_p = local_load;
     const auto r_p = subdomain_midpoint;
 
@@ -275,7 +274,7 @@ static Vec3d calc_shift(double local_load,
     MPI_Neighbor_allgather(r_p.data(), sizeof(Vec3d), MPI_BYTE, r.data(),
                            sizeof(Vec3d), MPI_BYTE, neighcomm);
 
-    for (const auto i : util::range(nneigh)) {
+    for (const auto i : boost::irange(nneigh)) {
         // Form "u"
         r[i] -= cur_gridpoint;
         const double len = util::norm2(r[i]);

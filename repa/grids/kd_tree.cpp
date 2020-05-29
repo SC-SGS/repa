@@ -96,8 +96,7 @@ intersection_domains(const KDTreeGrid::Domain &localdomain,
     // Datastructure for gathering the results
     std::vector<KDTreeGrid::Domain> intersection_domains;
 
-    for (const auto nidx : repa::util::range(
-             repa::rank_index_type{volume(neighborhood_to_check)})) {
+    for (const int nidx : boost::irange(volume(neighborhood_to_check))) {
         // Determine neighbor offset
         repa::Vec3i neighbor_offset
             = repa::util::unlinearize(nidx, neighborhood_to_check.second
@@ -382,20 +381,6 @@ rank_type KDTreeGrid::position_to_rank(Vec3d pos)
     using namespace util::vector_arithmetic;
     const Vec3i cell_coords = static_cast_vec<Vec3i>(pos / gbox.cell_size());
     return (*m_kdtree)->responsible_process(cell_coords.as_array());
-}
-
-rank_index_type KDTreeGrid::position_to_neighidx(Vec3d pos)
-{
-    using namespace util::vector_arithmetic;
-    const auto rank = position_to_rank(pos);
-    const auto ri = std::find(std::begin(m_neighbor_processes),
-                              std::end(m_neighbor_processes), rank);
-
-    if (ri == std::end(m_neighbor_processes)) {
-        throw std::domain_error("Position not within neighbor a process");
-    }
-
-    return rank_index_type{std::distance(std::begin(m_neighbor_processes), ri)};
 }
 
 bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)

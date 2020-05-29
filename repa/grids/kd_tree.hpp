@@ -54,10 +54,6 @@ public:
     virtual std::vector<GhostExchangeDesc> get_boundary_info() override;
     virtual local_cell_index_type position_to_cell_index(Vec3d pos) override;
     virtual rank_type position_to_rank(Vec3d pos) override;
-    /**
-     * @throws std::domain_error if position is not on a neighboring process.
-     */
-    virtual rank_index_type position_to_neighidx(Vec3d pos) override;
     virtual bool
     repartition(CellMetric m, CellCellMetric ccm, Thunk cb) override;
     global_cell_index_type

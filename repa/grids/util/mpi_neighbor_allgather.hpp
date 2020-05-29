@@ -20,8 +20,8 @@
 #pragma once
 
 #include "pargrid.hpp"
-#include "range.hpp"
 #include <boost/mpi.hpp>
+#include <boost/range/irange.hpp>
 
 namespace repa {
 namespace util {
@@ -39,12 +39,12 @@ std::vector<T> mpi_subset_allgather(const boost::mpi::communicator &comm,
     std::vector<boost::mpi::request> sreq_cells(neighbors.size());
     std::vector<boost::mpi::request> rreq_cells(neighbors.size());
 
-    for (const auto i : util::range(rank_index_type{neighbors.size()})) {
+    for (const auto i : boost::irange(neighbors.size())) {
         sreq_cells[i] = comm.isend(neighbors[i], 2, data);
     }
 
     std::vector<T> all_data(neighbors.size());
-    for (const auto i : util::range(rank_index_type{neighbors.size()})) {
+    for (const auto i : boost::irange(neighbors.size())) {
         rreq_cells[i] = comm.irecv(neighbors[i], 2, all_data[i]);
     }
 

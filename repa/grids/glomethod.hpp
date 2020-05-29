@@ -49,10 +49,6 @@ struct GloMethod : public ParallelLCGrid {
     std::vector<GhostExchangeDesc> get_boundary_info() override;
     local_cell_index_type position_to_cell_index(Vec3d pos) override;
     rank_type position_to_rank(Vec3d pos) override;
-    /**
-     * @throws std::domain_error if "pos" is not in ghost layer.
-     */
-    rank_index_type position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;

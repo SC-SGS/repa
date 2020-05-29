@@ -92,11 +92,6 @@ rank_type HybridGPDiff::position_to_rank(Vec3d pos)
     return active_implementation->position_to_rank(pos);
 }
 
-rank_index_type HybridGPDiff::position_to_neighidx(Vec3d pos)
-{
-    return active_implementation->position_to_neighidx(pos);
-}
-
 bool HybridGPDiff::repartition(CellMetric m,
                                CellCellMetric ccm,
                                Thunk exchange_start_callback)
