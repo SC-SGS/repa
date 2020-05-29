@@ -86,12 +86,6 @@ struct box_global_index_storage {
                          <= _local_grid_size[_REPA_NNDIR(d)];
                          local_ghost_idx3d[_REPA_NNDIR(d)]++) {
 
-                        // const Vec3i gg
-                        //    = _local_lower_left_idx3d + local_ghost_idx3d;
-                        // std::cout << "At cell {" << gg[0] << "," << gg[1] <<
-                        // ","
-                        //          << gg[2] << "} -> r =";
-
                         const auto canon_idx3d = get_canonical_vector(
                             _local_lower_left_idx3d + local_ghost_idx3d);
 
@@ -104,15 +98,9 @@ struct box_global_index_storage {
                         const auto canon_idx
                             = get_global_cell_index(canon_idx3d);
 
-                        // std::cout << " " << canon_idx.value() << std::endl;
-
                         if (_inverse_ghost_map.find(canon_idx)
                             != std::end(_inverse_ghost_map))
                             continue;
-
-                        // std::cout << " > Inserting: " << canon_idx.value() <<
-                        // ""
-                        //          << std::endl;
 
                         _inverse_ghost_map.emplace(canon_idx, ghost_cell_no);
                         _ghost_cells.push_back(canon_idx);
@@ -168,18 +156,6 @@ struct box_global_index_storage {
         }
     }
 
-    // bool holds_global_index(global_cell_index_type g) const
-    // {
-    //     using namespace util::vector_arithmetic;
-    //     const Vec3i global_idx3d = util::unlinearize(g, _global_grid_size);
-
-    //     return (all(global_idx3d >= _local_lower_left_idx3d)
-    //         && all(global_idx3d
-    //                < (_local_lower_left_idx3d + _local_grid_size))) ||
-    //         return _inverse_ghost_map.find(g) !=
-    //         std::end(_inverse_ghost_map);
-    // }
-
     ioptional<local_cell_index_type>
     as_local_index(global_cell_index_type g) const
     {
@@ -222,26 +198,6 @@ struct box_global_index_storage {
     {
         return util::range(ghost_cell_index_type{_ghost_cells.size()});
     }
-
-    // /** Returns a lambda that resolves global to local positions
-    //  * while ensuring that the indices are purely local ones.
-    //  */
-    // auto global_to_local_transformer() const
-    // {
-    //     return [this](const global_cell_index_type gloidx) {
-    //         return as_local_index(gloidx).ensure_value();
-    //     };
-    // }
-
-    // /** Returns a lambda that resolves global to ghost positions
-    //  * while ensuring that the indices are purely ghost ones.
-    //  */
-    // auto global_to_ghost_transformer() const
-    // {
-    //     return [this](const global_cell_index_type gloidx) {
-    //         return as_ghost_index(gloidx).ensure_value();
-    //     };
-    // }
 
     global_cell_index_type
     get_canonical_representant(const Vec3i &global_idx3d) const
