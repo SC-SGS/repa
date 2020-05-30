@@ -39,18 +39,18 @@ bool ignore_message(const E &e)
 
 bool message_unknown_grid_type(const repa::UnknownGridTypeError &e)
 {
-    return std::string{e.what()} == "Unknown grid type: `unknown'";
+    return std::string{e.what()} == "Unknown grid type: unknown";
 }
 
 bool message_unknown_grid_type_ff(const repa::UnknownGridTypeError &e)
 {
-    return std::string{e.what()} == "Unknown grid type: `255'";
+    return std::string{e.what()} == "Unknown grid type: 255";
 }
 
 bool message_unknown_command(
     const repa::grids::ParallelLCGrid::UnknwonCommandError &e)
 {
-    return std::string{e.what()} == "Could not interpret command `unknown'";
+    return std::string{e.what()} == "Unknown command: unknown";
 }
 
 BOOST_AUTO_TEST_CASE(test_unknown_exceptions)

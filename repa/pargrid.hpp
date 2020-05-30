@@ -225,7 +225,8 @@ struct ParallelLCGrid {
         = 0;
 
     struct UnknwonCommandError : public std::runtime_error {
-        UnknwonCommandError(const std::string &s) : std::runtime_error(s)
+        UnknwonCommandError(const std::string &s)
+            : std::runtime_error("Unknown command: " + s)
         {
         }
     };
