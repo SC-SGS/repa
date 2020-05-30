@@ -42,9 +42,6 @@ public:
     KDTreeGrid(const boost::mpi::communicator &comm,
                Vec3d box_size,
                double min_cell_size);
-
-    virtual local_cell_index_type n_local_cells() const override;
-    virtual ghost_cell_index_type n_ghost_cells() const override;
     virtual util::const_span<rank_type> neighbor_ranks() const override;
     virtual Vec3d cell_size() const override;
     virtual Vec3i grid_size() const override;
@@ -65,6 +62,10 @@ public:
      * corner, it excludes the coordinate of the upper corner.
      */
     using Domain = std::pair<Vec3i, Vec3i>;
+
+protected:
+    virtual local_cell_index_type n_local_cells() const override;
+    virtual ghost_cell_index_type n_ghost_cells() const override;
 
 private:
     /** Internal k-d tree datastructure. */

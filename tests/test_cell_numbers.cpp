@@ -32,27 +32,16 @@
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
-static bool if_then(bool a, bool b)
-{
-    return !a || b;
-}
-
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
-    int nlocalcells = grid->n_local_cells();
-    BOOST_TEST(nlocalcells >= 0);
+    BOOST_TEST(grid->local_cells().size() >= 0);
 
-    int nglobalcells
-        = boost::mpi::all_reduce(t.comm(), nlocalcells, std::plus<int>{});
+    size_t nglobalcells = boost::mpi::all_reduce(
+        t.comm(), grid->local_cells().size(), std::plus<size_t>{});
     BOOST_TEST(nglobalcells > 0);
 
     auto gs = grid->grid_size();
     BOOST_TEST((nglobalcells == gs[0] * gs[1] * gs[2]));
-
-    // Full-halo grids might have more ghost than local cells on 1 process only
-    // and very small grids.
-    BOOST_TEST(
-        if_then(t.comm().size() >= 2, grid->n_ghost_cells() <= nglobalcells));
 }
 
 BOOST_AUTO_TEST_CASE(test_cell_numbers)

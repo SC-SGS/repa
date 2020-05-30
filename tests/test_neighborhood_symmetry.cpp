@@ -45,8 +45,7 @@ static bool has_neighbor(repa::grids::ParallelLCGrid *grid,
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     (void)t;
-    for (auto c = repa::local_cell_index_type{0}; c < grid->n_local_cells();
-         ++c) {
+    for (const auto c : grid->local_cells()) {
         for (int j = 0; j < 27; ++j) {
             const auto d = grid->cell_neighbor_index(c, j);
 
@@ -55,12 +54,12 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
                 [grid](repa::local_cell_index_type li) {
                     BOOST_CHECK(
                         (static_cast<int>(li) >= 0
-                         && static_cast<int>(li) < grid->n_local_cells()));
+                         && static_cast<int>(li) < grid->local_cells().size()));
                 },
                 [grid](repa::ghost_cell_index_type gi) {
                     BOOST_CHECK(
                         (static_cast<int>(gi) >= 0
-                         && static_cast<int>(gi) < grid->n_ghost_cells()));
+                         && static_cast<int>(gi) < grid->ghost_cells().size()));
                 });
 
             // If "d" is a inner cell and neighbors "c", then "c" must also

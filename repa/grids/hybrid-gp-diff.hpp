@@ -33,8 +33,6 @@ struct HybridGPDiff : public ParallelLCGrid {
                  double min_cell_size,
                  ExtraParams ep);
     void after_construction() override;
-    local_cell_index_type n_local_cells() const override;
-    ghost_cell_index_type n_ghost_cells() const override;
     util::const_span<rank_type> neighbor_ranks() const override;
     Vec3d cell_size() const override;
     Vec3i grid_size() const override;
@@ -51,6 +49,10 @@ struct HybridGPDiff : public ParallelLCGrid {
     void command(std::string s) override;
     global_cell_index_type
     global_hash(local_or_ghost_cell_index_type cellidx) override;
+
+protected:
+    local_cell_index_type n_local_cells() const override;
+    ghost_cell_index_type n_ghost_cells() const override;
 
 private:
     /** Underlying implementations

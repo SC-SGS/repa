@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "common_types.hpp"
+#include "grids/util/range.hpp"
 #include "grids/util/simple_variant.hpp"
 #include "grids/util/span.hpp"
 #include "grids/util/strong_alias.hpp"
@@ -85,6 +86,21 @@ using local_cell_index_type = util::StrongAlias<int, type_tags::LocalCellIndex>;
  * total number of ghost cells (n_ghost_cells).
  */
 using ghost_cell_index_type = util::StrongAlias<int, type_tags::GhostCellIndex>;
+
+/** cell_range.
+ * Offers functions to conveniently iterate over a range of cells.
+ * Do not rely on the specific implementation.
+ *
+ * Lxocal and ghost cells are, however, ensured to be continuously numbered
+ * starting from 0.
+ */
+template <
+    typename T,
+    typename = std::enable_if_t<
+        std::is_same_v<
+            T,
+            ghost_cell_index_type> || std::is_same_v<T, local_cell_index_type>>>
+using cell_range = util::iota_range<T>;
 
 /** Index of a local or ghost cell.
  */
@@ -149,13 +165,19 @@ struct ParallelLCGrid {
 
     virtual ~ParallelLCGrid() = default;
 
-    /** Returns the number of local cells.
+    /** Returns the range of local cells.
      */
-    virtual local_cell_index_type n_local_cells() const = 0;
+    cell_range<local_cell_index_type> local_cells() const
+    {
+        return cell_range<local_cell_index_type>(n_local_cells());
+    }
 
-    /** Returns the number of ghost cells
+    /** Returns the range of ghost cells.
      */
-    virtual ghost_cell_index_type n_ghost_cells() const = 0;
+    cell_range<ghost_cell_index_type> ghost_cells() const
+    {
+        return cell_range<ghost_cell_index_type>(n_ghost_cells());
+    }
 
     /** Returns a span/range of ranks of all neighbor processes.
      */
@@ -256,6 +278,17 @@ struct ParallelLCGrid {
         = 0;
 
 protected:
+    friend class HybridGPDiff; // HybridGPDiff needs to call the following
+                               // functions of its members, they are, however
+                               // not exposed to users.
+    /** Returns the number of local cells.
+     */
+    virtual local_cell_index_type n_local_cells() const = 0;
+
+    /** Returns the number of ghost cells
+     */
+    virtual ghost_cell_index_type n_ghost_cells() const = 0;
+
     boost::mpi::communicator comm, comm_cart;
     Vec3d box_l;
     Vec3i node_grid, node_pos;

@@ -112,11 +112,11 @@ static void test(const testenv::TEnv &t,
     for (const auto &g : gexds) {
         for (const auto &sendc : g.send) {
             BOOST_TEST(((0 <= sendc.value())
-                        && (sendc.value() < grid->n_local_cells())));
+                        && (sendc.value() < grid->local_cells().size())));
         }
         for (const auto &recvc : g.recv) {
             BOOST_TEST(((recvc.value() >= 0)
-                        && (recvc.value() < grid->n_ghost_cells())));
+                        && (recvc.value() < grid->ghost_cells().size())));
         }
     }
 

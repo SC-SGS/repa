@@ -31,8 +31,6 @@ struct P4estGrid : public ParallelLCGrid {
     P4estGrid(const boost::mpi::communicator &comm,
               Vec3d box_size,
               double min_cell_size);
-    local_cell_index_type n_local_cells() const override;
-    ghost_cell_index_type n_ghost_cells() const override;
     util::const_span<rank_type> neighbor_ranks() const override;
     Vec3d cell_size() const override;
     Vec3i grid_size() const override;
@@ -47,6 +45,10 @@ struct P4estGrid : public ParallelLCGrid {
                      Thunk exchange_start_callback) override;
     global_cell_index_type
     global_hash(local_or_ghost_cell_index_type cellidx) override;
+
+protected:
+    local_cell_index_type n_local_cells() const override;
+    ghost_cell_index_type n_ghost_cells() const override;
 
 private:
     struct _P4estGrid_impl;

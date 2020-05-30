@@ -57,8 +57,7 @@ static void test_boundary_has_comm(repa::grids::ParallelLCGrid *grid)
     };
 
     auto gexds = grid->get_boundary_info();
-    for (auto c = repa::local_cell_index_type{0}; c < grid->n_local_cells();
-         ++c) {
+    for (const auto c : grid->local_cells()) {
         for (int j = 0; j < 27; ++j) {
             grid->cell_neighbor_index(c, j)
                 .visit_if<repa::local_cell_index_type>(
@@ -72,13 +71,13 @@ static void test_boundary_has_comm(repa::grids::ParallelLCGrid *grid)
 static void test_ghost_has_comm(repa::grids::ParallelLCGrid *grid)
 {
     // Test that all ghost cells have an associated receive operation
-    std::vector<bool> used(grid->n_ghost_cells(), false);
+    std::vector<bool> used(grid->ghost_cells().size(), false);
 
     for (const auto &g : grid->get_boundary_info()) {
         for (const auto &ghost : g.recv) {
             // Ensure valid ghost cell index
             BOOST_TEST(((ghost.value() >= 0)
-                        && (ghost.value() < grid->n_ghost_cells())));
+                        && (ghost.value() < grid->ghost_cells().size())));
             // Each ghost cell can only have one receive operation.
             BOOST_TEST(!used[ghost.value()]);
             used.at(ghost.value()) = true;
@@ -90,10 +89,9 @@ static void test_ghost_has_comm(repa::grids::ParallelLCGrid *grid)
 static void test_ghost_has_local(repa::grids::ParallelLCGrid *grid)
 {
     // Test that all ghost cells have a neighboring inner cell
-    std::vector<bool> used(grid->n_ghost_cells(), false);
+    std::vector<bool> used(grid->ghost_cells().size(), false);
 
-    for (auto c = repa::local_cell_index_type{0}; c < grid->n_local_cells();
-         ++c) {
+    for (const auto c : grid->local_cells()) {
         for (int j = 0; j < 27; ++j) {
             grid->cell_neighbor_index(c, j)
                 .visit_if<repa::ghost_cell_index_type>(

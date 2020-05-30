@@ -38,8 +38,6 @@ struct GloMethod : public ParallelLCGrid {
               ExtraParams ep);
     virtual ~GloMethod();
     void after_construction() override;
-    local_cell_index_type n_local_cells() const override;
-    ghost_cell_index_type n_ghost_cells() const override;
     util::const_span<rank_type> neighbor_ranks() const override;
     Vec3d cell_size() const override;
     Vec3i grid_size() const override;
@@ -57,6 +55,9 @@ struct GloMethod : public ParallelLCGrid {
     global_hash(local_or_ghost_cell_index_type cellidx) override;
 
 protected:
+    local_cell_index_type n_local_cells() const override;
+    ghost_cell_index_type n_ghost_cells() const override;
+
     virtual bool sub_repartition(CellMetric m, CellCellMetric ccm) = 0;
 
     /** All neighbor ranks (ranks of subdomains neighboring this subdomain)

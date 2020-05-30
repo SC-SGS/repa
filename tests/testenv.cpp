@@ -43,7 +43,7 @@ static void repartition_helper(repa::grids::ParallelLCGrid *grid,
     auto ccm = [](repa::local_cell_index_type,
                   repa::local_or_ghost_cell_index_type) { return 1.0; };
     std::vector<double> metric_values
-        = (f ? f : get_random_vec)(static_cast<size_t>(grid->n_local_cells()));
+        = (f ? f : get_random_vec)(grid->local_cells().size());
     auto metric = [&metric_values]() { return metric_values; };
 
     BOOST_CHECK_NO_THROW(grid->repartition(metric, ccm, noop));
