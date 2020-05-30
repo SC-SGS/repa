@@ -20,13 +20,13 @@
 #include "diffusion.hpp"
 #include <algorithm>
 #include <boost/mpi/nonblocking.hpp>
+#include <boost/range/adaptor/indexed.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/utility.hpp> // std::pair
 #include <boost/serialization/vector.hpp>
 #include <numeric>
 #include <regex>
 
-#include "util/fill.hpp"
 #include "util/get_keys.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/mpi_neighbor_allgather.hpp"
@@ -148,20 +148,24 @@ static const std::unordered_map<std::string, diff_variants::FlowCalcKind>
     = {{"willebeek", diff_variants::FlowCalcKind::WILLEBEEK},
        {"schornbaum", diff_variants::FlowCalcKind::SCHORN}};
 
+template <typename Rng, typename Pred>
+bool none_of(const Rng &rng, Pred &&p)
+{
+    return std::none_of(rng.begin(), rng.end(), std::forward<Pred>(p));
+}
+
 void Diffusion::clear_unknown_cell_ownership()
 {
     auto is_my_cell = [this](global_cell_index_type neighcell) {
         return partition[neighcell] == comm_cart.rank();
     };
 
-    fill_if_index(
-        std::begin(partition), std::end(partition),
-        util::ioptional<rank_type>{}, [this, is_my_cell](size_t glocellidx) {
-            auto neighborhood
-                = gbox.full_shell_neigh(global_cell_index_type{glocellidx});
-            return std::none_of(std::begin(neighborhood),
-                                std::end(neighborhood), is_my_cell);
-        });
+    for (auto el : boost::adaptors::index(partition)) {
+        if (const auto neighborhood
+            = gbox.full_shell_neigh(global_cell_index_type{el.index()});
+            none_of(neighborhood, is_my_cell))
+            el.value() = {}; // Declare the owner to be unknown.
+    }
 }
 
 bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
