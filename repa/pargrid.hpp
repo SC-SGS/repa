@@ -77,13 +77,11 @@ TYPE_TAG_DEFINE(GlobalCellIndex);
  */
 typedef int rank_type;
 
-/** Index of a local cell (0..n_local_cells-1) or the
- * total number of local cells (n_local_cells).
+/** Index of a local cell (0..n_local_cells-1).
  */
 using local_cell_index_type = util::StrongAlias<int, type_tags::LocalCellIndex>;
 
-/** Index of a ghost cell (0..n_ghost_cells-1) or the
- * total number of ghost cells (n_ghost_cells).
+/** Index of a ghost cell (0..n_ghost_cells-1).
  */
 using ghost_cell_index_type = util::StrongAlias<int, type_tags::GhostCellIndex>;
 
@@ -107,9 +105,7 @@ using cell_range = util::iota_range<T>;
 using local_or_ghost_cell_index_type
     = util::simple_variant<local_cell_index_type, ghost_cell_index_type>;
 
-/** Global cell index (unique across all
- * processes) or the number total number of
- * cells across all processes.
+/** Global cell index (unique across all processes).
  */
 using global_cell_index_type
     = util::StrongAlias<int, type_tags::GlobalCellIndex>;
@@ -193,14 +189,9 @@ struct ParallelLCGrid {
 
     /** Returns the index of a cell neighboring a given cell (by index).
      *
-     * A resulting index N can be interpreted as follows:
-     * Case 1: 0 <= N < n_local_cells(): local cell N.
-     * Case 2: n_local_cells() <= N < n_local_cells() + n_ghost_cells():
-     *  ghost cell no. (N - n_local_cells()).
-     * Other values for N cannot occur.
+     * The neighbor can either be a local cell or a ghost cell.
      *
-     * Might throw a std::domain_error if 0 > cellidx or cellidx >=
-     * get_n_local_cells().
+     * @throws std::domain_error if cellidx is not a valid local cell.
      *
      * Neighbor 0 is the cells itself, i.e. "cell_neighbor_index(c, 0) == c"
      * Neighbors 1-13: Half shell neighborhood
@@ -224,17 +215,19 @@ struct ParallelLCGrid {
     virtual local_cell_index_type position_to_cell_index(Vec3d pos) = 0;
 
     /** Returns the rank of the process which is responsible for the cell at
-     * position "pos". Works for the whole domain!
+     * position "pos". Before the first call to repartition() is guaranteed to
+     * work for the whole domain! After the first repartition() might only work
+     * for the process itself and its neighbors or its ghost layer.
      */
     virtual rank_type position_to_rank(Vec3d pos) = 0;
 
     /** *Maybe* repartitions the grid. Returns true if grid has been changed
      * (repartitioned). This means all data of this class is invalidated.
      * If false is returned, *no* data returned since the last call to
-     * repartition() or topology_init() has been invalidated.
+     * repartition() is invalidated.
      *
-     * Be careful: If the call returns true also old cell indices are
-     * invalidated and silently get a new meaning.
+     * The data invalidation includes cell indices. These silently get a new
+     * meaning (underlying global cell index).
      *
      * @param exchange_start_callback is a function with no arguments which
      * starts the data migration. This function is only called if the return
@@ -261,13 +254,11 @@ struct ParallelLCGrid {
     };
 
     /** Returns a globally unique id for a local cell.
-     * This id is uniquely assigned to the global cell
-     * corresponding to a local one, i.e. two different
-     * processes will return the same global_hash
-     * if the (most likely different) local cellidxs correspond to the same
-     * global cell.
-     * If NDEBUG is set, additionally to the above stated semantics,
-     * this function is allowed to return constant 0.
+     * This id is uniquely assigned to the global cell corresponding to a local
+     * one, i.e. two different processes will return the same global_hash if the
+     * (most likely different) local cellidxs correspond to the same global
+     * cell. If NDEBUG is set, additionally to the above stated semantics, this
+     * function is allowed to return constant 0.
      *
      * This function is useful for testing purposes only.
      * Use *only* if NDEBUG is *not* set.
