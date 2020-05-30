@@ -63,7 +63,6 @@ namespace type_tags {
     struct tag_name {                                                          \
     }
 
-TYPE_TAG_DEFINE(RankIndex);
 TYPE_TAG_DEFINE(LocalCellIndex);
 TYPE_TAG_DEFINE(GhostCellIndex);
 TYPE_TAG_DEFINE(GlobalCellIndex);
