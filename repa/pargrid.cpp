@@ -38,9 +38,10 @@ ParallelLCGrid::ParallelLCGrid(const boost::mpi::communicator &_comm,
     //
     // Cell size is guaranteed to be:
     // min_cell_size <= cell_size <= 2 * min_cell_size
-    ensure(box_size[0] >= 6 * min_cell_size && box_size[1] >= 6 * min_cell_size
-               && box_size[2] >= 6 * min_cell_size,
-           "Grid needs a minimum of three cells per dimension.");
+    if (box_size[0] < 6 * min_cell_size || box_size[1] < 6 * min_cell_size
+        || box_size[2] < 6 * min_cell_size)
+        throw std::invalid_argument(
+            "Grid needs a minimum of three cells per dimension.");
 }
 
 } // namespace grids

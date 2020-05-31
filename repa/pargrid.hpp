@@ -150,6 +150,9 @@ struct GhostExchangeDesc {
 /** Interface for a parallel linked-cell grid implementation.
  */
 struct ParallelLCGrid {
+    /**
+     * @throws std::invalid_argument if box_size[i] <= 6 * min_cell_size.
+     */
     ParallelLCGrid(const boost::mpi::communicator &comm,
                    Vec3d box_size,
                    double min_cell_size);
