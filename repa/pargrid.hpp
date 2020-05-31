@@ -251,7 +251,7 @@ struct ParallelLCGrid {
     virtual void command(std::string s)
     {
         throw UnknwonCommandError{s};
-    };
+    }
 
     /** Returns a globally unique id for a local cell.
      * This id is uniquely assigned to the global cell corresponding to a local
