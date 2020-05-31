@@ -77,7 +77,8 @@ static void test_ghost_has_comm(repa::grids::ParallelLCGrid *grid)
         for (const auto &ghost : g.recv) {
             // Ensure valid ghost cell index
             BOOST_TEST(((ghost.value() >= 0)
-                        && (ghost.value() < grid->ghost_cells().size())));
+                        && (static_cast<size_t>(ghost.value())
+                            < grid->ghost_cells().size())));
             // Each ghost cell can only have one receive operation.
             BOOST_TEST(!used[ghost.value()]);
             used.at(ghost.value()) = true;

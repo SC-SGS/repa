@@ -73,7 +73,10 @@ BOOST_AUTO_TEST_CASE(test_vec)
         BOOST_CHECK(&wconst.as_array().data()[i] == &w[i]);
     }
 
-    BOOST_CHECK(std::distance(w.begin(), w.end()) == w.size());
+    BOOST_CHECK(static_cast<size_t>(std::distance(w.begin(), w.end()))
+                == w.size());
+    BOOST_CHECK(std::distance(w.begin(), w.end())
+                == static_cast<ptrdiff_t>(w.size()));
 
     // Comparisons
     BOOST_CHECK(v == v);

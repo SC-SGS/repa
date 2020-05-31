@@ -543,7 +543,7 @@ bool P4estGrid::_P4estGrid_impl::repartition(CellMetric m,
     m_repartstate.reset();
 
     const auto weights = m();
-    assert(weights.size() == m_num_local_cells);
+    assert(weights.size() == static_cast<size_t>(m_num_local_cells));
 
     // Determine prefix and target load
     const double localsum

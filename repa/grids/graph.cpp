@@ -74,7 +74,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 {
     static constexpr idx_t w_fac = 100;
     const auto vertex_weights = m();
-    assert(vertex_weights.size() == n_local_cells());
+    assert(vertex_weights.size() == local_cells().size());
 
     idx_t nglocells = static_cast<idx_t>(gbox.global_cells().size());
     idx_t ncells_per_proc = static_cast<idx_t>(
@@ -87,7 +87,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     vtxdist[comm_cart.size()] = nglocells;
 
 #ifdef GRAPH_DEBUG
-    assert(vtxdist.size() == comm_cart.size() + 1);
+    assert(vtxdist.size() == static_cast<size_t>(comm_cart.size()) + 1);
     for (int i = 0; i < comm_cart.size(); ++i) {
         assert(0 <= vtxdist[i] && vtxdist[i] < nglocells);
     }
@@ -108,7 +108,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
         assert(0 <= r && r < comm_cart.size());
         assert(std::count(std::begin(recvranks), std::end(recvranks), r) == 1);
     }
-    assert(recvranks.size() <= comm_cart.size());
+    assert(recvranks.size() <= static_cast<size_t>(comm_cart.size()));
 #endif
 
     // [0]: vertex weight
@@ -184,13 +184,13 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 #ifdef GRAPH_DEBUG
     assert(nvtx == vtxdist[comm_cart.rank() + 1] - vtxdist[comm_cart.rank()]);
     assert(nvtx <= nglocells);
-    assert(xadj.size() == nvtx + 1);
+    assert(xadj.size() == static_cast<size_t>(nvtx) + 1);
     for (int i = 0; i < nvtx; ++i) {
         assert(xadj[i] < xadj[i + 1]);
         assert(xadj[i + 1] - xadj[i] == 26);
     }
 
-    for (int i = 0; i < adjncy.size(); ++i) {
+    for (size_t i = 0; i < adjncy.size(); ++i) {
         assert(adjncy[i] >= 0 && adjncy[i] < nglocells);
     }
 #endif
@@ -220,7 +220,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     for (int i = 0; i < comm_cart.size(); ++i) {
         assert(ii[i] == their_weights[i].size());
     }
-    assert(li == nvtx);
+    assert(li == static_cast<size_t>(nvtx));
 
     for (idx_t w : vwgt) {
         assert(w != -1);
@@ -274,7 +274,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     auto parti = util::coerce_vector_to<rank_type>(part);
 
 #ifdef GRAPH_DEBUG
-    assert(parti.size() == nvtx);
+    assert(parti.size() == static_cast<size_t>(nvtx));
     for (auto r : parti) {
         assert(r != static_cast<idx_t>(-1));
         assert(0 <= r && r < comm_cart.size());
@@ -289,7 +289,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     util::all_gatherv_displ(comm_cart, parti.cref(), vtxdist, partition);
 
 #ifdef GRAPH_DEBUG
-    assert(partition.size() == nglocells);
+    assert(partition.size() == static_cast<size_t>(nglocells));
     for (int r : partition) {
         assert(0 <= r && r < comm_cart.size());
     }

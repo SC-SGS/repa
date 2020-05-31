@@ -52,14 +52,14 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
             // Test if "d" is valid.
             d.visit(
                 [grid](repa::local_cell_index_type li) {
-                    BOOST_CHECK(
-                        (static_cast<int>(li) >= 0
-                         && static_cast<int>(li) < grid->local_cells().size()));
+                    BOOST_CHECK((li >= 0
+                                 && static_cast<size_t>(li)
+                                        < grid->local_cells().size()));
                 },
                 [grid](repa::ghost_cell_index_type gi) {
-                    BOOST_CHECK(
-                        (static_cast<int>(gi) >= 0
-                         && static_cast<int>(gi) < grid->ghost_cells().size()));
+                    BOOST_CHECK((gi >= 0
+                                 && static_cast<size_t>(gi)
+                                        < grid->ghost_cells().size()));
                 });
 
             // If "d" is a inner cell and neighbors "c", then "c" must also

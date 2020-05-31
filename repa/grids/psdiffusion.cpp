@@ -52,7 +52,7 @@ static Vec3i map_coords_to_opposite_side(const Vec3i &c0,
 {
     using namespace util::vector_arithmetic;
     Vec3i te, ts;
-    for (int i = 0; i < te.size(); i++) {
+    for (size_t i = 0; i < te.size(); i++) {
         te[i] = c2[i] - c0[i] > 1;
         ts[i] = c0[i] - c2[i] > 1;
     }

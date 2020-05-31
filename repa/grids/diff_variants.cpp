@@ -96,7 +96,7 @@ SchornVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
                                MPI_DOUBLE, neighcomm);
 
         double old_load = load;
-        for (int j = 0; j < neighloads.size(); j++) {
+        for (size_t j = 0; j < neighloads.size(); j++) {
             double new_f = alpha[j] * (old_load - neighloads[j]);
             deficiency[j] += new_f;
             load -= new_f;
@@ -128,7 +128,7 @@ SOVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
                            MPI_DOUBLE, neighcomm);
 
     if (_prev_deficiency.size() == 0) {
-        for (int j = 0; j < neighloads.size(); j++)
+        for (size_t j = 0; j < neighloads.size(); j++)
             deficiency[j] = alpha * (load - neighloads[j]);
 
         _prev_deficiency.reserve(nneigh);
@@ -136,7 +136,7 @@ SOVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
             _prev_deficiency[neighbors[i]] = deficiency[i];
     }
     else {
-        for (int j = 0; j < neighloads.size(); j++)
+        for (size_t j = 0; j < neighloads.size(); j++)
             deficiency[j] = (_beta - 1) * _prev_deficiency[neighbors[j]]
                             + _beta * alpha * (load - neighloads[j]);
 
@@ -168,9 +168,9 @@ SOFVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
     MPI_Neighbor_allgather(&load, 1, MPI_DOUBLE, neighloads.data(), 1,
                            MPI_DOUBLE, neighcomm);
 
-    for (int i = 0; i < _nflow_iter; i++) {
+    for (uint32_t i = 0; i < _nflow_iter; i++) {
         if (_prev_deficiency.size() == 0) {
-            for (int j = 0; j < neighloads.size(); j++)
+            for (size_t j = 0; j < neighloads.size(); j++)
                 deficiency[j] = alpha * (load - neighloads[j]);
 
             _prev_deficiency.reserve(nneigh);
@@ -178,7 +178,7 @@ SOFVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
                 _prev_deficiency[neighbors[j]] = deficiency[j];
         }
         else {
-            for (int j = 0; j < neighloads.size(); j++)
+            for (size_t j = 0; j < neighloads.size(); j++)
                 deficiency[j] = (_beta - 1) * _prev_deficiency[neighbors[j]]
                                 + _beta * alpha * (load - neighloads[j]);
 

@@ -82,8 +82,9 @@ BOOST_AUTO_TEST_CASE(test_coloring)
     // In this case all nodes have the color -1.
     // This means that NO node will be shifted, but it's valid in the test case.
     if (dims[0] == 1 || dims[1] == 1 || dims[2] == 1) {
-        BOOST_CHECK(std::count(colors.begin(), colors.end(), -1)
-                    == colors.size());
+        BOOST_CHECK(
+            static_cast<size_t>(std::count(colors.begin(), colors.end(), -1))
+            == colors.size());
     }
     else {
         for (int col = 0; col < 8; col++) {

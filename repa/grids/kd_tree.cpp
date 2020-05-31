@@ -387,7 +387,7 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
 {
     UNUSED(ccm);
     const auto weights = m();
-    assert(weights.size() == n_local_cells());
+    assert(weights.size() == local_cells().size());
 
     m_kdtree = std::make_unique<KDTreePrivateImpl>(
         kdpart::repart_parttree_par(m_kdtree->t, comm_cart, m()));

@@ -171,7 +171,7 @@ void Diffusion::clear_unknown_cell_ownership()
 bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 {
     const auto cellweights = m();
-    assert(cellweights.size() == n_local_cells());
+    assert(cellweights.size() == local_cells().size());
 
     clear_unknown_cell_ownership();
 

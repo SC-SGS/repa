@@ -71,7 +71,6 @@ set(REPA_DEFAULT_COMPILE_OPTIONS
       "-pedantic-errors"
       #[[ Exclude common things ]]
       "-Wno-unused-parameter"
-      "-Wno-sign-compare"
       #[[ The following flags (without "no-") currently cause warnings
           in the code. However, they are not enabled by Wall or Wextra.
           Still list them here as disabled as a reminder. ]]

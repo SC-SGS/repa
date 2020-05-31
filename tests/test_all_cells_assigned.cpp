@@ -52,8 +52,8 @@ test_exactly_one_assigned_process(const boost::mpi::communicator &comm,
     if (has_cell) {
         BOOST_CHECK(grid->position_to_rank(pos) == comm.rank());
         BOOST_CHECK(
-            (static_cast<int>(cellidx) >= 0
-             && static_cast<int>(cellidx) < grid->local_cells().size()));
+            (cellidx >= 0
+             && static_cast<size_t>(cellidx) < grid->local_cells().size()));
     }
 
     int nresp

@@ -41,7 +41,8 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
     BOOST_TEST(nglobalcells > 0);
 
     auto gs = grid->grid_size();
-    BOOST_TEST((nglobalcells == gs[0] * gs[1] * gs[2]));
+    BOOST_TEST((gs[0] > 0 && gs[1] > 0 && gs[2] > 0));
+    BOOST_TEST((nglobalcells == static_cast<size_t>(gs[0] * gs[1] * gs[2])));
 }
 
 BOOST_AUTO_TEST_CASE(test_cell_numbers)

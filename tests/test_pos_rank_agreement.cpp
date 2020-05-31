@@ -107,10 +107,12 @@ static void test_position(const boost::mpi::communicator &comm,
         // only having a node_grid of 1).
 
         // Check validity of resolved cell
-        int cidx = -1;
+        repa::local_cell_index_type cidx;
         BOOST_CHECK_NO_THROW(cidx = grid->position_to_cell_index(pos));
-
-        BOOST_TEST(((0 <= cidx) && (cidx < grid->local_cells().size())));
+        assert(cidx.is_initialized());
+        BOOST_TEST(
+            ((0 <= cidx)
+             && (static_cast<size_t>(cidx) < grid->local_cells().size())));
     }
     else if (is_in_ghost_layer(comm, grid, pos)) {
         // Check that "rank" is registeres as neighbor

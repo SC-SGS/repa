@@ -322,7 +322,7 @@ bool GridBasedGrid::sub_repartition(CellMetric m, CellCellMetric ccm)
     using namespace util::vector_arithmetic;
 
     const auto weights = m();
-    assert(weights.size() == n_local_cells());
+    assert(weights.size() == local_cells().size());
 
     const double lambda_p
         = std::accumulate(std::begin(weights), std::end(weights), 0.0);
@@ -359,7 +359,7 @@ bool GridBasedGrid::sub_repartition(CellMetric m, CellCellMetric ccm)
             // to be communicated
             gridpoints.clear();
             boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
-            assert(gridpoints.size() == comm_cart.size());
+            assert(gridpoints.size() == static_cast<size_t>(comm_cart.size()));
         })();
 
     is_regular_grid = false;
