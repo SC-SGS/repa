@@ -337,10 +337,7 @@ void P4estGrid::_P4estGrid_impl::set_optimal_cellsize()
 {
     using namespace util::vector_arithmetic;
     // Compute number of cells and the cell size
-    if (min_cell_size > ROUND_ERROR_PREC * box_size[0])
-        m_grid_size = static_cast_vec<Vec3i>(box_size / min_cell_size);
-    else
-        m_grid_size = constant_vec3(1);
+    m_grid_size = static_cast_vec<Vec3i>(box_size / min_cell_size);
 
     m_cell_size = box_size / m_grid_size;
     m_inv_cell_size = 1.0 / m_cell_size;
