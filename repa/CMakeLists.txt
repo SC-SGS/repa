@@ -58,6 +58,10 @@ set(repa_HDR
     common_types.hpp
     grid_types.hpp
     grid_variants.hpp
+    grids/util/range.hpp
+    grids/util/simple_variant.hpp
+    grids/util/span.hpp
+    grids/util/strong_alias.hpp
 )
 
 add_library(repa SHARED ${repa_SRC})
