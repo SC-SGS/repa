@@ -33,6 +33,14 @@ ParallelLCGrid::ParallelLCGrid(const boost::mpi::communicator &_comm,
       box_size(box_size),
       min_cell_size(min_cell_size)
 {
+    // Grid should have at least three cells in each direction to be guaranteed
+    // to work. Otherwise cell neighborhoods might be incorrect.
+    //
+    // Cell size is guaranteed to be:
+    // min_cell_size <= cell_size <= 2 * min_cell_size
+    ensure(box_size[0] >= 6 * min_cell_size && box_size[1] >= 6 * min_cell_size
+               && box_size[2] >= 6 * min_cell_size,
+           "Grid needs a minimum of three cells per dimension.");
 }
 
 } // namespace grids
