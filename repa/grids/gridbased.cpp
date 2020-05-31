@@ -71,7 +71,7 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r) const
                 // expecting it.
                 const Vec3i mirror
                     = -static_cast_vec<Vec3i>((coord == 0) && (off == 1));
-                result[i] = gridpoints[proc] + mirror * box_l;
+                result[i] = gridpoints[proc] + mirror * box_size;
                 i++;
             }
         }
@@ -114,7 +114,9 @@ void GridBasedGrid::init_regular_partitioning()
     is_regular_grid = true;
 
     using namespace util::vector_arithmetic;
-    gridpoint = (node_pos + 1) * (box_l / node_grid);
+    const auto node_pos = util::mpi_cart_get_coords(comm_cart);
+    const auto node_grid = util::mpi_cart_get_dims(comm_cart);
+    gridpoint = (node_pos + 1) * (box_size / node_grid);
 
     create_cartesian_neighborhood(); // Necessary only once. Communication
                                      // structure does not change

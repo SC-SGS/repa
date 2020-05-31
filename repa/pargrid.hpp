@@ -281,10 +281,9 @@ protected:
      */
     virtual ghost_cell_index_type n_ghost_cells() const = 0;
 
-    boost::mpi::communicator comm, comm_cart;
-    Vec3d box_l;
-    Vec3i node_grid, node_pos;
-    double max_range;
+    const boost::mpi::communicator comm, comm_cart;
+    const Vec3d box_size;
+    const double min_cell_size;
 };
 
 } // namespace grids

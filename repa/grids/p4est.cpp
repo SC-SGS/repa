@@ -110,6 +110,7 @@ struct RepartState {
 // Returns the number of trailing zeros in an integer x.
 static inline int count_trailing_zeros(int x)
 {
+    assert(x != 0);
     int z = 0;
     for (; (x & 1) == 0; x >>= 1)
         z++;
@@ -247,7 +248,7 @@ struct P4estGrid::_P4estGrid_impl {
 
     // Number of grid cells in total and per tree.
     Vec3i m_grid_size, m_brick_size;
-    // Cell size (box_l / m_grid_size)
+    // Cell size (box_size / m_grid_size)
     Vec3d m_cell_size, m_inv_cell_size;
 
     // p4est data structures
@@ -316,32 +317,32 @@ struct P4estGrid::_P4estGrid_impl {
     impl::RepartState m_repartstate;
 
     const boost::mpi::communicator &comm_cart;
-    const Vec3d &box_l;
-    const double max_range;
+    const Vec3d box_size;
+    const double min_cell_size;
 
     _P4estGrid_impl(const boost::mpi::communicator &comm_cart,
-                    const Vec3d &box_l,
-                    double max_range)
+                    const Vec3d &box_size,
+                    double min_cell_size)
         : m_repartstate(comm_cart),
           comm_cart(comm_cart),
-          box_l(box_l),
-          max_range(max_range)
+          box_size(box_size),
+          min_cell_size(min_cell_size)
     {
         impl::init_p4est_logging();
     }
 };
 
-// Compute the grid- and bricksize according to box_l and maxrange
+// Compute the grid- and bricksize according to box_size and maxrange
 void P4estGrid::_P4estGrid_impl::set_optimal_cellsize()
 {
     using namespace util::vector_arithmetic;
     // Compute number of cells and the cell size
-    if (max_range > ROUND_ERROR_PREC * box_l[0])
-        m_grid_size = static_cast_vec<Vec3i>(box_l / max_range);
+    if (min_cell_size > ROUND_ERROR_PREC * box_size[0])
+        m_grid_size = static_cast_vec<Vec3i>(box_size / min_cell_size);
     else
         m_grid_size = constant_vec3(1);
 
-    m_cell_size = box_l / m_grid_size;
+    m_cell_size = box_size / m_grid_size;
     m_inv_cell_size = 1.0 / m_cell_size;
 
     // Set number of trees to biggest common power of 2 of all dimensions
@@ -587,7 +588,8 @@ P4estGrid::P4estGrid(const boost::mpi::communicator &comm,
                      Vec3d box_size,
                      double min_cell_size)
     : ParallelLCGrid(comm, box_size, min_cell_size),
-      _impl(std::make_unique<_P4estGrid_impl>(comm_cart, box_l, max_range))
+      _impl(
+          std::make_unique<_P4estGrid_impl>(comm_cart, box_size, min_cell_size))
 
 {
     _impl->reinitialize();

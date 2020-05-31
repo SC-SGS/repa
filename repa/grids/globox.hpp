@@ -115,16 +115,16 @@ struct GlobalBox {
     std::array<index_type_1d, 27> m_neigh_offset_1d;
 
     /** Initialization with a regular grid
-     * @param box_l box size
-     * @param max_range minimum cell size
+     * @param box_size box size
+     * @param min_cell_size minimum cell size
      */
-    GlobalBox(Vec3d box_l, double max_range)
-        : m_cell_grid(static_cast<index_type_3d>(box_l[0] / max_range),
-                      static_cast<index_type_3d>(box_l[1] / max_range),
-                      static_cast<index_type_3d>(box_l[2] / max_range)),
-          m_cell_size(box_l[0] / m_cell_grid[0],
-                      box_l[1] / m_cell_grid[1],
-                      box_l[2] / m_cell_grid[2])
+    GlobalBox(Vec3d box_size, double min_cell_size)
+        : m_cell_grid(static_cast<index_type_3d>(box_size[0] / min_cell_size),
+                      static_cast<index_type_3d>(box_size[1] / min_cell_size),
+                      static_cast<index_type_3d>(box_size[2] / min_cell_size)),
+          m_cell_size(box_size[0] / m_cell_grid[0],
+                      box_size[1] / m_cell_grid[1],
+                      box_size[2] / m_cell_grid[2])
     {
         constexpr auto zero = index_type_3d{0};
         m_cell_grid_corr[0]
@@ -182,7 +182,7 @@ struct GlobalBox {
     }
 
     /** Returns the index of the cell at position "pos".
-     * @param pos coordinates of the position in [0.0, box_l[i])
+     * @param pos coordinates of the position in [0.0, box_size[i])
      */
     inline index_type_1d cell_at_pos(Vec3d pos) const noexcept
     {
@@ -206,7 +206,7 @@ struct GlobalBox {
         return i >= 0 && i < ncells();
     }
 
-    /** Returns the resulting cell size, greater or equal to max_range.
+    /** Returns the resulting cell size, greater or equal to min_cell_size.
      */
     inline position_type cell_size() const noexcept
     {

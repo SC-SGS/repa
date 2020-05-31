@@ -30,10 +30,8 @@ ParallelLCGrid::ParallelLCGrid(const boost::mpi::communicator &_comm,
     : comm(_comm, boost::mpi::comm_duplicate),
       comm_cart(util::make_cartesian_communicator(_comm),
                 boost::mpi::comm_take_ownership),
-      box_l(box_size),
-      node_grid(util::mpi_cart_get_dims(comm_cart)),
-      node_pos(util::mpi_cart_get_coords(comm_cart)),
-      max_range(min_cell_size)
+      box_size(box_size),
+      min_cell_size(min_cell_size)
 {
 }
 
