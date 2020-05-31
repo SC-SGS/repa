@@ -90,7 +90,7 @@ using ghost_cell_index_type
  * Offers functions to conveniently iterate over a range of cells.
  * Do not rely on the specific implementation.
  *
- * Lxocal and ghost cells are, however, ensured to be continuously numbered
+ * Local and ghost cells are, however, ensured to be continuously numbered
  * starting from 0.
  */
 template <
