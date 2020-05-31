@@ -84,9 +84,8 @@ private:
     std::vector<GhostExchangeDesc> m_boundary_info;
 
     /**
-     * Initializes datastructure that contains the ranks of all neighbor
-     * processes.
-     * TODO update comment
+     * Initializes datastructure that contains neighbor ranks and ghost
+     * communication
      */
     void init_neighborhood_information();
 
