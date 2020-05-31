@@ -60,13 +60,12 @@ struct ExtraParams {
 
 namespace type_tags {
 
-#define TYPE_TAG_DEFINE(tag_name)                                              \
-    struct tag_name {                                                          \
-    }
-
-TYPE_TAG_DEFINE(LocalCellIndex);
-TYPE_TAG_DEFINE(GhostCellIndex);
-TYPE_TAG_DEFINE(GlobalCellIndex);
+struct LocalCellIndexTag {
+};
+struct GhostCellIndexTag {
+};
+struct GlobalCellIndexTag {
+};
 
 } // namespace type_tags
 
@@ -79,11 +78,13 @@ typedef int rank_type;
 
 /** Index of a local cell (0..n_local_cells-1).
  */
-using local_cell_index_type = util::StrongAlias<int_fast32_t, type_tags::LocalCellIndex>;
+using local_cell_index_type
+    = util::StrongAlias<int_fast32_t, type_tags::LocalCellIndexTag>;
 
 /** Index of a ghost cell (0..n_ghost_cells-1).
  */
-using ghost_cell_index_type = util::StrongAlias<int_fast32_t, type_tags::GhostCellIndex>;
+using ghost_cell_index_type
+    = util::StrongAlias<int_fast32_t, type_tags::GhostCellIndexTag>;
 
 /** cell_range.
  * Offers functions to conveniently iterate over a range of cells.
@@ -108,7 +109,7 @@ using local_or_ghost_cell_index_type
 /** Global cell index (unique across all processes).
  */
 using global_cell_index_type
-    = util::StrongAlias<int_fast64_t, type_tags::GlobalCellIndex>;
+    = util::StrongAlias<int_fast64_t, type_tags::GlobalCellIndexTag>;
 
 typedef std::function<std::vector<double>(void)> CellMetric;
 typedef std::function<double(local_cell_index_type,
