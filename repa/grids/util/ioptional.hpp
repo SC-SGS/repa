@@ -105,6 +105,8 @@ struct ioptional {
         return _value != EmptyValueT::value;
     }
 
+    /** @see has_value()
+     */
     constexpr explicit operator bool() const
     {
         return has_value();
@@ -145,7 +147,7 @@ struct ioptional {
             return t;
     }
 
-    /** @see above
+    /** @see value_or(const T &)
      */
     constexpr T value_or(T &&t) const
     {
@@ -155,6 +157,8 @@ struct ioptional {
             return std::forward<T>(t);
     }
 
+    /** Returns the value if one is held or throws an exception.
+     */
     template <typename Exception, typename... Args>
     constexpr T value_or_throw(Args... args) const
     {

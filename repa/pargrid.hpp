@@ -222,6 +222,10 @@ struct ParallelLCGrid {
      * position "pos". Before the first call to repartition() is guaranteed to
      * work for the whole domain! After the first repartition() might only work
      * for the process itself and its neighbors or its ghost layer.
+     *
+     * @throws std::runtime_error if position cannot be resolved because the
+     * specific class supports resolving only its subdomain and ghost layer (see
+     * above).
      */
     virtual rank_type position_to_rank(Vec3d pos) = 0;
 

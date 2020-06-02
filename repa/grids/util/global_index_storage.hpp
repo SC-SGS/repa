@@ -29,6 +29,11 @@
 namespace repa {
 namespace util {
 
+/** Class for storing local and ghost cell indices and the
+ * mappings of global indices to local and ghost indices.
+ *
+ * Store is filled with cells vial push_back_local() and push_back_ghost().
+ */
 struct global_index_storage {
 
     /** Removes all elements
@@ -40,6 +45,10 @@ struct global_index_storage {
         _inverse_map.clear();
     }
 
+    /** Registers a new local cell index
+     *
+     * @param g global index of the new local cell
+     */
     void push_back_local(global_cell_index_type g)
     {
         assert(!holds_global_index(g));
@@ -49,6 +58,10 @@ struct global_index_storage {
         _local_cells.push_back(g);
     }
 
+    /** Registers a new ghost cell index
+     *
+     * @param g global index of the new ghost cell
+     */
     void push_back_ghost(global_cell_index_type g)
     {
         assert(!holds_global_index(g));
@@ -58,18 +71,24 @@ struct global_index_storage {
         _ghost_cells.push_back(g);
     }
 
+    /** Returns the associated global index of a local cell index
+     */
     global_cell_index_type as_global_index(local_cell_index_type index) const
     {
         assert(index >= 0 && static_cast<size_t>(index) < _local_cells.size());
         return _local_cells[index];
     }
 
+    /** Returns the associated global index of a ghost cell index.
+     */
     global_cell_index_type as_global_index(ghost_cell_index_type index) const
     {
         assert(index >= 0 && static_cast<size_t>(index) < _ghost_cells.size());
         return _ghost_cells[index];
     }
 
+    /** Returns the associated global index of a local or a ghost cell index.
+     */
     global_cell_index_type
     as_global_index(local_or_ghost_cell_index_type index) const
     {
@@ -78,23 +97,25 @@ struct global_index_storage {
         return index.fmap(apply_operator_at);
     }
 
-    [[deprecated("Use as_global_index()")]] global_cell_index_type
-    operator[](local_or_ghost_cell_index_type index) const
-    {
-        return as_global_index(index);
-    }
-
+    /** Returns the local or ghost index of a global cell index.
+     */
     local_or_ghost_cell_index_type
     as_local_or_ghost_index(global_cell_index_type g) const
     {
         return _inverse_map.at(g);
     }
 
+    /** Returns true if this store holds a global cell index as local or
+     * ghost index.
+     */
     bool holds_global_index(global_cell_index_type g) const
     {
         return _inverse_map.find(g) != std::end(_inverse_map);
     }
 
+    /** Returns a local cell index of a global cell index. If the global cell
+     * index is not associated with a local index, returns an empty value.
+     */
     ioptional<local_cell_index_type>
     as_local_index(global_cell_index_type g) const
     {
@@ -105,6 +126,9 @@ struct global_index_storage {
             return {};
     }
 
+    /** Returns a ghost cell index of a global cell index. If the global cell
+     * index is not associated with a ghost index, returns an empty value.
+     */
     ioptional<ghost_cell_index_type>
     as_ghost_index(global_cell_index_type g) const
     {
@@ -115,11 +139,15 @@ struct global_index_storage {
             return {};
     }
 
+    /** Returns a range of all local cells
+     */
     auto local_cells() const
     {
         return util::range(local_cell_index_type{_local_cells.size()});
     }
 
+    /** Returns a range of all ghost cells
+     */
     auto ghost_cells() const
     {
         return util::range(ghost_cell_index_type{_ghost_cells.size()});

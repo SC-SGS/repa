@@ -34,6 +34,14 @@ namespace util {
 #define _REPA_NDIR(d) ((d + 1) % 3)
 #define _REPA_NNDIR(d) ((d + 2) % 3)
 
+/** Class for storing local and ghost cell indices and the
+ * mappings of global indices to local and ghost indices.
+ *
+ * Local indices are not actually stored, but are implicitly given by
+ * a box.
+ *
+ * An object has to be initialized via init() before using.
+ */
 struct box_global_index_storage {
     typedef int local_box_index_type;
 
@@ -45,6 +53,12 @@ struct box_global_index_storage {
         _inverse_ghost_map.clear();
     }
 
+    /** Initializes the object.
+     *
+     * @param global_grid_size global number of cells in each direction
+     * @param local_grid_stize local number of cells in each direction
+     * @param local_lower_left_idx3d first index belonging to this subdomain
+     */
     void init(Vec3i global_grid_size,
               Vec3i local_grid_size,
               Vec3i local_lower_left_idx3d)
@@ -114,6 +128,8 @@ struct box_global_index_storage {
         _ghost_cells.shrink_to_fit();
     }
 
+    /** Converts a local index into a global one.
+     */
     global_cell_index_type as_global_index(local_cell_index_type index) const
     {
         using namespace util::vector_arithmetic;
@@ -121,12 +137,16 @@ struct box_global_index_storage {
         return get_global_cell_index(local_idx3d + _local_lower_left_idx3d);
     }
 
+    /** Converts a ghost index into a global one.
+     */
     global_cell_index_type as_global_index(ghost_cell_index_type index) const
     {
         assert(index >= 0 && static_cast<size_t>(index) < _ghost_cells.size());
         return _ghost_cells[index];
     }
 
+    /** Converts a local or ghost index into a global one.
+     */
     global_cell_index_type
     as_global_index(local_or_ghost_cell_index_type index) const
     {
@@ -135,6 +155,11 @@ struct box_global_index_storage {
         return index.fmap(apply_operator_at);
     }
 
+    /** Converts a global cell index into a local or ghost index
+     *
+     * @param g global index, must lie in the local subdomain.
+     * @throws std::out_of_range if g is neither a local nor a ghost cell.
+     */
     local_or_ghost_cell_index_type
     as_local_or_ghost_index(global_cell_index_type g) const
     {
@@ -156,6 +181,11 @@ struct box_global_index_storage {
         }
     }
 
+    /** Converts a global index to a local one. If the index is not local,
+     * returns an empty value.
+     * 
+     * @param g Must be resolvable by as_local_or_ghost_index
+     */
     ioptional<local_cell_index_type>
     as_local_index(global_cell_index_type g) const
     {
@@ -166,6 +196,11 @@ struct box_global_index_storage {
             return {};
     }
 
+    /** Converts a global index to a local one. If the index is not local,
+     * returns an empty value.
+     * 
+     * @param g Must be resolvable by as_local_or_ghost_index
+     */
     ioptional<ghost_cell_index_type>
     as_ghost_index(global_cell_index_type g) const
     {
@@ -176,29 +211,48 @@ struct box_global_index_storage {
             return {};
     }
 
+    /** Returns a local index from a 3d cell index.
+     * Before resolving, the 3d cell index is folded back into the primary
+     * box.
+     * 
+     * @see as_local_index(global_cell_index_type)
+     */
     ioptional<local_cell_index_type>
     as_local_index(const Vec3i &global_idx3d) const
     {
         return as_local_index(get_canonical_representant(global_idx3d));
     }
 
+    /** Returns a ghost index from a 3d cell index.
+     * Before resolving, the 3d cell index is folded back into the primary
+     * box.
+     * 
+     * @see as_ghost_index(global_cell_index_type)
+     */
     ioptional<ghost_cell_index_type>
     as_ghost_index(const Vec3i &global_idx3d) const
     {
         return as_ghost_index(get_canonical_representant(global_idx3d));
     }
 
+    /** Returns a range of all local cells.
+     */
     auto local_cells() const
     {
         using namespace util::vector_arithmetic;
         return util::range(local_cell_index_type{product(_local_grid_size)});
     }
 
+    /** Returns a range of all ghost cells.
+     */
     auto ghost_cells() const
     {
         return util::range(ghost_cell_index_type{_ghost_cells.size()});
     }
 
+    /** Returns a canonical representation of a 3d cell index.
+     * This representation is unique for all periodic images of the cell index.
+     */
     global_cell_index_type
     get_canonical_representant(const Vec3i &global_idx3d) const
     {
@@ -207,14 +261,24 @@ struct box_global_index_storage {
 
 private:
     Vec3i _global_grid_size;
+
+    /** Stores the local subdomain.
+     */
     Vec3i _local_grid_size;
     Vec3i _local_lower_left_idx3d;
 
+    /** Stores the global indices of the ghost cells. The indices
+     * of this vector are the "ghost cell indices".
+     */
     std::vector<global_cell_index_type> _ghost_cells;
 
+    /** Inverse mapping from global cells to ghost cells.
+     */
     std::unordered_map<global_cell_index_type, ghost_cell_index_type>
         _inverse_ghost_map;
 
+    /** Folds a 3d cell index back into the primary box
+     */
     Vec3i get_canonical_vector(const Vec3i &global_idx3d) const
     {
         using namespace util::vector_arithmetic;

@@ -87,12 +87,8 @@ local_cell_index_type GloMethod::position_to_cell_index(Vec3d pos)
 
 rank_type GloMethod::position_to_rank(Vec3d pos)
 {
-    const auto r = rank_of_cell(gbox.cell_at_pos(pos));
-
-    if (!r)
-        throw std::runtime_error("Cell not in scope of process");
-    else
-        return *r;
+    return rank_of_cell(gbox.cell_at_pos(pos))
+        .value_or_throw<std::runtime_error>("Cell not in scope of process");
 }
 
 /*
