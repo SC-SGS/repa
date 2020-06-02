@@ -224,6 +224,14 @@ struct simple_variant {
         visitor<T, F>{}(*this, std::forward<F>(f));
     }
 
+    /** @see visit_if(F &&)
+     */
+    template <typename T, typename F>
+    void visit_if(F &&f) const
+    {
+        visitor<T, F>{}(*this, std::forward<F>(f));
+    }
+
     /** Calls "f1" with the held object, if it is of type "T1" and "f2" if it is
      * of type "T2".
      */
