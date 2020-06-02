@@ -40,8 +40,7 @@ namespace grids {
 
 static const std::unordered_map<std::string, diff_variants::FlowCalcKind>
     supported_ps_diffusion_variants
-    = {{"so", diff_variants::FlowCalcKind::SO},
-       {"sof", diff_variants::FlowCalcKind::SOF}};
+    = {{"so", diff_variants::FlowCalcKind::SO}};
 
 /** Returns the new Coords of a Rank after it beeing maped to opposite site.
  * This is a necessary step for the metric because of the periodic edge.
