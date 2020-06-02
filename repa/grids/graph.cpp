@@ -23,6 +23,7 @@
 #include <boost/mpi.hpp>
 #include <boost/mpi/collectives.hpp>
 #include <boost/mpi/datatype.hpp>
+#include <boost/range/algorithm_ext.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/vector.hpp>
 #include <mpi.h>
@@ -49,13 +50,11 @@ Graph::Graph(const boost::mpi::communicator &comm,
     : GloMethod(comm, box_size, min_cell_size, ep)
 {
     // Initial partitioning
-    partition.resize(gbox.global_cells().size());
-    util::make_initial_partitioner(gbox, comm_cart)
-        .apply(initial_partitioning,
-               [this](global_cell_index_type idx, rank_type r) {
-                   assert(r >= 0 && r < this->comm.size());
-                   this->partition[idx] = r;
-               });
+    partition.reserve(gbox.global_cells().size());
+    boost::push_back(partition, util::StaticRankAssigner{initial_partitioning,
+                                                         gbox, comm_cart}
+                                    .partitioning());
+    assert(partition.size() == gbox.global_cells().size());
 }
 
 Graph::~Graph()

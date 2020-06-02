@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <boost/mpi/nonblocking.hpp>
 #include <boost/range/adaptor/indexed.hpp>
+#include <boost/range/algorithm_ext.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/utility.hpp> // std::pair
 #include <boost/serialization/vector.hpp>
@@ -239,13 +240,11 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
           diff_variants::FlowCalcKind::WILLEBEEK))
 {
     // Initial partitioning
-    partition.resize(gbox.global_cells().size());
-    util::make_initial_partitioner(gbox, comm_cart)
-        .apply(initial_partitioning,
-               [this](global_cell_index_type idx, rank_type r) {
-                   assert(r >= 0 && r < this->comm.size());
-                   this->partition[idx] = r;
-               });
+    partition.reserve(gbox.global_cells().size());
+    boost::push_back(partition, util::StaticRankAssigner{initial_partitioning,
+                                                         gbox, comm_cart}
+                                    .partitioning());
+    assert(partition.size() == gbox.global_cells().size());
 }
 
 Diffusion::~Diffusion()

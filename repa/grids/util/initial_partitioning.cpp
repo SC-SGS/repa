@@ -34,6 +34,7 @@ static const struct {
 } partition_registry[] = {
     {{"linear"}, InitialPartitionType::LINEAR},
     {{"cart1d", "cartesian1d"}, InitialPartitionType::CARTESIAN1D},
+    {{"cart2d", "cartesian2d"}, InitialPartitionType::CARTESIAN2D},
     {{"cart3d", "cartesian3d", "cart"}, InitialPartitionType::CARTESIAN3D},
 };
 
@@ -66,6 +67,11 @@ make_init_part_communicator(const boost::mpi::communicator &comm,
     case util::InitialPartitionType::CARTESIAN1D:
         return boost::mpi::communicator{
             make_cartesian_communicator(comm, Vec3i{0, 1, 1}),
+            boost::mpi::comm_take_ownership};
+        break;
+    case util::InitialPartitionType::CARTESIAN2D:
+        return boost::mpi::communicator{
+            make_cartesian_communicator(comm, Vec3i{0, 0, 1}),
             boost::mpi::comm_take_ownership};
         break;
     case util::InitialPartitionType::CARTESIAN3D:
