@@ -26,7 +26,7 @@ namespace util {
 
 /** Minimal version of C++20 span.
  * Stores a non-owning, sized pointer to a continuous sequence of T.
- * 
+ *
  * For simplicity:
  * const_span<T> == span<const T>.
  */

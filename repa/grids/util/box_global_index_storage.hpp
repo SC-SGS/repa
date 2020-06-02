@@ -183,7 +183,7 @@ struct box_global_index_storage {
 
     /** Converts a global index to a local one. If the index is not local,
      * returns an empty value.
-     * 
+     *
      * @param g Must be resolvable by as_local_or_ghost_index
      */
     ioptional<local_cell_index_type>
@@ -198,7 +198,7 @@ struct box_global_index_storage {
 
     /** Converts a global index to a local one. If the index is not local,
      * returns an empty value.
-     * 
+     *
      * @param g Must be resolvable by as_local_or_ghost_index
      */
     ioptional<ghost_cell_index_type>
@@ -214,7 +214,7 @@ struct box_global_index_storage {
     /** Returns a local index from a 3d cell index.
      * Before resolving, the 3d cell index is folded back into the primary
      * box.
-     * 
+     *
      * @see as_local_index(global_cell_index_type)
      */
     ioptional<local_cell_index_type>
@@ -226,7 +226,7 @@ struct box_global_index_storage {
     /** Returns a ghost index from a 3d cell index.
      * Before resolving, the 3d cell index is folded back into the primary
      * box.
-     * 
+     *
      * @see as_ghost_index(global_cell_index_type)
      */
     ioptional<ghost_cell_index_type>
