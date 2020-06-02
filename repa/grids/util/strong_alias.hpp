@@ -30,8 +30,6 @@ namespace util {
 
 /** Strong alias type for "T".
  * Use a unique, empty struct as "TypeTag".
- * "Min_Val" and "Max_Val" can be used to limit the allowed range of values.
- * This range is enforced on debug builds only.
  *
  * Uninitialized accesses to objects is detected for debug builds.
  *
@@ -39,19 +37,11 @@ namespace util {
  */
 template <typename T,
           typename TypeTag,
-          T Min_Val = std::numeric_limits<T>::min(),
-          T Max_Val = std::numeric_limits<T>::max(),
           // We currently want to offer this template only for arithmetic types.
           typename = std::enable_if_t<std::is_arithmetic_v<T>>>
 struct StrongAlias {
     using value_type = T;
     using type_tag = TypeTag;
-
-    constexpr void assert_value_domain()
-    {
-        assert(_value <= Max_Val);
-        assert(_value >= Min_Val);
-    }
 
     /** Marks object as uninitialized.
      */
@@ -62,7 +52,6 @@ struct StrongAlias {
 
     explicit constexpr StrongAlias(T value) : _value(value)
     {
-        assert_value_domain();
         REPA_ON_DEBUG(_initialized = true);
     }
 
@@ -89,7 +78,6 @@ struct StrongAlias {
                || static_cast<MinType>(std::numeric_limits<T>::min())
                       <= static_cast<MinType>(value));
         _value = static_cast<T>(value);
-        assert_value_domain();
         REPA_ON_DEBUG(_initialized = true);
     }
 
@@ -132,7 +120,6 @@ struct StrongAlias {
     {
         assert(_initialized);
         ++_value;
-        assert_value_domain();
         return *this;
     }
 
@@ -141,7 +128,6 @@ struct StrongAlias {
         assert(_initialized);
         auto tmp = *this;
         _value++;
-        assert_value_domain();
         return tmp;
     }
 
@@ -149,7 +135,6 @@ struct StrongAlias {
     {
         assert(_initialized);
         _value += other._value;
-        assert_value_domain();
         return *this;
     }
 
@@ -157,7 +142,6 @@ struct StrongAlias {
     {
         assert(_initialized && other._initialized);
         _value -= other._value;
-        assert_value_domain();
         return *this;
     }
 
@@ -244,30 +228,12 @@ private:
 #endif
 };
 
-template <typename T>
-struct is_strong_alias_type {
-    static const bool value = false;
-};
-
-template <typename T, typename Tag>
-struct is_strong_alias_type<StrongAlias<T, Tag>> {
-    static const bool value = true;
-};
-
 } // namespace util
 } // namespace repa
 
-/*
-template <typename T, typename Tag, T Min, T Max>
-struct std::common_type<repa::StrongAlias<T, Tag, Min, Max>,
-repa::StrongAlias<T, Tag, Min, Max>> { typedef repa::StrongAlias<T, Tag, Min,
-Max> type;
-};
-*/
-
-template <typename T, typename Tag, T Min, T Max>
-struct std::hash<repa::util::StrongAlias<T, Tag, Min, Max>> {
-    auto operator()(const repa::util::StrongAlias<T, Tag, Min, Max> &val) const
+template <typename T, typename Tag>
+struct std::hash<repa::util::StrongAlias<T, Tag>> {
+    auto operator()(const repa::util::StrongAlias<T, Tag> &val) const
     {
         return _hasher(static_cast<T>(val));
     }

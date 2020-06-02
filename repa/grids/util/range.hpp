@@ -27,19 +27,12 @@
 namespace repa {
 namespace util {
 
-/*
-template <typename Int>
-auto range(Int val) {
-    return boost::irange(val);
-}
-*/
-
-template <typename Int, typename Tag, Int Min, Int Max>
-auto range(StrongAlias<Int, Tag, Min, Max> val)
+template <typename Int, typename Tag>
+auto range(StrongAlias<Int, Tag> val)
 {
     return boost::irange(static_cast<Int>(val))
            | boost::adaptors::transformed(
-               [](Int i) { return StrongAlias<Int, Tag, Min, Max>{i}; });
+               [](Int i) { return StrongAlias<Int, Tag>{i}; });
 }
 
 /** Iota Iterator
