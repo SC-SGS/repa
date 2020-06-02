@@ -24,11 +24,17 @@
 namespace repa {
 namespace util {
 
+/** Minimal version of C++20 span.
+ * Stores a non-owning, sized pointer to a continuous sequence of T.
+ * 
+ * For simplicity:
+ * const_span<T> == span<const T>.
+ */
 template <typename T>
 struct span {
     using value_type = T;
     using pointer = T *;
-    using const_pointer = std::add_const_t<T> *;
+    using const_pointer = std::add_const_t<T> *; // Necessary for boost::range
     using reference = T &;
     using iterator = pointer;
     using const_iterator = const_pointer;

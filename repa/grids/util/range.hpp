@@ -36,7 +36,7 @@ auto range(StrongAlias<Int, Tag> val)
 }
 
 /** Iota Iterator
- * Iterates through an integers.
+ * Iterates through a range integers starting with "value" (see constructor).
  */
 template <typename T>
 struct iota_iter
@@ -101,6 +101,8 @@ private:
     T _value;
 };
 
+/** Represents an integer range from 0 to N - 1 where N is the parameter "last".
+ */
 template <typename T>
 struct iota_range {
     iota_iter<T> begin() const
@@ -113,11 +115,17 @@ struct iota_range {
         return iota_iter<T>(_last);
     }
 
+    /** Returns the number of integers represented by the range
+     */
     size_t size() const
     {
         return std::distance(begin(), end());
     }
 
+    /** Access a specific element of the range
+     * (Although currently not used in repa itself, iota_rage is exposed via the
+     * API. This function might be useful to users.)
+     */
     T operator[](size_t i) const
     {
         assert(i < size());

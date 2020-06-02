@@ -231,6 +231,8 @@ private:
 } // namespace util
 } // namespace repa
 
+/** Implementation of std::hash for StrongAlias types.
+ */
 template <typename T, typename Tag>
 struct std::hash<repa::util::StrongAlias<T, Tag>> {
     auto operator()(const repa::util::StrongAlias<T, Tag> &val) const

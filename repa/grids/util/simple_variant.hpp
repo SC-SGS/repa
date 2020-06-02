@@ -58,7 +58,6 @@ struct simple_variant {
 
     /** Creates an uninitialized variant
      */
-
     simple_variant() : _tag(Tag::UNINITIALIZED)
     {
     }
@@ -163,16 +162,24 @@ struct simple_variant {
     SIMPLE_VARIANT_DEFINE_COMPARISON(>)
     SIMPLE_VARIANT_DEFINE_COMPARISON(>=)
 
+    /** Returns true iff the object holds an element of the first template
+     * parameter type. Consider using is() to make your code clearer.
+     */
     bool is_first() const
     {
         return _tag == Tag::TYPE_1;
     }
 
+    /** Returns true iff the object holds an element of the second template
+     * parameter type. Consider using is() to make your code clearer.
+     */
     bool is_second() const
     {
         return _tag == Tag::TYPE_2;
     }
 
+    /** Returns true iff the object holds an element of type "CheckType".
+     */
     template <typename CheckType>
     bool is() const
     {
@@ -184,6 +191,10 @@ struct simple_variant {
             return false;
     }
 
+    /** Returns the held object as "GetType".
+     * On debug builds, this function ensures that the held type is actually
+     * "GetType".
+     */
     template <typename GetType>
     GetType as() const
     {
@@ -205,18 +216,17 @@ struct simple_variant {
         ensure_not_reached();
     }
 
+    /** Calls "f" with the held object, if it is of type "T".
+     */
     template <typename T, typename F>
     void visit_if(F &&f)
     {
         visitor<T, F>{}(*this, std::forward<F>(f));
     }
 
-    template <typename T, typename F>
-    void visit_if(F &&f) const
-    {
-        visitor<T, F>{}(*this, std::forward<F>(f));
-    }
-
+    /** Calls "f1" with the held object, if it is of type "T1" and "f2" if it is
+     * of type "T2".
+     */
     template <typename F1, typename F2>
     void visit(F1 &&f1, F2 &&f2)
     {
@@ -224,6 +234,8 @@ struct simple_variant {
         visit_if<T2>(f2);
     }
 
+    /** @see visit(F1, F2)
+     */
     template <typename F1, typename F2>
     void visit(F1 &&f1, F2 &&f2) const
     {
@@ -231,6 +243,9 @@ struct simple_variant {
         visit_if<T2>(f2);
     }
 
+    /** Returns f(obj) where obj is the held object.
+     * "f" must be callable with "T1" as well as "T2" as argument.
+     */
     template <typename F>
     auto fmap(F &&f)
     {
@@ -240,6 +255,8 @@ struct simple_variant {
             return f(_b);
     }
 
+    /** Returns a std::variant holding a copy of this object.
+     */
     std::variant<T1, T2> as_std_variant() const
     {
         std::variant<T1, T2> v;
