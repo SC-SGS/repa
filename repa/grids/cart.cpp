@@ -25,7 +25,6 @@
 namespace repa {
 namespace grids {
 
-
 CartGrid::CartGrid(const boost::mpi::communicator &comm,
                    Vec3d box_size,
                    double min_cell_size,
