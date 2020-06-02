@@ -25,14 +25,13 @@
 namespace repa {
 namespace grids {
 
-/** FIXME: Build atop box_global_cell_index_storage
- */
 
 CartGrid::CartGrid(const boost::mpi::communicator &comm,
                    Vec3d box_size,
                    double min_cell_size,
                    ExtraParams ep)
-    : GloMethod(comm, box_size, min_cell_size, ep)
+    : GloMethod(comm, box_size, min_cell_size, ep),
+      _static_part(initial_partitioning, gbox, comm)
 {
 }
 
@@ -43,19 +42,7 @@ CartGrid::~CartGrid()
 util::ioptional<rank_type>
 CartGrid::rank_of_cell(global_cell_index_type idx) const
 {
-    using namespace util::vector_arithmetic;
-    const auto idx3d = util::unlinearize(idx, gbox.grid_size());
-    const auto dims = util::mpi_cart_get_dims(comm_cart);
-    const Vec3d cells_per_proc
-        = static_cast_vec<Vec3d>(gbox.grid_size()) / dims;
-
-    Vec3d tmp = idx3d / cells_per_proc - .5;
-    for (size_t i = 0; i < tmp.size(); ++i)
-        tmp[i] = std::round(tmp[i]);
-
-    Vec3i procidx
-        = vec_clamp(static_cast_vec<Vec3i>(tmp), constant_vec3(0), dims - 1);
-    return util::mpi_cart_rank(comm_cart, procidx);
+    return _static_part(idx);
 }
 
 bool CartGrid::sub_repartition(CellMetric m, CellCellMetric ccm)

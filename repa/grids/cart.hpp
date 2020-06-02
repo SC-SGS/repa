@@ -24,13 +24,10 @@
 namespace repa {
 namespace grids {
 
-/** Regular Cartesian process grid; equally sized boxes.
+/** Regular Cartesian process grid; equally sized boxes, if divisible. Else
+ * some processes get larger boxes than others.
  *
- * Cells are ordered on the ghost grid according to a simple row-wise ordering
- * (see impl::linearize). All 3d indices live on the ghost grid, i.e.
- * their values range from {0, 0, 0} to m_ghost_grid.
- * Where {0, 0, 0} is the first ghost cell, {1, 1, 1} the first inner (i.e.
- * boundary) cell and so on.
+ * Supports all initial partitioning initializations: linear or Cartesian 1/2/3d
  */
 struct CartGrid : public GloMethod {
     CartGrid(const boost::mpi::communicator &comm,
@@ -44,6 +41,9 @@ struct CartGrid : public GloMethod {
     rank_of_cell(global_cell_index_type idx) const override;
 
     bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
+
+private:
+    util::StaticRankAssigner<decltype(gbox)> _static_part;
 };
 } // namespace grids
 } // namespace repa

@@ -216,6 +216,7 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
     } initial_partitioning_confs[] = {
         {repa::GridType::DIFF, "Linear"},
         {repa::GridType::PS_DIFF, "Cart1D"},
+        {repa::GridType::CART, "Cart2D"},
         {repa::GridType::PS_DIFF, "Cart3D"},
     };
 
