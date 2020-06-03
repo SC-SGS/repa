@@ -508,14 +508,20 @@ BOOST_AUTO_TEST_CASE(check_points_over_boundaries)
         // Check an arbitrary point not on the boundary
         Vec3d point;
         for (int d = 0; d < 3; d++) {
-            point[d] = 0.15 + 0.5 * double((i & int(std::pow(2, d))) != 0);
+            const bool is_upper_subdomain = !!(i & (1 << d));
+            const double subdomain_lower_bound
+                = 0.5 * (is_upper_subdomain ? 1.0 : 0.0);
+            point[d] = 0.15 + subdomain_lower_bound;
         }
         BOOST_CHECK(octa.contains(point));
 
         // Since all subdomains are shifted downwards, the points on the upper
         // boundary should be accepted by the lower domain in this dimension.
         for (int d = 0; d < 3; d++) {
-            point[d] = 0.45 + 0.5 * double((i & int(std::pow(2, d))) == 0);
+            const bool is_lower_subomain = !(i & (1 << d));
+            const double subdomain_upper_bound
+                = 0.5 * (is_lower_subomain ? 1.0 : 0.0);
+            point[d] = 0.45 + subdomain_upper_bound;
         }
         BOOST_CHECK(octa.contains(point));
     }
@@ -534,7 +540,7 @@ BOOST_AUTO_TEST_CASE(test_rotated_tetra)
     std::vector<int> upper, lower;
     for (int rotate = 0; rotate < 3; rotate++) {
         // get the points to rotate
-        int rotate_bit = std::pow(2, 2 - rotate);
+        int rotate_bit = 1 << (2 - rotate);
         for (int i = 0; i < 8; i++) {
             if ((i & rotate_bit) == 0)
                 upper.push_back(i);
