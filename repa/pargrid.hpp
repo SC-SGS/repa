@@ -145,31 +145,31 @@ struct ParallelLCGrid {
 
     /** Returns the number of local cells.
      */
-    virtual local_cell_index_type n_local_cells() = 0;
+    virtual local_cell_index_type n_local_cells() const = 0;
 
     /** Returns the number of ghost cells
      */
-    virtual ghost_cell_index_type n_ghost_cells() = 0;
+    virtual ghost_cell_index_type n_ghost_cells() const = 0;
 
     /** Returns the number of neighboring processes over faces, edges and
      * corners
      */
-    virtual rank_index_type n_neighbors() = 0;
+    virtual rank_index_type n_neighbors() const = 0;
 
     /** Returns the rank of a neighbor process.
      * Is specified only for 0 > i or i >= n_neighbors().
      * Might throw a std::domain_error otherwise.
      * @param i index of neighbor process. 0 <= i < n_neighbors()
      */
-    virtual rank_type neighbor_rank(rank_index_type i) = 0;
+    virtual rank_type neighbor_rank(rank_index_type i) const = 0;
 
     /** Returns the cell sizes of Linked Cell grid.
      */
-    virtual Vec3d cell_size() = 0;
+    virtual Vec3d cell_size() const = 0;
 
     /** Returns the number of grid cells in total in each direction.
      */
-    virtual Vec3i grid_size() = 0;
+    virtual Vec3i grid_size() const = 0;
 
     /** Returns the index of a cell neighboring a given cell (by index).
      *

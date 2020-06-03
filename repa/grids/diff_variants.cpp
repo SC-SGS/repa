@@ -122,80 +122,42 @@ SOVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
 
     double alpha = 1.0 / nneigh;
 
-    // Exchange load in local neighborhood
-    std::vector<double> neighloads(nneigh);
-    MPI_Neighbor_allgather(&load, 1, MPI_DOUBLE, neighloads.data(), 1,
-                           MPI_DOUBLE, neighcomm);
-
-    if (_prev_deficiency.size() == 0) {
-        for (int j = 0; j < neighloads.size(); j++)
-            deficiency[j] = alpha * (load - neighloads[j]);
-
-        _prev_deficiency.reserve(nneigh);
-        for (int i = 0; i < nneigh; i++)
-            _prev_deficiency[neighbors[i]] = deficiency[i];
-    }
-    else {
-        for (int j = 0; j < neighloads.size(); j++)
-            deficiency[j] = (_beta - 1) * _prev_deficiency[neighbors[j]]
-                            + _beta * alpha * (load - neighloads[j]);
-
-        for (int i = 0; i < nneigh; i++)
-            _prev_deficiency[neighbors[i]] = deficiency[i];
-    }
-
-    return deficiency;
-}
-
-void SOVolumeComputation::set_beta_value(double beta_value)
-{
-    _beta = beta_value;
-}
-
-PerNeighbor<double>
-SOFVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
-                                   const std::vector<rank_type> &neighbors,
-                                   double load) const
-{
-    int nneigh = util::mpi_undirected_neighbor_count(neighcomm);
-
-    std::vector<double> deficiency(nneigh);
-
-    double alpha = 1.0 / nneigh;
-
-    // Exchange load in local neighborhood
-    std::vector<double> neighloads(nneigh);
-    MPI_Neighbor_allgather(&load, 1, MPI_DOUBLE, neighloads.data(), 1,
-                           MPI_DOUBLE, neighcomm);
-
     for (int i = 0; i < _nflow_iter; i++) {
-        if (_prev_deficiency.size() == 0) {
-            for (int j = 0; j < neighloads.size(); j++)
-                deficiency[j] = alpha * (load - neighloads[j]);
+        // Exchange load in local neighborhood
+        std::vector<double> neighloads(nneigh);
+        MPI_Neighbor_allgather(&load, 1, MPI_DOUBLE, neighloads.data(), 1,
+                               MPI_DOUBLE, neighcomm);
 
+        double old_load = load;
+        if (_prev_deficiency.size() == 0) {
             _prev_deficiency.reserve(nneigh);
-            for (int j = 0; j < nneigh; j++)
-                _prev_deficiency[j] = deficiency[j];
+            for (int j = 0; j < neighbors.size(); j++) {
+                double new_f = alpha * (old_load - neighloads[j]);
+                deficiency[j] += new_f;
+                load -= new_f;
+                _prev_deficiency[neighbors[j]] = new_f;
+            }
         }
         else {
-            for (int j = 0; j < neighloads.size(); j++)
-                deficiency[j] = (_beta - 1) * _prev_deficiency[neighbors[j]]
-                                + _beta * alpha * (load - neighloads[j]);
-
-            for (int j = 0; j < nneigh; j++)
-                _prev_deficiency[j] = deficiency[j];
+            for (int j = 0; j < neighbors.size(); j++) {
+                double new_f = (_beta - 1) * _prev_deficiency[neighbors[j]]
+                               + _beta * alpha * (old_load - neighloads[j]);
+                deficiency[j] += new_f;
+                load -= new_f;
+                _prev_deficiency[neighbors[j]] = new_f;
+            }
         }
     }
 
     return deficiency;
 }
 
-void SOFVolumeComputation::set_n_flow_iter(uint32_t nflow_iter)
+void SOVolumeComputation::set_n_flow_iter(uint32_t nflow_iter)
 {
     _nflow_iter = nflow_iter;
 }
 
-void SOFVolumeComputation::set_beta_value(double beta_value)
+void SOVolumeComputation::set_beta_value(double beta_value)
 {
     _beta = beta_value;
 }
@@ -206,7 +168,6 @@ static const std::map<FlowCalcKind, FlowCreateFunction> flow_create_function_map
         {FlowCalcKind::WILLEBEEK, []() { return new WLMVolumeComputation(); }},
         {FlowCalcKind::SCHORN, []() { return new SchornVolumeComputation(); }},
         {FlowCalcKind::SO, []() { return new SOVolumeComputation(); }},
-        {FlowCalcKind::SOF, []() { return new SOFVolumeComputation(); }},
 };
 
 std::unique_ptr<FlowCalculator> create_flow_calc(FlowCalcKind kind)

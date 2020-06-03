@@ -45,32 +45,32 @@ void HybridGPDiff::after_construction()
     active_implementation->after_construction();
 }
 
-local_cell_index_type HybridGPDiff::n_local_cells()
+local_cell_index_type HybridGPDiff::n_local_cells() const
 {
     return active_implementation->n_local_cells();
 }
 
-ghost_cell_index_type HybridGPDiff::n_ghost_cells()
+ghost_cell_index_type HybridGPDiff::n_ghost_cells() const
 {
     return active_implementation->n_ghost_cells();
 }
 
-rank_index_type HybridGPDiff::n_neighbors()
+rank_index_type HybridGPDiff::n_neighbors() const
 {
     return active_implementation->n_neighbors();
 }
 
-rank_type HybridGPDiff::neighbor_rank(rank_index_type i)
+rank_type HybridGPDiff::neighbor_rank(rank_index_type i) const
 {
     return active_implementation->neighbor_rank(i);
 }
 
-Vec3d HybridGPDiff::cell_size()
+Vec3d HybridGPDiff::cell_size() const
 {
     return active_implementation->cell_size();
 }
 
-Vec3i HybridGPDiff::grid_size()
+Vec3i HybridGPDiff::grid_size() const
 {
     return active_implementation->grid_size();
 }

@@ -406,33 +406,33 @@ KDTreeGrid::KDTreeGrid(const boost::mpi::communicator &comm,
     reinitialize();
 }
 
-local_cell_index_type KDTreeGrid::n_local_cells()
+local_cell_index_type KDTreeGrid::n_local_cells() const
 {
     return m_nb_of_local_cells;
 }
 
-ghost_cell_index_type KDTreeGrid::n_ghost_cells()
+ghost_cell_index_type KDTreeGrid::n_ghost_cells() const
 {
     return m_nb_of_ghost_cells;
 }
 
-rank_index_type KDTreeGrid::n_neighbors()
+rank_index_type KDTreeGrid::n_neighbors() const
 {
     return m_neighbor_processes.size();
 }
 
-rank_type KDTreeGrid::neighbor_rank(rank_index_type i)
+rank_type KDTreeGrid::neighbor_rank(rank_index_type i) const
 {
     assert(i >= 0 && i < m_neighbor_processes.size());
     return m_neighbor_processes[i];
 }
 
-Vec3d KDTreeGrid::cell_size()
+Vec3d KDTreeGrid::cell_size() const
 {
     return m_cell_size;
 }
 
-Vec3i KDTreeGrid::grid_size()
+Vec3i KDTreeGrid::grid_size() const
 {
     return m_global_domain_size;
 }

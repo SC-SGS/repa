@@ -33,13 +33,14 @@ struct GloMethod : public ParallelLCGrid {
               Vec3d box_size,
               double min_cell_size,
               ExtraParams ep);
+    virtual ~GloMethod();
     void after_construction() override;
-    local_cell_index_type n_local_cells() override;
-    ghost_cell_index_type n_ghost_cells() override;
-    rank_index_type n_neighbors() override;
-    rank_type neighbor_rank(rank_index_type i) override;
-    Vec3d cell_size() override;
-    Vec3i grid_size() override;
+    local_cell_index_type n_local_cells() const override;
+    ghost_cell_index_type n_ghost_cells() const override;
+    rank_index_type n_neighbors() const override;
+    rank_type neighbor_rank(rank_index_type i) const override;
+    Vec3d cell_size() const override;
+    Vec3i grid_size() const override;
     local_or_ghost_cell_index_type
     cell_neighbor_index(local_cell_index_type cellidx,
                         fs_neighidx neigh) override;
@@ -47,16 +48,12 @@ struct GloMethod : public ParallelLCGrid {
     local_cell_index_type position_to_cell_index(Vec3d pos) override;
     rank_type position_to_rank(Vec3d pos) override;
     /**
-     * For diffusive method:
      * @throws std::domain_error if "pos" is not in ghost layer.
-     * For graph partitioning method:
-     * @throws std::domain_error if "pos" is not on a neighboring process.
      */
     rank_index_type position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;
-    virtual ~GloMethod();
 
     global_cell_index_type
     global_hash(local_or_ghost_cell_index_type cellidx) override;
@@ -68,7 +65,14 @@ protected:
     local_cell_index_type localCells;
     // Number of ghost cells
     ghost_cell_index_type ghostCells;
-    // All neighbor ranks (ranks of subdomains neighboring this subdomain)
+    /** All neighbor ranks (ranks of subdomains neighboring this subdomain)
+     * Do not use raw access to this vector in the implementation of GloMethod.
+     * Use n_neighbors() and neighbor_rank(rank_index_type) instead.
+     * At least one subclass (GridBasedGrid) uses its own implementaion of the
+     * aforementioned menthods which is inconsistent to the ones stored in this
+     * vector (might be sorted differently *and* "neighbors" is not available
+     * during initialization).
+     */
     std::vector<rank_type> neighbors;
     // Communication descriptors
     std::vector<GhostExchangeDesc> exchangeVector;

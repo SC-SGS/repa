@@ -26,38 +26,38 @@
 #include "util/push_back_unique.hpp"
 
 #ifndef NDEBUG
-#define GLOBOX_DEBUG
+#define GLOMETHOD_DEBUG
 #endif
 
 namespace repa {
 namespace grids {
 
-local_cell_index_type GloMethod::n_local_cells()
+local_cell_index_type GloMethod::n_local_cells() const
 {
     return localCells;
 }
 
-ghost_cell_index_type GloMethod::n_ghost_cells()
+ghost_cell_index_type GloMethod::n_ghost_cells() const
 {
     return ghostCells;
 }
 
-rank_index_type GloMethod::n_neighbors()
+rank_index_type GloMethod::n_neighbors() const
 {
     return neighbors.size();
 }
 
-rank_type GloMethod::neighbor_rank(rank_index_type i)
+rank_type GloMethod::neighbor_rank(rank_index_type i) const
 {
     return neighbors[i];
 }
 
-Vec3d GloMethod::cell_size()
+Vec3d GloMethod::cell_size() const
 {
     return gbox.cell_size();
 }
 
-Vec3i GloMethod::grid_size()
+Vec3i GloMethod::grid_size() const
 {
     return gbox.grid_size();
 }
@@ -76,10 +76,15 @@ std::vector<GhostExchangeDesc> GloMethod::get_boundary_info()
 
 local_cell_index_type GloMethod::position_to_cell_index(Vec3d pos)
 {
-    if (position_to_rank(pos) != comm_cart.rank())
-        throw std::domain_error("Particle not in local box");
-
-    return global_to_local[gbox.cell_at_pos(pos)];
+    try {
+        const auto c = global_to_local.at(gbox.cell_at_pos(pos));
+        if (c >= n_local_cells())
+            throw std::domain_error("Particle not in local subdomain");
+        return c;
+    }
+    catch (const std::out_of_range &e) {
+        throw std::domain_error("Particle not in local subdomain");
+    }
 }
 
 rank_type GloMethod::position_to_rank(Vec3d pos)
@@ -95,12 +100,14 @@ rank_type GloMethod::position_to_rank(Vec3d pos)
 rank_index_type GloMethod::position_to_neighidx(Vec3d pos)
 {
     rank_type rank = position_to_rank(pos);
-    auto ni = std::find(std::begin(neighbors), std::end(neighbors), rank);
 
-    if (ni != std::end(neighbors))
-        return std::distance(std::begin(neighbors), ni);
-    else
-        throw std::domain_error("Position not within a neighbor process.");
+    // Need to iterate neighbor_rank because GridBasedGrid provides a custom
+    // implementation of it.
+    for (rank_index_type i = 0; i < n_neighbors(); ++i) {
+        if (neighbor_rank(i) == rank)
+            return i;
+    }
+    throw std::domain_error("Position not within a neighbor process.");
 }
 
 /*
@@ -183,23 +190,29 @@ void GloMethod::init(bool firstcall)
         for (global_cell_index_type neighborIndex :
              gbox.full_shell_neigh_without_center(cells[i])) {
             const rank_type owner = rank_of_cell(neighborIndex);
+            assert(owner != UNKNOWN_RANK);
             if (owner == comm_cart.rank())
                 continue;
 
             init_new_foreign_cell(i, neighborIndex, owner);
 
-            // Find ghost cells. Add only once to "cells" vector.
+            // Register "neighborIndex" as ghost cell
             if (global_to_local.find(neighborIndex)
                 == std::end(global_to_local)) {
-                // Add ghost cell to cells vector
                 cells.push_back(neighborIndex);
-                // Index mapping from global to ghost
                 global_to_local[neighborIndex] = localCells + ghostCells;
-                // Number of ghost cells
                 ghostCells++;
             }
+            else {
+                // Must have been registered before as ghost cell to be received
+                // from "owner".
+                assert(std::find(std::begin(tmp_ex_descs[owner].recv),
+                                 std::end(tmp_ex_descs[owner].recv),
+                                 neighborIndex)
+                       != std::end(tmp_ex_descs[owner].recv));
+            }
 
-            // Initialize exdesc and add "rank" as neighbor if unknown.
+            // Initialize exdesc and add "owner" as neighbor if unknown.
             if (tmp_ex_descs[owner].dest == -1) {
                 neighbors.push_back(owner);
                 tmp_ex_descs[owner].dest = owner;
@@ -237,7 +250,7 @@ void GloMethod::init(bool firstcall)
     }
 
 #ifdef GLOMETHOD_DEBUG
-    for (rank i = 0; i < comm_cart.size(); ++i) {
+    for (rank_type i = 0; i < comm_cart.size(); ++i) {
         if (tmp_ex_descs[i].dest != -1)
             assert(tmp_ex_descs[i].recv.size() == 0
                    && tmp_ex_descs[i].send.size() == 0);

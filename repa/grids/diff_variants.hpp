@@ -126,29 +126,6 @@ protected:
 
 /*
  * This implementation is adapted from [Muthukrishnan, Ghosh and Schultz, Theory
- * of Computing Systems volume 31, pp. 331–354(1998)].
- *
- * Beta will be set with set_beta_value(double beta_value), by using
- * dd.command("set beta <value>")
- * Beta Default: 1.8
- */
-struct SOVolumeComputation : public FlowCalculator, public BetaValueSetter {
-    virtual PerNeighbor<double>
-    compute_flow(boost::mpi::communicator neighcomm,
-                 const std::vector<rank_type> &neighbors,
-                 double load) const override;
-
-    virtual void set_beta_value(double beta_value) override;
-
-protected:
-    double _beta = 1.8;
-
-private:
-    mutable std::unordered_map<rank_type, double> _prev_deficiency;
-};
-
-/*
- * This implementation is adapted from [Muthukrishnan, Ghosh and Schultz, Theory
  * of Computing Systems volume 31, pages331–354(1998)] with a minor change.
  *
  * Beta will be set with set_beta_value(double beta_value), by using
@@ -160,9 +137,9 @@ private:
  * This method will be called when using dd.command("set flow_count 15").
  * Flow Default is 1.
  */
-struct SOFVolumeComputation : public FlowCalculator,
-                              public FlowIterSetter,
-                              public BetaValueSetter {
+struct SOVolumeComputation : public FlowCalculator,
+                             public FlowIterSetter,
+                             public BetaValueSetter {
     virtual PerNeighbor<double>
     compute_flow(boost::mpi::communicator neighcomm,
                  const std::vector<rank_type> &neighbors,
@@ -179,7 +156,7 @@ private:
     mutable std::unordered_map<rank_type, double> _prev_deficiency;
 };
 
-enum class FlowCalcKind { WILLEBEEK, SCHORN, SO, SOF };
+enum class FlowCalcKind { WILLEBEEK, SCHORN, SO };
 std::unique_ptr<FlowCalculator> create_flow_calc(FlowCalcKind);
 
 } // namespace diff_variants

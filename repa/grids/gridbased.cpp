@@ -40,12 +40,7 @@
 namespace repa {
 namespace grids {
 
-rank_type GridBasedGrid::gloidx_to_rank(global_cell_index_type idx)
-{
-    return position_to_rank(gbox.midpoint(idx));
-}
-
-std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
+std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r) const
 {
     const Vec3i coord = util::mpi_cart_get_coords(comm_cart, r);
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
@@ -81,28 +76,60 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r)
     return result;
 }
 
-void GridBasedGrid::init_partitioning()
+rank_index_type GridBasedGrid::n_neighbors() const
+{
+    return const_neighborhood.size();
+}
+
+rank_type GridBasedGrid::neighbor_rank(rank_index_type i) const
+{
+    return const_neighborhood[i];
+}
+
+void GridBasedGrid::pre_init(bool firstcall)
+{
+    if (firstcall) {
+        auto dims = util::mpi_cart_get_dims(comm_cart);
+        if (dims[0] % 2 == 1 || dims[1] % 2 == 1 || dims[2] % 2 == 1) {
+            if (comm_cart.rank() == 0)
+                std::cerr
+                    << "Warning: There is an odd number of processes in at "
+                       "least one "
+                       "dimension. "
+                    << " The nodes on the domain boundary in these "
+                       "dimensions are *not* "
+                       "shifted. "
+                    << " This *only* affects load-balancing quality, not "
+                       "functionality ."
+                    << std::endl;
+        }
+        init_regular_partitioning();
+    }
+}
+
+void GridBasedGrid::post_init(bool firstcall)
+{
+}
+
+void GridBasedGrid::init_regular_partitioning()
 {
     is_regular_grid = true;
 
     using namespace util::vector_arithmetic;
     gridpoint = (node_pos + 1) * (box_l / node_grid);
 
-    init_neighbors();
+    create_cartesian_neighborhood(); // Necessary only once. Communication
+                                     // structure does not change
     init_octagons();
 }
 
-void GridBasedGrid::init_neighbors()
+void GridBasedGrid::create_cartesian_neighborhood()
 {
-    neighbor_ranks.clear();
-    neighbor_idx.clear();
-
     const Vec3i coord = util::mpi_cart_get_coords(comm_cart);
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
 
     std::vector<rank_type> source_neigh,
         dest_neigh; // Send and receive neighborhood for repart
-    rank_index_type nneigh = 0;
     Vec3i off;
     for (off[0] = -1; off[0] <= 1; ++off[0]) {
         for (off[1] = -1; off[1] <= 1; ++off[1]) {
@@ -114,12 +141,8 @@ void GridBasedGrid::init_neighbors()
                 // Insert "r" as a new neighbor if yet unseen.
                 if (r == comm_cart.rank())
                     continue;
-                if (std::find(std::begin(neighbor_ranks),
-                              std::end(neighbor_ranks), r)
-                    == std::end(neighbor_ranks)) {
-                    neighbor_ranks.push_back(r);
-                    nneigh++;
-                }
+
+                util::push_back_unique(const_neighborhood, r);
 
                 if (all(off >= 0))
                     util::push_back_unique(source_neigh, r);
@@ -128,11 +151,6 @@ void GridBasedGrid::init_neighbors()
             }
         }
     }
-
-    std::sort(std::begin(neighbor_ranks), std::end(neighbor_ranks));
-    // Inverse mapping
-    for (rank_index_type i = 0; i < nneigh; ++i)
-        neighbor_idx[neighbor_ranks[i]] = i;
 
     source_neigh.push_back(comm_cart.rank());
     dest_neigh.push_back(comm_cart.rank());
@@ -147,102 +165,11 @@ void GridBasedGrid::init_octagons()
     my_dom = util::tetra::Octagon(bounding_box(comm_cart.rank()));
 
     neighbor_doms.clear();
-    neighbor_doms.reserve(neighbor_ranks.size());
-    std::transform(std::begin(neighbor_ranks), std::end(neighbor_ranks),
-                   std::back_inserter(neighbor_doms), [this](rank_type r) {
-                       return util::tetra::Octagon(bounding_box(r));
-                   });
-}
+    neighbor_doms.reserve(n_neighbors());
 
-void GridBasedGrid::reinit()
-{
-    nlocalcells = 0;
-    nghostcells = 0;
-    cells.clear();
-    global_to_local.clear();
-    exchange_vec.clear();
-
-    // Reinit cells, nlocalcells, global_to_local
-    // Simple loop over all global cells; TODO: optimize
-    for (global_cell_index_type i = 0; i < gbox.ncells(); ++i) {
-        auto midpoint = gbox.midpoint(i);
-
-        if (my_dom.contains(midpoint)) {
-            cells.push_back(i);
-            global_to_local[i] = nlocalcells;
-            nlocalcells++;
-        }
-    }
-
-#ifdef GRID_DEBUG
-    printf("[%i] nlocalcells: %i\n", comm_cart.rank(), nlocalcells);
-#endif
-    assert(nlocalcells > 0);
-
-    exchange_vec.resize(neighbor_ranks.size());
-    // Determine ghost cells and communication volume
-    for (local_cell_index_type i = 0; i < nlocalcells; i++) {
-        for (global_cell_index_type neighidx :
-             gbox.full_shell_neigh_without_center(cells[i])) {
-            rank_type owner = gloidx_to_rank(neighidx);
-
-            if (owner == comm_cart.rank())
-                continue;
-
-            // Add ghost cells only once to "cells" vector.
-            if (global_to_local.find(neighidx) == std::end(global_to_local)) {
-                // Add ghost cell to cells vector
-                cells.push_back(neighidx);
-                // Index mapping from global to ghost
-                global_to_local[neighidx] = nlocalcells + nghostcells;
-                // Number of ghost cells
-                nghostcells++;
-            }
-
-            rank_index_type idx = neighbor_idx[owner];
-            // Initialize exdesc and add "rank" as neighbor if unknown.
-            if (exchange_vec[idx].dest == -1)
-                exchange_vec[idx].dest = owner;
-
-            util::push_back_unique(exchange_vec[idx].recv, neighidx);
-            util::push_back_unique(exchange_vec[idx].send, cells[i]);
-        }
-    }
-
-#ifdef GRID_DEBUG
-    printf("[%i] nghostcells: %i\n", comm_cart.rank(), nghostcells);
-    assert(comm_cart.size() == 1 || nghostcells > 0);
-#endif
-
-    // All neighbors must be communicated with, otherwise something went wrong.
-    // Sort and global_to_local.
-    const auto glo_to_loc = [this](global_cell_index_type i) {
-#ifdef GRID_DEBUG
-        return global_to_local.at(i);
-#else
-        return global_to_local[i];
-#endif
-    };
-
-    // Note:
-    // Due to the definition of cell-ownership it can happen, that a
-    // exchange vector is empty.
-    // Therefore, we delete the empty ones here.
-    exchange_vec.erase(
-        std::remove_if(std::begin(exchange_vec), std::end(exchange_vec),
-                       [](const GhostExchangeDesc &r) { return r.dest == -1; }),
-        std::end(exchange_vec));
-
-    for (auto &v : exchange_vec) {
-        assert(v.dest != -1);
-
-        std::sort(std::begin(v.recv), std::end(v.recv));
-        std::transform(std::begin(v.recv), std::end(v.recv), std::begin(v.recv),
-                       glo_to_loc);
-
-        std::sort(std::begin(v.send), std::end(v.send));
-        std::transform(std::begin(v.send), std::end(v.send), std::begin(v.send),
-                       glo_to_loc);
+    for (rank_index_type nidx = 0; nidx < n_neighbors(); ++nidx) {
+        neighbor_doms.push_back(
+            util::tetra::Octagon(bounding_box(neighbor_rank(nidx))));
     }
 }
 
@@ -250,9 +177,8 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                              Vec3d box_size,
                              double min_cell_size,
                              ExtraParams ep)
-    : ParallelLCGrid(comm, box_size, min_cell_size),
+    : GloMethod(comm, box_size, min_cell_size, ep),
       mu(1.0),
-      gbox(box_size, min_cell_size),
       // Use cell midpoint as default cell contribution in determination of
       // center of subdomain
       get_subdomain_center_contribution_of_cell(
@@ -265,77 +191,11 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
     util::tetra::init_tetra(min_cell_size, box_size);
 }
 
-void GridBasedGrid::after_construction()
-{
-    auto dims = util::mpi_cart_get_dims(comm_cart);
-    if (dims[0] % 2 == 1 || dims[1] % 2 == 1 || dims[2] % 2 == 1) {
-        if (comm_cart.rank() == 0)
-            std::cerr << "Warning: There is an odd number of processes in at "
-                         "least one "
-                         "dimension. "
-                      << " The nodes on the domain boundary in these "
-                         "dimensions are *not* "
-                         "shifted. "
-                      << " This *only* affects load-balancing quality, not "
-                         "functionality ."
-                      << std::endl;
-    }
-    init_partitioning();
-    reinit();
-}
-
 GridBasedGrid::~GridBasedGrid()
 {
 }
 
-local_cell_index_type GridBasedGrid::n_local_cells()
-{
-    return nlocalcells;
-}
-
-ghost_cell_index_type GridBasedGrid::n_ghost_cells()
-{
-    return nghostcells;
-}
-
-rank_index_type GridBasedGrid::n_neighbors()
-{
-    return neighbor_ranks.size();
-}
-
-rank_type GridBasedGrid::neighbor_rank(rank_index_type i)
-{
-    return neighbor_ranks[i];
-}
-
-local_or_ghost_cell_index_type
-GridBasedGrid::cell_neighbor_index(local_cell_index_type cellidx,
-                                   fs_neighidx neigh)
-{
-    return global_to_local.at(gbox.neighbor(cells[cellidx], neigh));
-}
-
-std::vector<GhostExchangeDesc> GridBasedGrid::get_boundary_info()
-{
-    return exchange_vec;
-}
-
-local_cell_index_type GridBasedGrid::position_to_cell_index(Vec3d pos)
-{
-    local_cell_index_type c;
-    try {
-        c = global_to_local.at(gbox.cell_at_pos(pos));
-    }
-    catch (...) {
-        throw std::domain_error("Position not in local subdomain.");
-    }
-    // global_to_local also resolves ghost indices.
-    if (c >= n_local_cells())
-        throw std::domain_error("Position not in local subdomain.");
-    return c;
-}
-
-rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
+rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos) const
 {
     // Cache the octagons for each process.
     // They become invalid after the first repartitioning.
@@ -355,53 +215,26 @@ rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos)
         "Position globally unknown. This is a bug, please report it.");
 }
 
-rank_type GridBasedGrid::position_to_rank(Vec3d pos)
+rank_type GridBasedGrid::rank_of_cell(global_cell_index_type cellidx) const
 {
     // Cell ownership is based on the cell midpoint.
-    const auto mp = gbox.midpoint(gbox.cell_at_pos(pos));
+    const auto mp = gbox.midpoint(cellidx);
 
-    // Directly invoked lambda expression to prohibit use of "pos" in future
-    // changes. Resolving must be done for "mp".
-    return [this](Vec3d mp) {
-        // .contains() is mutually exclusive. The expectation is that most
-        // queried positions belong to this node, so check it first. The order
-        // of the neighbors is not relevant.
-        if (my_dom.contains(mp))
-            return comm.rank();
+    if (is_regular_grid)
+        return cart_topology_position_to_rank(mp);
 
-        for (rank_index_type i = 0; i < n_neighbors(); ++i) {
-            if (neighbor_doms[i].contains(mp))
-                return neighbor_ranks[i];
-        }
+    // .contains() is mutually exclusive. The expectation is that most
+    // queried positions belong to this node, so check it first. The order
+    // of the neighbors is irrelevant.
+    if (my_dom.contains(mp))
+        return comm.rank();
 
-        if (is_regular_grid)
-            return cart_topology_position_to_rank(mp);
-
-        throw std::domain_error(
-            "Position unknown. Possibly a position outside of "
-            "the neighborhood of this process.");
-    }(mp);
-}
-
-rank_index_type GridBasedGrid::position_to_neighidx(Vec3d pos)
-{
-    rank_type rank = position_to_rank(pos);
-    try {
-        return neighbor_idx.at(rank);
+    for (rank_index_type i = 0; i < neighbor_doms.size(); ++i) {
+        if (neighbor_doms[i].contains(mp))
+            return neighbor_rank(i);
     }
-    catch (...) {
-        throw std::domain_error("Position not in neighboring subdomain.");
-    }
-}
 
-Vec3d GridBasedGrid::cell_size()
-{
-    return gbox.cell_size();
-}
-
-Vec3i GridBasedGrid::grid_size()
-{
-    return gbox.grid_size();
+    return UNKNOWN_RANK;
 }
 
 Vec3d GridBasedGrid::get_subdomain_center()
@@ -486,24 +319,13 @@ static Vec3d shift_gridpoint(Vec3d gp,
         // On non-periodic grids, shift only non-boundary coordinates
         if (!PERIODIC(d) && is_boundary_gridpoint)
             continue;
-
-        const double new_coordinate = gp[d] + shift_vector[d];
-
-        // Reject shift over domain boundary if gp is not a gridpoint originally
-        // located on the boundary (in dimension d) itself.
-        if (!is_boundary_gridpoint
-            && (new_coordinate < 0.0 || new_coordinate >= box_l[d]))
-            continue;
-
-        gp[d] = new_coordinate;
+        gp[d] += shift_vector[d];
     }
 
     return gp;
 }
 
-bool GridBasedGrid::repartition(CellMetric m,
-                                CellCellMetric ccm,
-                                Thunk exchange_start_callback)
+bool GridBasedGrid::sub_repartition(CellMetric m, CellCellMetric ccm)
 {
     using namespace util::vector_arithmetic;
 
@@ -548,16 +370,12 @@ bool GridBasedGrid::repartition(CellMetric m,
         })();
 
     is_regular_grid = false;
-
-    init_octagons();
-    exchange_start_callback();
-    reinit();
-
+    init_octagons(); // Necessary for position_to_rank queries
     return true;
 }
 
 bool GridBasedGrid::check_validity_of_subdomains(
-    const std::vector<rank_type> &ranks)
+    const std::vector<rank_type> &ranks) const
 {
     const auto cs = cell_size();
     const auto max_cs = std::max(std::max(cs[0], cs[1]), cs[2]);
@@ -578,12 +396,6 @@ void GridBasedGrid::command(std::string s)
         if (comm_cart.rank() == 0)
             std::cout << "Setting mu = " << mu << std::endl;
     }
-}
-
-global_cell_index_type
-GridBasedGrid::global_hash(local_or_ghost_cell_index_type cellidx)
-{
-    return cells[cellidx];
 }
 
 } // namespace grids

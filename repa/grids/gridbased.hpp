@@ -23,8 +23,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "globox.hpp"
-#include "pargrid.hpp"
+#include "glomethod.hpp"
 #include "util/tetra.hpp"
 
 namespace repa {
@@ -36,37 +35,20 @@ namespace grids {
  * centers for overloaded subdomains.
  * This keeps the communication structure between processes constant.
  */
-struct GridBasedGrid : public ParallelLCGrid {
+struct GridBasedGrid : public GloMethod {
     GridBasedGrid(const boost::mpi::communicator &comm,
                   Vec3d box_size,
                   double min_cell_size,
                   ExtraParams ep);
-    ~GridBasedGrid();
-    void after_construction() override;
-    local_cell_index_type n_local_cells() override;
-    ghost_cell_index_type n_ghost_cells() override;
-    rank_index_type n_neighbors() override;
-    rank_type neighbor_rank(rank_index_type i) override;
-    Vec3d cell_size() override;
-    Vec3i grid_size() override;
-    local_or_ghost_cell_index_type
-    cell_neighbor_index(local_cell_index_type cellidx,
-                        fs_neighidx neigh) override;
-    std::vector<GhostExchangeDesc> get_boundary_info() override;
-    local_cell_index_type position_to_cell_index(Vec3d pos) override;
-    /**
-     * @throws std::domain_error if "pos" is not on a neighboring process.
-     */
-    rank_type position_to_rank(Vec3d pos) override;
-    rank_index_type position_to_neighidx(Vec3d pos) override;
-    bool repartition(CellMetric m,
-                     CellCellMetric ccm,
-                     Thunk exchange_start_callback) override;
-
+    ~GridBasedGrid() override;
     void command(std::string s) override;
 
-    global_cell_index_type
-    global_hash(local_or_ghost_cell_index_type cellidx) override;
+    // Neighborhood is not determined via GloMethod. Because of the constancy
+    // (see below), this grid implementation provides its own implementation of
+    // neighborhood. DO NOT REMOVE these. GridBasedGrid::rank_of_cell needs this
+    // neighborhood.
+    rank_index_type n_neighbors() const override;
+    rank_type neighbor_rank(rank_index_type i) const override;
 
 private:
     // Indicator if the decomposition currently is a regular grid,
@@ -81,69 +63,54 @@ private:
     // Settable via command()
     double mu;
 
-    // Number of local and ghost cells
-    local_cell_index_type nlocalcells;
-    ghost_cell_index_type nghostcells;
-
     // Triangulation data structure for this subdomain
     util::tetra::Octagon my_dom;
 
+    /** Note that the number of neighbors
+     * is constant and the neighbors themselves do *not*
+     * change over time.
+     * However, since we do not know how many neighbors a subdomain
+     * will have (i.e. if nproc < 26 vs. nproc is prime vs. nproc = 10^3)
+     * we still do not keep them in a rigid data structure of size 26.
+     */
+    std::vector<rank_type> const_neighborhood;
     // Triangulation data structure for the neighboring subdomains
     std::vector<util::tetra::Octagon> neighbor_doms;
-    // Ranks of the neigbors. Note that the number of neighbors
-    // is constant and the neighbors themselves do *not*
-    // change over time.
-    // However, since we do not know how many neighbors a subdomain
-    // will have (i.e. if nproc < 26 vs. nproc is prime vs. nproc = 10^3)
-    // we use a dynamic std::vector here.
-    std::vector<rank_type> neighbor_ranks;
-
-    // Inverse mapping neighbor_rank to index [0, 26) in "neighbor_ranks".
-    std::unordered_map<rank_type, rank_index_type> neighbor_idx;
 
     // Associated grid point -- upper right back vertex of subdomain.
     Vec3d gridpoint;
     // The gathered version of "gridpoint", i.e. the gridpoint of every process.
     std::vector<Vec3d> gridpoints;
 
-    // Indices of locally known cells. Local cells before ghost cells.
-    std::vector<global_cell_index_type> cells;
-
-    globox::GlobalBox<global_cell_index_type, global_cell_index_type> gbox;
-    // Global to local index mapping, defined for local and ghost cells
-    std::unordered_map<global_cell_index_type, local_cell_index_type>
-        global_to_local;
-
-    std::vector<GhostExchangeDesc> exchange_vec;
-
-    // Returns the 8 vertices bounding the subdomain of rank "r"
-    std::array<Vec3d, 8> bounding_box(rank_type r);
-
     // Neighborhood communicator for load exchange during repart
     boost::mpi::communicator neighcomm;
 
-    // Global cell index to rank mapping
-    rank_type gloidx_to_rank(global_cell_index_type idx);
+    // Returns the 8 vertices bounding the subdomain of rank "r"
+    std::array<Vec3d, 8> bounding_box(rank_type r) const;
+
+    bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
+    rank_type rank_of_cell(global_cell_index_type idx) const override;
+    void pre_init(bool firstcall) override;
+    void post_init(bool firstcall) override;
 
     // Initializes the partitioning to a regular Cartesian grid.
-    void init_partitioning();
-    // Checks is "pos" is also accepted by a neighboring octagon.
-    bool does_neighbor_accept(Vec3d pos);
-    // Reinitializes the internal data of this class
-    void reinit();
+    void init_regular_partitioning();
+
     // Initializes "my_dom" and "neighbor_doms"
     void init_octagons();
 
     // Initializes the neighbor ranks data structures
-    void init_neighbors();
+    void create_cartesian_neighborhood();
 
     // Returns the center of this subdomain
     Vec3d get_subdomain_center();
 
     // Check if shifted gridpoint is valid
-    bool check_validity_of_subdomains(const std::vector<rank_type> &);
+    bool check_validity_of_subdomains(const std::vector<rank_type> &) const;
 
-    rank_type cart_topology_position_to_rank(Vec3d pos);
+    // Resolves a position on the initial Cartesian decomposition, set
+    // by init_regular_partitioning.
+    rank_type cart_topology_position_to_rank(Vec3d pos) const;
 
     // Function returning the contribution of a single cell to the subdomain
     // midpoint. Either a user-passed function via ExtraParams in the
