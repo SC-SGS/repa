@@ -20,9 +20,9 @@ For CI purposes, etc. a working Docker container with all dependencies as well a
 - [ParMETIS](http://glaros.dtc.umn.edu/gkhome/metis/parmetis/overview) for graph-partitioning-based load-balancing method
 - [lahnerml's p4est](https://github.com/lahnerml/p4est/tree/p4est-ESPResSo-integration) for SFC-based grid
 
-### Spack
+## Install
 
-Using [spack](https://github.com/spack/spack), you can install repa easily.
+[Spack](https://github.com/spack/spack) is the recommended way to install repa.
 First, add the [spack repo spack-hirschsn](https://github.com/hirschsn/spack-hirschsn/) with the receipe for repa and its dependencies.
 Then simply:
 
@@ -30,51 +30,27 @@ Then simply:
 spack install librepa
 ```
 
-For development purposes, you can also install repa's dependencies (you, again, need the additional spack repo) and load them as a spack environment:
+## Development
+
+For development purposes, you can also install repa's dependencies with spack (you, again, need the additional spack repo, see above):
 
 ```sh
-git clone https://github.com/hirschsn/repa
-cd repa
-spack install
-# Wait...
-spack env activate .
+# Install dependencies in a spack environment called 'repa-dev'
+spack env create repa-dev
+spack env activate repa-dev
+spack install --only dependencies librepa
 ```
 
-### Linux Distributions
+### Manual Build
 
-MPI, Boost and ParMETIS can be installed e.g. on Debian/Ubuntu using:
-
-```sh
-apt-get install openmpi-bin libboost-all-dev libparmetis-dev cmake
-```
-
-Note for manual ParMETIS installations: ParMETIS's `make install` does *not* install metis.h from metis/include/. Copy this file manually to the appropriate prefix/include directory.
-
-Install dependencies:
-
-```sh
-mkdir -p dep/src && cd dep/src
-sh -c 'git clone https://github.com/hirschsn/kdpart \
-          && cd kdpart \
-          && make \
-          && make install PREFIX="$(pwd)/../.."'
-sh -c 'git clone --recursive https://github.com/lahnerml/p4est --branch p4est-ESPResSo-integration \
-          && cd p4est \
-          && ./bootstrap \
-          && ./configure --prefix="$(pwd)/../.." --enable-mpi \
-          && make \
-          && make install'
-DEP_DIR="$(pwd)/.."
-```
-
-## Build
+If you need to build repa by hand:
 
 ```sh
 git clone https://github.com/hirschsn/repa && cd repa
+spack env activate repa-dev
 mkdir build && cd build
-cmake .. -DKDPART_DIR="${DEP_DIR}" -DP4EST_DIR="${DEP_DIR}"
+cmake ..
 make
-# If necessary, don't forget: export LD_LIBRARY_PATH="${DEP_DIR}/lib:$LD_LIBRARY_PATH"
 make test # Optional
 ```
 
