@@ -33,7 +33,6 @@
 #include "util/mpi_graph.hpp"
 #include "util/push_back_unique.hpp"
 #include "util/range.hpp"
-#include "util/vdist.hpp"
 #include "util/vec_arith.hpp"
 
 #ifndef NDEBUG
@@ -279,7 +278,7 @@ static Vec3d calc_shift(double local_load,
     for (const auto i : boost::irange(nneigh)) {
         // Form "u"
         r[i] -= cur_gridpoint;
-        const double len = util::norm2(r[i]);
+        const double len = norm(r[i]);
         // Form "f"
         r[i] *= (lambda_hat[i] - 1) / len;
     }

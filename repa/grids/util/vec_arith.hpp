@@ -434,6 +434,19 @@ dot(const VecExpression<T1, N, Expr1> &v1,
     return result;
 }
 
+template <typename T1, size_t N, typename Expr1>
+__REPA__EX_TMPL_EXPORT T1
+norm(const VecExpression<T1, N, Expr1> &v)
+{
+    T1 result{0};
+    for (size_t i = 0; i < N; ++i) {
+        const T1 val = v[i]; // Evaluate only once
+        result += val * val;
+    }
+    return result;
+}
+
+
 /** Sum of the absoulte values of a Vector.
  *  Can be used to compute the L1-norm of the vector.
  */
