@@ -35,14 +35,14 @@ dirflags() {
 [ -z "`which lcov`" ] && eprint "Cound not find lcov."
 [ -z "`which genhtml`" ] && eprint "Cound not find genhtml."
 
-[ -f "rules.ninja" ] || eprint "Call this script only from build directories."
+[ -f "rules.ninja" ] || [ -f "Makefile" ] || eprint "Call this script only from build directories."
 
 [ -e "cov" ] && eprint "Please remove the old 'cov' directory first."
 
 # Find all directories with gcda files and prepend "-d"
 
 lcov -z $(dirflags)
-ninja test
+cmake --build . --target test
 # Note: The following dirflags might be different, if it is a new build.
 lcov -t "repa_coverage" -o all_cov.info -c $(dirflags)
 
