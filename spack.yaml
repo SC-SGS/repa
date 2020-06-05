@@ -1,9 +1,0 @@
-spack:
-  specs:
-    - cmake@3.17.1
-    - mpi
-    - boost+serialization+mpi@1.72.0
-    - p4est-lahnerml
-    - kdpart
-    - parmetis+shared
-  view: true
