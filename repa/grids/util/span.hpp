@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include <cassert>
 #include <cstddef> // std::nullptr
 #include <iterator>
 

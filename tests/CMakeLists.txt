@@ -29,6 +29,7 @@ define_test(NAME test_unknown_exceptions SRC test_unknown_exceptions.cpp SINGLEP
 define_test(NAME test_vec_arith SRC test_vec_arith.cpp SINGLEPROC)
 define_test(NAME test_tetra SRC test_tetra.cpp SINGLEPROC)
 define_test(NAME test_coloring SRC test_coloring.cpp)
+define_test(NAME unit_tests SRC unit_tests.cpp LIBRARIES repa_unit_test)
 
 
 # Integration tests

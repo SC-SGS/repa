@@ -19,24 +19,27 @@
 #pragma once
 
 #include <cassert>
+#include <cstdint>
 #include <type_traits>
 #include <variant>
+
+#include "common_types.hpp" // ensure_not_reached
 
 namespace repa {
 namespace util {
 
 #define SIMPLE_VARIANT_DEFINE_COMPARISON(_op_)                                 \
-    bool operator _op_(const T1 &v)                                            \
+    bool operator _op_(const T1 &v) const                                      \
     {                                                                          \
         assert(is_first() || is_second());                                     \
         return is_first() && _a _op_ v;                                        \
     }                                                                          \
-    bool operator _op_(const T2 &v)                                            \
+    bool operator _op_(const T2 &v) const                                      \
     {                                                                          \
         assert(is_first() || is_second());                                     \
         return is_second() && _b _op_ v;                                       \
     }                                                                          \
-    bool operator _op_(const simple_variant &v)                                \
+    bool operator _op_(const simple_variant &v) const                          \
     {                                                                          \
         assert(is_first() || is_second());                                     \
         assert(v.is_first() || v.is_second());                                 \

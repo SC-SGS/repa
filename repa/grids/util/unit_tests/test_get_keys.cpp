@@ -16,22 +16,33 @@
  * You should have received a copy of the GNU General Public License
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
-#pragma once
 
-#include <set>
+#include <doctest/doctest.h>
+#include <map>
+#include <string>
+#include <unordered_map>
 
-namespace repa {
-namespace util {
+#include "../get_keys.hpp"
 
-template <typename Map>
-std::set<typename Map::key_type> get_keys(const Map &m)
+TEST_CASE("get_keys map")
 {
-    std::set<typename Map::key_type> keys;
-    for (const auto &v : m) {
-        keys.insert(v.first);
+    const std::map<int, std::string> m{{1, "one"}, {2, "two"}, {3, "three"}};
+    auto keys = repa::util::get_keys(m);
+    for (const auto &k : m) {
+        CHECK(keys.find(k.first) != std::end(keys));
+        keys.erase(k.first);
     }
-    return keys;
+    CHECK(keys.empty());
 }
 
-} // namespace util
-} // namespace repa
+TEST_CASE("get_keys unordered_map")
+{
+    const std::unordered_map<int, std::string> m{
+        {1, "one"}, {2, "two"}, {3, "three"}};
+    auto keys = repa::util::get_keys(m);
+    for (const auto &k : m) {
+        CHECK(keys.find(k.first) != std::end(keys));
+        keys.erase(k.first);
+    }
+    CHECK(keys.empty());
+}

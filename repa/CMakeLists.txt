@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Steffen Hirschmann
+# Copyright 2017-2020 Steffen Hirschmann
 #
 # This file is part of Repa.
 #
@@ -103,3 +103,26 @@ foreach(hdr ${repa_HDR})
     install(FILES ${hdr}
             DESTINATION ${CMAKE_INSTALL_PREFIX}/include/repa/${dir})
 endforeach()
+
+
+if(WITH_TESTS)
+set(repa_unit_test_SRC
+  grids/util/unit_tests/register_unit_tests.cpp
+    grids/util/unit_tests/test_push_back_unique.cpp
+    grids/util/unit_tests/test_vector_coerce.cpp
+    grids/util/unit_tests/test_get_keys.cpp
+    grids/util/unit_tests/test_ioptional.cpp
+    grids/util/unit_tests/test_linearize.cpp
+    grids/util/unit_tests/test_neighbor_offsets.cpp
+    grids/util/unit_tests/test_set_union.cpp
+    grids/util/unit_tests/test_simple_variant.cpp
+    grids/util/unit_tests/test_span.cpp
+    grids/util/unit_tests/test_strong_alias.cpp
+)
+
+add_library(repa_unit_test SHARED ${repa_unit_test_SRC})
+target_link_libraries(repa_unit_test
+                      PUBLIC repa)
+target_compile_options(repa_unit_test
+                      PRIVATE ${REPA_DEFAULT_COMPILE_OPTIONS})
+endif(WITH_TESTS)

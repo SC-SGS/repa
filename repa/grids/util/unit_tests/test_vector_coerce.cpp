@@ -17,18 +17,30 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include <algorithm>
+#include <doctest/doctest.h>
 
-namespace repa {
-namespace util {
+#include "../vector_coerce.hpp"
 
-template <typename Set>
-Set set_union(Set s, const Set &t)
+TEST_CASE("vector_coerce different types")
 {
-    for (const auto &el : t)
-        s.insert(el);
-    return s;
+    std::vector<int> v{1, 2, 3, 4};
+
+    const auto w = repa::util::coerce_vector_to<unsigned>(v);
+
+    CHECK(v.size() == w.size());
+    CHECK(std::equal(v.begin(), v.end(), w.begin()));
+    CHECK(static_cast<const void *>(w.cref().data())
+          != static_cast<void *>(v.data()));
 }
 
-} // namespace util
-} // namespace repa
+TEST_CASE("vector_coerce same types")
+{
+    std::vector<int> v{1, 2, 3, 4};
+
+    const auto w = repa::util::coerce_vector_to<int>(v);
+
+    CHECK(v.size() == w.size());
+    CHECK(std::equal(v.begin(), v.end(), w.begin()));
+    CHECK(w.cref().data() == v.data());
+}

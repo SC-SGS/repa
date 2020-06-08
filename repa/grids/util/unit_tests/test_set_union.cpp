@@ -17,18 +17,30 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include <doctest/doctest.h>
+#include <set>
 
-namespace repa {
-namespace util {
+#include "../set_union.hpp"
 
-template <typename Set>
-Set set_union(Set s, const Set &t)
+TEST_CASE("set_union superset_eq")
 {
-    for (const auto &el : t)
-        s.insert(el);
-    return s;
+    std::set<int> s1{1, 2, 3, 4, 5}, s2{4, 5, 6, 7, 8, 9};
+    const auto su = repa::util::set_union(s1, s2);
+
+    for (const auto i : s1)
+        CHECK(su.find(i) != su.end());
+    for (const auto i : s2)
+        CHECK(su.find(i) != su.end());
 }
 
-} // namespace util
-} // namespace repa
+TEST_CASE("set_union subset_eq")
+{
+    std::set<int> s1{1, 2, 3, 4, 5}, s2{4, 5, 6, 7, 8, 9};
+    auto su = repa::util::set_union(s1, s2);
+
+    for (const auto i : s1)
+        su.erase(i);
+    for (const auto i : s2)
+        su.erase(i);
+    CHECK(su.empty());
+}

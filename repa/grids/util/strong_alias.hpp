@@ -25,6 +25,8 @@
 
 #include <boost/serialization/serialization.hpp>
 
+#include "common_types.hpp" // REPA_ON_DEBUG
+
 namespace repa {
 namespace util {
 
