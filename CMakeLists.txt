@@ -107,5 +107,7 @@ if(WITH_TESTS)
   add_subdirectory(tests)
 endif(WITH_TESTS)
 
+add_subdirectory(examples)
+
 include(FeatureSummary)
 feature_summary(WHAT ALL)
