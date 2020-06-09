@@ -39,10 +39,4 @@ define_test(NAME test_cell_neighborhood_symmetry SRC test_cell_neighborhood_symm
 define_test(NAME test_process_neighborhood_symmetry SRC test_process_neighborhood_symmetry.cpp LIBRARIES testenv)
 define_test(NAME test_pos_rank_agreement SRC test_pos_rank_agreement.cpp LIBRARIES testenv)
 define_test(NAME test_hybrid_method_switch SRC test_hybrid_method_switch.cpp LIBRARIES testenv)
-
-# ghost_exchange_volume_ext requires debug build (NDEBUG *not* set).
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-  define_test(NAME test_ghost_exchange_volume SRC test_ghost_exchange_volume.cpp LIBRARIES testenv)
-else()
-  message(STATUS "WITH_TESTS: Skipping tests that need a debug build (build type: ${CMAKE_BUILD_TYPE}).")
-endif()
+define_test(NAME test_ghost_exchange_volume SRC test_ghost_exchange_volume.cpp LIBRARIES testenv)
