@@ -45,6 +45,10 @@ static bool has_neighbor(repa::grids::ParallelLCGrid *grid,
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     (void)t;
+
+    const auto nlocalcells = grid->local_cells().size();
+    const auto nghostcells = grid->ghost_cells().size();
+
     for (const auto c : grid->local_cells()) {
         for (int j = 0; j < 27; ++j) {
             const auto d = grid->cell_neighbor_index(c, j);
@@ -54,22 +58,20 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
             if (d.is<repa::local_cell_index_type>()) {
                 const auto li = d.as<repa::local_cell_index_type>();
                 BOOST_CHECK(li >= 0);
-                BOOST_CHECK(static_cast<size_t>(li)
-                            < grid->local_cells().size());
+                BOOST_CHECK(static_cast<size_t>(li) < nlocalcells);
                 BOOST_CHECK(
                     li < static_cast<repa::local_cell_index_type::value_type>(
-                        grid->local_cells().size()));
+                        nlocalcells));
                 BOOST_CHECK(
                     has_neighbor(grid, d.as<repa::local_cell_index_type>(), c));
             }
             else {
                 const auto gi = d.as<repa::ghost_cell_index_type>();
                 BOOST_CHECK(gi >= 0);
-                BOOST_CHECK(static_cast<size_t>(gi)
-                            < grid->ghost_cells().size());
+                BOOST_CHECK(static_cast<size_t>(gi) < nghostcells);
                 BOOST_CHECK(
                     gi < static_cast<repa::ghost_cell_index_type::value_type>(
-                        grid->ghost_cells().size()));
+                        nghostcells));
             }
         }
     }
