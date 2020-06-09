@@ -119,7 +119,7 @@ struct iota_range {
      */
     size_t size() const
     {
-        return std::distance(begin(), end());
+        return _last;
     }
 
     /** Access a specific element of the range
