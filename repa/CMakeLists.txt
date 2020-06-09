@@ -107,10 +107,11 @@ endforeach()
 
 if(WITH_TESTS)
 set(repa_unit_test_SRC
-  grids/util/unit_tests/register_unit_tests.cpp
+    grids/util/unit_tests/register_unit_tests.cpp
     grids/util/unit_tests/test_push_back_unique.cpp
     grids/util/unit_tests/test_vector_coerce.cpp
     grids/util/unit_tests/test_get_keys.cpp
+    grids/util/unit_tests/test_integral_range.cpp
     grids/util/unit_tests/test_ioptional.cpp
     grids/util/unit_tests/test_linearize.cpp
     grids/util/unit_tests/test_neighbor_offsets.cpp
@@ -118,6 +119,9 @@ set(repa_unit_test_SRC
     grids/util/unit_tests/test_simple_variant.cpp
     grids/util/unit_tests/test_span.cpp
     grids/util/unit_tests/test_strong_alias.cpp
+    grids/util/unit_tests/test_tetra.cpp
+    grids/util/unit_tests/test_vec.cpp
+    grids/util/unit_tests/test_vec_arith.cpp
 )
 
 add_library(repa_unit_test SHARED ${repa_unit_test_SRC})

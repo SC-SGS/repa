@@ -30,17 +30,30 @@
 #include "testenv.hpp"
 #include <algorithm>
 #include <boost/mpi/collectives.hpp>
-#include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
 #include <boost/serialization/vector.hpp>
 #include <repa/repa.hpp>
 
-// Serialization for GhostExchangeDesc in order to gather and check them.
+/** Analogously to repa::GhostExchangeDecv, however, stores all indices as
+ * global ones in order to compare them across processes.
+ */
+struct GlobalizedGhostExchangeDesc {
+    repa::rank_type dest;
+    std::vector<repa::global_cell_index_type> recv;
+    std::vector<repa::global_cell_index_type> send;
+
+    GlobalizedGhostExchangeDesc() : dest(-1)
+    {
+    }
+};
+
+// Serialization for GlobalizedGhostExchangeDesc in order to gather and check
+// them.
 namespace boost {
 namespace serialization {
 template <typename Archive>
 void load(Archive &ar,
-          repa::grids::GhostExchangeDesc &g,
+          GlobalizedGhostExchangeDesc &g,
           const unsigned int /* file_version */)
 {
     ar >> g.dest;
@@ -50,7 +63,7 @@ void load(Archive &ar,
 
 template <typename Archive>
 void save(Archive &ar,
-          const repa::grids::GhostExchangeDesc &g,
+          const GlobalizedGhostExchangeDesc &g,
           const unsigned int /* file_version */)
 {
     ar << g.dest;
@@ -60,7 +73,7 @@ void save(Archive &ar,
 
 template <class Archive>
 void serialize(Archive &ar,
-               repa::grids::GhostExchangeDesc &g,
+               GlobalizedGhostExchangeDesc &g,
                const unsigned int file_version)
 {
     split_free(ar, g, file_version);
@@ -68,67 +81,35 @@ void serialize(Archive &ar,
 } // namespace serialization
 } // namespace boost
 
-static bool if_then(bool b1, bool b2)
-{
-    return b2 || !b1;
-}
-
-static void test(const testenv::TEnv &t,
-                 repa::grids::ParallelLCGrid *grid,
-                 repa::GridType gt)
+static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     const auto &comm = t.comm();
-    const std::vector<repa::grids::GhostExchangeDesc> gexds{
-        grid->get_boundary_info().begin(), grid->get_boundary_info().end()};
-    const auto neighborranks = grid->neighbor_ranks();
+    auto idx_to_glo = [&grid](const auto idx) {
+        return grid->global_hash(repa::local_or_ghost_cell_index_type{idx});
+    };
+    std::vector<GlobalizedGhostExchangeDesc> ggexds;
 
-    // Validity of exchange descriptors
-    for (const auto &g : gexds) {
-        BOOST_TEST((g.dest >= 0 && g.dest < comm.size()));
-        BOOST_TEST(g.recv.size() > 0);
-        BOOST_TEST(g.send.size() > 0);
-    }
+    {
+        const auto gexds = grid->get_boundary_info();
+        ggexds.resize(gexds.size());
 
-    // Verify consistency of neighbor information with ghost communications
-    // Grid-based grid must only be reverse consistent. Forward consistency is
-    // not required due to the changes in 17f4be5 and 85de5a9
-    for (auto rank : neighborranks) {
-        BOOST_TEST(if_then(
-            true, // gt != repa::GridType::GRIDBASED,
-            std::find_if(std::begin(gexds), std::end(gexds), [rank](auto gexd) {
-                return gexd.dest == rank;
-            }) != std::end(gexds)));
-    }
-
-    // Vice versa ("Reverse consistency")
-    for (const auto &gexd : gexds) {
-        BOOST_CHECK(gexd.dest == comm.rank()
-                    || std::find(std::begin(neighborranks),
-                                 std::end(neighborranks), gexd.dest)
-                           != std::end(neighborranks));
-    }
-
-    // Validity of cell indices
-    for (const auto &g : gexds) {
-        for (const auto &sendc : g.send) {
-            BOOST_TEST(((0 <= sendc.value())
-                        && (static_cast<size_t>(sendc.value())
-                            < grid->local_cells().size())));
-        }
-        for (const auto &recvc : g.recv) {
-            BOOST_TEST(((recvc.value() >= 0)
-                        && (static_cast<size_t>(recvc.value())
-                            < grid->ghost_cells().size())));
+        // Transform to global hashes
+        for (size_t i = 0; i < gexds.size(); ++i) {
+            ggexds[i].dest = gexds[i].dest;
+            ggexds[i].recv.reserve(gexds[i].recv.size());
+            ggexds[i].send.reserve(gexds[i].send.size());
+            std::transform(std::begin(gexds[i].recv), std::end(gexds[i].recv),
+                           std::back_inserter(ggexds[i].recv), idx_to_glo);
+            std::transform(std::begin(gexds[i].send), std::end(gexds[i].send),
+                           std::begin(ggexds[i].send), idx_to_glo);
         }
     }
 
-    // Note, although gathered on all processes, all indices will still be in
-    // local to the respective process they came from.
-    std::vector<std::remove_const_t<decltype(gexds)>> gexdss;
-    boost::mpi::all_gather(comm, gexds, gexdss);
+    std::vector<decltype(ggexds)> ggexdss;
+    boost::mpi::all_gather(comm, ggexds, ggexdss);
 
-    auto find_comm = [](const std::vector<repa::grids::GhostExchangeDesc> &gs,
-                        int rank) -> const repa::grids::GhostExchangeDesc & {
+    auto find_comm = [](const std::vector<GlobalizedGhostExchangeDesc> &gs,
+                        int rank) -> const GlobalizedGhostExchangeDesc & {
         auto it
             = std::find_if(std::begin(gs), std::end(gs),
                            [rank](const auto &g) { return g.dest == rank; });
@@ -138,29 +119,14 @@ static void test(const testenv::TEnv &t,
 
     // Check if send indices fit receive indices on the other side.
     for (int r = 0; r < comm.size(); ++r) {
-        for (const auto &rg : gexdss[r]) {
-            const auto &counterpart = find_comm(gexdss[rg.dest], r);
-            // Check for matching sizes
-            BOOST_TEST((rg.send.size() == counterpart.recv.size()));
-            BOOST_TEST((rg.recv.size() == counterpart.send.size()));
+        for (const auto &rg : ggexdss[r]) {
+            const auto &counterpart = find_comm(ggexdss[rg.dest], r);
 
-            // Check send and receive site for inconsistencies in
-            // receive/send numbering.
-            for (size_t i1 = 0; i1 < rg.send.size(); ++i1) {
-                for (size_t i2 = i1 + 1; i2 < rg.send.size(); ++i2) {
-                    auto sc1 = rg.send[i1];
-                    auto sc2 = rg.send[i2];
-                    auto rc1 = counterpart.recv[i1];
-                    auto rc2 = counterpart.recv[i2];
+            for (size_t i = 0; i < rg.send.size(); ++i) {
+                auto sglo = rg.send[i];
+                auto rglo = counterpart.recv[i];
 
-                    // Recv cells could possibly be two different cells
-                    // for the same send cell, if no minimal ghost layer
-                    // is implemented but a "full halo".
-                    // Therefore (sc1 == sc2) <=> (rc1 == rc2) might not hold.
-                    // But if the send cells are different, the recv cells for
-                    // sure must be different, too.
-                    BOOST_TEST(if_then(sc1 != sc2, rc1 != rc2));
-                }
+                BOOST_TEST(sglo == rglo);
             }
         }
     }
@@ -168,7 +134,7 @@ static void test(const testenv::TEnv &t,
 
 BOOST_AUTO_TEST_CASE(test_ghost_exchange_volume)
 {
-    testenv::TEnv::default_test_env().with_repart().all_grids().run(test);
+    testenv::TEnv::default_test_env().without_repart().all_grids().run(test);
 }
 
 int main(int argc, char **argv)

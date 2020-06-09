@@ -34,10 +34,9 @@
 #include <random>
 #include <repa/repa.hpp>
 
-static void
-test_exactly_one_assigned_process(const boost::mpi::communicator &comm,
-                                  repa::grids::ParallelLCGrid *grid,
-                                  const repa::Vec3d &pos)
+static bool is_assigned(const boost::mpi::communicator &comm,
+                        repa::grids::ParallelLCGrid *grid,
+                        const repa::Vec3d &pos)
 {
     repa::local_cell_index_type cellidx;
     bool has_cell = false;
@@ -55,10 +54,17 @@ test_exactly_one_assigned_process(const boost::mpi::communicator &comm,
             (cellidx >= 0
              && static_cast<size_t>(cellidx) < grid->local_cells().size()));
     }
+    else {
+        try {
+            // Might throw which is okay. But if it returns, it must return
+            // the rank of the calling process.
+            auto owner = grid->position_to_rank(pos);
+            BOOST_CHECK(owner != comm.rank());
+        } catch (...) {
+        }
+    }
 
-    int nresp
-        = boost::mpi::all_reduce(comm, has_cell ? 1 : 0, std::plus<int>{});
-    BOOST_CHECK(nresp == 1);
+    return has_cell;
 }
 
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
@@ -66,6 +72,9 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
     // Test reguar grid
     auto cell_size = grid->cell_size();
     repa::Vec3d pos;
+    std::vector<int> nowners;
+    nowners.reserve(grid->grid_size()[0] * grid->grid_size()[1]
+                    * grid->grid_size()[2]);
 
     for (pos[0] = .5 * cell_size[0]; pos[0] < t.box()[0];
          pos[0] += cell_size[0]) {
@@ -73,15 +82,23 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
              pos[1] += cell_size[1]) {
             for (pos[2] = .5 * cell_size[2]; pos[2] < t.box()[2];
                  pos[2] += cell_size[2]) {
-                test_exactly_one_assigned_process(t.comm(), grid, pos);
+                nowners.push_back(is_assigned(t.comm(), grid, pos) ? 1 : 0);
             }
         }
+    }
+
+    std::vector<int> nowners_global;
+    nowners_global.reserve(nowners.size());
+    boost::mpi::reduce(t.comm(), nowners, nowners_global, std::plus{}, 0);
+    if (t.comm().rank() == 0) {
+        BOOST_CHECK(std::all_of(nowners_global.begin(), nowners_global.end(),
+                                [](int i) { return i == 1; }));
     }
 }
 
 // Gridbased and Diffusion do not allow for position_to_rank after
 // repartitioning, so test statically.
-BOOST_AUTO_TEST_CASE(test_all_cells_assigned)
+BOOST_AUTO_TEST_CASE(test_all_cells_uniquely_assigned)
 {
     testenv::TEnv::default_test_env().with_repart().all_grids().run(test);
 }

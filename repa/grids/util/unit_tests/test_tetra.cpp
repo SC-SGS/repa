@@ -18,31 +18,17 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/**
- * Checks tetra.[ch]pp
- */
-
-#define BOOST_TEST_NO_MAIN
-#define BOOST_TEST_ALTERNATIVE_INIT_API
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE tetra
-#include <boost/test/unit_test.hpp>
-
+#include <doctest/doctest.h>
 #include <array>
 #include <chrono>
 #include <random>
 
-#include <repa/grids/util/tetra.hpp>
+#include "../tetra.hpp"
 
 using namespace repa::util;
 using repa::Vec3d;
 using std::array;
 typedef array<Vec3d, 8> octaVertices;
-
-bool empty_oct_message(const std::runtime_error &e)
-{
-    return std::string{e.what()} == "contains() on empty octagon";
-}
 
 struct Randgen {
     Randgen()
@@ -147,18 +133,45 @@ octaVertices PointArray::getVerticesAtPosition(int x, int y, int z)
     };
 }
 
+TEST_CASE("tetra empty")
+{
+    tetra::Octagon r;
+    CHECK_THROWS_AS(r.contains({1., 2., 3.}), std::runtime_error);
+}
+
+TEST_CASE("tetra sample points")
+{
+    octaVertices cs = {{{0., .5, 0.},
+                        {0., 0., .5},
+                        {0., 1., .5},
+                        {0., .5, 1.},
+                        {1., .5, 0.},
+                        {1., 0., .5},
+                        {1., 1., .5},
+                        {1., .5, 1.}}};
+    auto o = tetra::Octagon{cs};
+
+    CHECK(o.contains({.5, .5, .5}));
+
+    CHECK(!o.contains({.2, .2, .2}));
+    CHECK(!o.contains({.2, .2, .8}));
+    CHECK(!o.contains({.2, .8, .2}));
+    CHECK(!o.contains({.2, .8, .8}));
+    CHECK(!o.contains({.8, .2, .2}));
+    CHECK(!o.contains({.8, .2, .8}));
+    CHECK(!o.contains({.8, .8, .2}));
+    CHECK(!o.contains({.8, .2, .8}));
+    CHECK(!o.contains({.8, .8, .2}));
+    CHECK(!o.contains({.8, .8, .8}));
+}
+
 /**
- * Created one Octagon which covers 50% of a cube.
+ * Creates one Octagon which covers 50% of a cube.
  * Test acceptance of N random points in this cube.
  * The number of accepted Points should be ~ 50%.
  */
-BOOST_AUTO_TEST_CASE(test_tetra_1)
+TEST_CASE("tetra half unit cube")
 {
-
-    tetra::Octagon r;
-    BOOST_CHECK_EXCEPTION(r.contains({1., 2., 3.}), std::runtime_error,
-                          empty_oct_message);
-
     // 50% of the volume of the unit cube
     octaVertices cs = {{{0., .5, 0.},
                         {0., 0., .5},
@@ -170,24 +183,12 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
                         {1., .5, 1.}}};
     auto o = tetra::Octagon{cs};
 
-    BOOST_CHECK(o.contains({.5, .5, .5}));
-
-    BOOST_CHECK(!o.contains({.2, .2, .2}));
-    BOOST_CHECK(!o.contains({.2, .2, .8}));
-    BOOST_CHECK(!o.contains({.2, .8, .2}));
-    BOOST_CHECK(!o.contains({.2, .8, .8}));
-    BOOST_CHECK(!o.contains({.8, .2, .2}));
-    BOOST_CHECK(!o.contains({.8, .2, .8}));
-    BOOST_CHECK(!o.contains({.8, .8, .2}));
-    BOOST_CHECK(!o.contains({.8, .2, .8}));
-    BOOST_CHECK(!o.contains({.8, .8, .2}));
-    BOOST_CHECK(!o.contains({.8, .8, .8}));
-
-    const int N = 10'000;
+    const int N = 1'000;
     array<octaVertices, 1> cArray{cs};
     auto acceptance = ninsideDomains<1>(cArray, N, false);
     double frac = static_cast<double>(acceptance[1]) / N;
-    BOOST_CHECK((frac > .45 && frac < .55));
+    CHECK(frac > .4);
+    CHECK(frac < .6);
 }
 
 /**
@@ -196,7 +197,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
  * The plane between the both Octagons is randomized.
  * Every random point in this cube should be accepted by exactly one Octagon.
  */
-BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_1)
+TEST_CASE("tetra single split dim 0 unique owner")
 {
     auto rnd = Randgen{};
     // p1-p4 define the randomized adjacent side of the Octagons
@@ -223,21 +224,15 @@ BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_1)
                    p4,
                    {0., 0., 0.}}};
 
-    const int N = 10'000;
+    const int N = 1'000;
     array<int, 3> result = ninsideDomains<2>(corners, N, true);
     // All points should be accepted by exactly one Octagon.
-    BOOST_CHECK(result[0] == 0);
-    BOOST_CHECK(result[1] == N);
-    BOOST_CHECK(result[2] == 0);
+    CHECK(result[0] == 0);
+    CHECK(result[1] == N);
+    CHECK(result[2] == 0);
 }
 
-/**
- * Create two adjacent Octagons in a cube.
- * The cube is split in the second dimension.
- * The plane between the both Octagons is randomized.
- * Every random point in this cube should be accepted by exactly one Octagon.
- */
-BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_2)
+TEST_CASE("tetra single split dim 1 unique owner")
 {
     auto rnd = Randgen{};
     // p1-p4 define the randomized adjacent side of the Octagons
@@ -264,21 +259,15 @@ BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_2)
                    {1., 0., 0.},
                    {0., 0., 0.}}};
 
-    const int N = 10'000;
+    const int N = 1'000;
     array<int, 3> result = ninsideDomains<2>(corners, N, true);
     // All points should be accepted by exactly one Octagon.
-    BOOST_CHECK(result[0] == 0);
-    BOOST_CHECK(result[1] == N);
-    BOOST_CHECK(result[2] == 0);
+    CHECK(result[0] == 0);
+    CHECK(result[1] == N);
+    CHECK(result[2] == 0);
 }
 
-/**
- * Create two adjacent Octagons in a cube.
- * The cube is split in the third dimension.
- * The plane between the both Octagons is randomized.
- * Every random point in this cube should be accepted by exactly one Octagon.
- */
-BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_3)
+TEST_CASE("tetra single split dim 2 unique owner")
 {
     auto rnd = Randgen{};
     // p1-p4 define the randomized adjacent side of the Octagons
@@ -305,20 +294,19 @@ BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_3)
                    {1., 0., 0.},
                    {0., 0., 0.}}};
 
-    const int N = 10'000;
+    const int N = 1'000;
     array<int, 3> result = ninsideDomains<2>(corners, N, true);
     // All points should be accepted by exactly one Octagon.
-    BOOST_CHECK(result[0] == 0);
-    BOOST_CHECK(result[1] == N);
-    BOOST_CHECK(result[2] == 0);
+    CHECK(result[0] == 0);
+    CHECK(result[1] == N);
+    CHECK(result[2] == 0);
 }
 
 /**
  * Creating a cube filled with 8 Octagons.
- * Most of the points are randomized.
  * Every random point in this cube should be accepted by exactly one Octagon.
  */
-BOOST_AUTO_TEST_CASE(test_tetra_3)
+TEST_CASE("tetra 8 subvolumes unique owner")
 {
     using namespace repa;
 
@@ -338,17 +326,14 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
     }
 
     // Test acceptance of N points
-    const int N = 10'000;
+    const int N = 1'000;
     array<int, 9> result = ninsideDomains<8>(corners, N, true);
 
+    // All points should be accepted by exactly one octagon.
+    CHECK(result[1] == N);
     for (int i = 0; i < 9; i++) {
-        // All points should be accepted exactly once.
-        if (i == 1) {
-            BOOST_CHECK(result[i] == N);
-        }
-        else {
-            BOOST_CHECK(result[i] == 0);
-        }
+        if (i != 1)
+            CHECK(result[i] == 0);
     }
 }
 
@@ -356,7 +341,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
  * A Octagon should only accept points on 3 of its 6 sides.
  * These sides are predefined as the sides adjacent to the first vertex.
  */
-BOOST_AUTO_TEST_CASE(test_tetra_4)
+TEST_CASE("tetra half face acceptance")
 {
     octaVertices cs = {{{1., 1., 1.},
                         {0., 1., 1.},
@@ -369,23 +354,18 @@ BOOST_AUTO_TEST_CASE(test_tetra_4)
     tetra::Octagon o = tetra::Octagon(cs);
 
     // These sides should NOT be accepted.
-    BOOST_CHECK(!o.contains({0., .5, .5}));
-    BOOST_CHECK(!o.contains({.5, 0., .5}));
-    BOOST_CHECK(!o.contains({.5, .5, 0.}));
+    CHECK(!o.contains({0., .5, .5}));
+    CHECK(!o.contains({.5, 0., .5}));
+    CHECK(!o.contains({.5, .5, 0.}));
     // These sides should be accepted.
-    BOOST_CHECK(o.contains({1., .5, .5}));
-    BOOST_CHECK(o.contains({.5, 1., .5}));
-    BOOST_CHECK(o.contains({.5, .5, 1.}));
+    CHECK(o.contains({1., .5, .5}));
+    CHECK(o.contains({.5, 1., .5}));
+    CHECK(o.contains({.5, .5, 1.}));
 }
 
-/**
- * A Octagon should only accept points on 3 of its 6 sides.
- * These sides are predefined as the sides adjacent to the first vertex.
- */
-BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
+TEST_CASE("tetra validity")
 {
     double max_cutoff = 2.;
-
     {
         // This Octagon should NOT be accepted.
         const octaVertices cs = {{{1., 1., 1.},
@@ -396,7 +376,7 @@ BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
                                   {0., 1., 0.},
                                   {1., 0., 0.},
                                   {0., 0., 0.}}};
-        BOOST_CHECK(!tetra::Octagon(cs, max_cutoff).is_valid());
+        CHECK_FALSE(tetra::Octagon(cs, max_cutoff).is_valid());
     }
     {
         // This Octagon should NOT be accepted.
@@ -408,7 +388,7 @@ BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
                                    {0., 15., 0.},
                                    {15., 0., 0.},
                                    {0., 0., 0.}}};
-        BOOST_CHECK(!tetra::Octagon(cs2, max_cutoff).is_valid());
+        CHECK_FALSE(tetra::Octagon(cs2, max_cutoff).is_valid());
     }
     {
         // This Octagon should be accepted.
@@ -420,11 +400,6 @@ BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
                                    {0., 15., 0.},
                                    {15., 0., 0.},
                                    {0., 0., 0.}}};
-        BOOST_CHECK(tetra::Octagon(cs3, max_cutoff).is_valid());
+        CHECK(tetra::Octagon(cs3, max_cutoff).is_valid());
     }
-}
-
-int main(int argc, char **argv)
-{
-    return boost::unit_test::unit_test_main(init_unit_test, argc, argv);
 }
