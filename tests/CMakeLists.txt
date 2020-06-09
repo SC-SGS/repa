@@ -29,9 +29,9 @@ define_test(NAME test_coloring SRC test_coloring.cpp)
 
 
 # Integration tests
+define_test(NAME test_small_grid SRC test_small_grid.cpp LIBRARIES testenv SINGLEPROC)
 define_test(NAME test_extra_params SRC test_extra_params.cpp LIBRARIES testenv SINGLEPROC)
 define_test(NAME test_cell_numbers SRC test_cell_numbers.cpp LIBRARIES testenv)
-define_test(NAME test_small_grid SRC test_small_grid.cpp SINGLEPROC LIBRARIES testenv)
 define_test(NAME test_repart_call SRC test_repart_call.cpp LIBRARIES testenv)
 define_test(NAME test_all_cells_uniquely_assigned SRC test_all_cells_uniquely_assigned.cpp LIBRARIES testenv)
 define_test(NAME test_all_ghost_cells_valid SRC test_all_ghost_cells_valid.cpp LIBRARIES testenv)
