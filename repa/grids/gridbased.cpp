@@ -94,11 +94,9 @@ void GridBasedGrid::pre_init(bool firstcall)
             if (comm_cart.rank() == 0)
                 std::cerr
                     << "Warning: There is an odd number of processes in at "
-                       "least one "
-                       "dimension. "
+                       "least one dimension. "
                     << " The nodes on the domain boundary in these "
-                       "dimensions are *not* "
-                       "shifted. "
+                       "dimensions are *not* shifted. "
                     << " This *only* affects load-balancing quality, not "
                        "functionality ."
                     << std::endl;
@@ -314,12 +312,17 @@ static Vec3d shift_gridpoint(Vec3d gp,
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
 
     for (int d = 0; d < 3; ++d) {
-        const bool is_boundary_gridpoint = coords[d] == dims[d] - 1;
+        int shifted = gp[d] + shift_vector[d];
 
+        const bool is_boundary_gridpoint = coords[d] == dims[d] - 1;
         // On non-periodic grids, shift only non-boundary coordinates
         if (!PERIODIC(d) && is_boundary_gridpoint)
             continue;
-        gp[d] += shift_vector[d];
+        // only boundary gridpoints are allowed to shift over borders
+        if (!is_boundary_gridpoint && (shifted < 0. || shifted > box_l[d]))
+            continue;
+
+        gp[d] = shifted;
     }
 
     return gp;
