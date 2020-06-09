@@ -60,7 +60,8 @@ static bool is_assigned(const boost::mpi::communicator &comm,
             // the rank of the calling process.
             auto owner = grid->position_to_rank(pos);
             BOOST_CHECK(owner != comm.rank());
-        } catch (...) {
+        }
+        catch (...) {
         }
     }
 
