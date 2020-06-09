@@ -144,6 +144,8 @@ TEST_CASE("strong_alias serialization")
         iar >> b;
     }
 
+#ifndef NDEBUG
     CHECK(b.is_initialized());
+#endif
     CHECK(a == b);
 }
