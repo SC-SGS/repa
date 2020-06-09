@@ -17,8 +17,8 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <iostream>
 #include <boost/mpi.hpp>
+#include <iostream>
 #include <repa/repa.hpp>
 
 /** Stream operator to output a repa::Vec3<T>.
