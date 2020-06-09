@@ -18,9 +18,9 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <doctest/doctest.h>
 #include <array>
 #include <chrono>
+#include <doctest/doctest.h>
 #include <random>
 
 #include "../tetra.hpp"

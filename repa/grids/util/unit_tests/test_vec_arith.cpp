@@ -19,8 +19,8 @@
 
 #include <doctest/doctest.h>
 
-#include "common_types.hpp"
 #include "../vec_arith.hpp"
+#include "common_types.hpp"
 
 using namespace repa::util::vector_arithmetic;
 using repa::Vec3d;

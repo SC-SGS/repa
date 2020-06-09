@@ -126,7 +126,6 @@ TEST_CASE("vec move")
 
     repa::Vec3d w_copy{w};
 
-
     // Move constructor
     repa::Vec3d u{std::move(w)};
     CHECK(u[0] == 0.0);
