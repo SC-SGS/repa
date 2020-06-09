@@ -49,24 +49,27 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
         for (int j = 0; j < 27; ++j) {
             const auto d = grid->cell_neighbor_index(c, j);
 
-            // Test if "d" is valid.
-            d.visit(
-                [grid](repa::local_cell_index_type li) {
-                    BOOST_CHECK((li >= 0
-                                 && static_cast<size_t>(li)
-                                        < grid->local_cells().size()));
-                },
-                [grid](repa::ghost_cell_index_type gi) {
-                    BOOST_CHECK((gi >= 0
-                                 && static_cast<size_t>(gi)
-                                        < grid->ghost_cells().size()));
-                });
-
             // If "d" is a inner cell and neighbors "c", then "c" must also
             // neighbor "d".
             if (d.is<repa::local_cell_index_type>()) {
+                const auto li = d.as<repa::local_cell_index_type>();
+                BOOST_CHECK(li >= 0);
+                BOOST_CHECK(static_cast<size_t>(li)
+                            < grid->local_cells().size());
+                BOOST_CHECK(
+                    li < static_cast<repa::local_cell_index_type::value_type>(
+                        grid->local_cells().size()));
                 BOOST_CHECK(
                     has_neighbor(grid, d.as<repa::local_cell_index_type>(), c));
+            }
+            else {
+                const auto gi = d.as<repa::ghost_cell_index_type>();
+                BOOST_CHECK(gi >= 0);
+                BOOST_CHECK(static_cast<size_t>(gi)
+                            < grid->ghost_cells().size());
+                BOOST_CHECK(
+                    gi < static_cast<repa::ghost_cell_index_type::value_type>(
+                        grid->ghost_cells().size()));
             }
         }
     }
