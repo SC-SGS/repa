@@ -35,25 +35,6 @@
 
 namespace repa {
 
-/** Interface for implementations to query additional information
- * from the caller.
- * Used in the factory method make_pargrid in pargrid_factory.hpp
- */
-struct ExtraParams {
-    /**
-     * For the gridbased method.
-     * Not required, but strongly recommended.
-     */
-    std::function<Vec3d(void)> subdomain_midpoint = nullptr;
-
-    /**
-     * For unstructured methods.
-     * Descriptor of the initial partitioning to use.
-     * Currently, "Linear", "Cart1D" and "Cart3D" are available.
-     */
-    boost::optional<std::string> init_part;
-};
-
 /** Some typedefs to document what an integer is supposed to mean
  */
 
@@ -93,6 +74,29 @@ typedef int local_or_ghost_cell_index_type;
  * cells across all processes.
  */
 typedef int global_cell_index_type;
+
+/** Interface for implementations to query additional information
+ * from the caller.
+ * Used in the factory method make_pargrid in pargrid_factory.hpp
+ */
+struct ExtraParams {
+    /**
+     * For the gridbased method.
+     * Not required, but strongly recommended.
+     *
+     * Given a local cell, returns the number of particles and the sum of all
+     * their positions.
+     */
+    std::function<std::pair<int, Vec3d>(local_cell_index_type)>
+        subdomain_center_contribution_of_cell = nullptr;
+
+    /**
+     * For unstructured methods.
+     * Descriptor of the initial partitioning to use.
+     * Currently, "Linear", "Cart1D" and "Cart3D" are available.
+     */
+    boost::optional<std::string> init_part;
+};
 
 namespace grids {
 

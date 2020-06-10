@@ -112,10 +112,11 @@ private:
     // by init_regular_partitioning.
     rank_type cart_topology_position_to_rank(Vec3d pos) const;
 
-    // Function returning the subdomain midpoint.
-    // Either a user-passed function via ExtraParams in the constructor
-    // or get_subdomain_center().
-    decltype(ExtraParams::subdomain_midpoint) subdomain_midpoint;
+    // Function returning the contribution of a single cell to the subdomain
+    // midpoint. Either a user-passed function via ExtraParams in the
+    // constructor or as a default returns the midpoint of a cell
+    decltype(ExtraParams::subdomain_center_contribution_of_cell)
+        get_subdomain_center_contribution_of_cell;
 };
 } // namespace grids
 } // namespace repa

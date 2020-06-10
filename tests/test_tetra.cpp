@@ -76,7 +76,7 @@ ninsideDomains(array<octaVertices, domains> corners, int N, bool add)
     for (int i = 0; i < N; ++i) {
         Vec3d p = {rnd(), rnd(), rnd()};
         if (add) {
-            double factor = 1. / tetra::precision;
+            double factor = 1. / tetra::get_precision();
             p = {rnd() + factor, rnd() + factor, rnd() + factor};
         }
         int count = 0;
@@ -90,19 +90,34 @@ ninsideDomains(array<octaVertices, domains> corners, int N, bool add)
     return counter;
 }
 
+/** Represents a cubical box subdivided into 8 subdomains.
+ * In 2d think of it as:
+ * 1---o---2
+ * |   |   |
+ * o---o---o
+ * |   |   |
+ * 3---o---4
+ *
+ * One box spanned by vertices 1,2,3,4 divided into smaller subdomains.
+ *
+ * The vertices of a subdomain can be accessed via "getVerticesAtPosition(int
+ * id)", where "id" enumerates the subdomains from 0 to 7.
+ */
 struct PointArray {
     static const int size = 3;
     array<array<array<Vec3d, size>, size>, size> point = {{{}}};
+
+    octaVertices getVerticesAtPosition(int id) const;
     PointArray();
-    Vec3d randomPoint();
-    octaVertices getVerticesAtPosition(int x, int y, int z);
+    static Vec3d randomPoint();
 };
 
 Vec3d PointArray::randomPoint()
 {
     // In the following, we assume that the midpoint (.5, .5, .5) of the domain
     // [0,1]^3 can be represented exactly in tetra internally.
-    assert(std::floor(.5 * tetra::precision) == .5 * tetra::precision);
+    assert(std::floor(.5 * tetra::get_precision())
+           == .5 * tetra::get_precision());
 
     Randgen rnd = Randgen{};
     Vec3d randVec = Vec3d{0, 0, 0};
@@ -118,7 +133,7 @@ Vec3d PointArray::randomPoint()
         // cast from range (-1,1) to (0,1)
         randVec[i] = .5 + norm1 / 2;
         if (randVec[i] < .5) {
-            randVec[i] += 1. / tetra::precision;
+            randVec[i] += 1. / tetra::get_precision();
         }
     }
     return randVec;
@@ -137,8 +152,16 @@ PointArray::PointArray()
     point[1][1][1] = randomPoint();
 }
 
-octaVertices PointArray::getVerticesAtPosition(int x, int y, int z)
+static inline int extract_bit(int value, int bitno)
 {
+    return !!(value & (1 << bitno));
+}
+
+octaVertices PointArray::getVerticesAtPosition(int id) const
+{
+    const int x = extract_bit(id, 0);
+    const int y = extract_bit(id, 1);
+    const int z = extract_bit(id, 2);
     return {
         point[1 + x][1 + y][1 + z], point[0 + x][1 + y][1 + z],
         point[1 + x][0 + y][1 + z], point[0 + x][0 + y][1 + z],
@@ -154,7 +177,7 @@ octaVertices PointArray::getVerticesAtPosition(int x, int y, int z)
  */
 BOOST_AUTO_TEST_CASE(test_tetra_1)
 {
-
+    tetra::init_tetra();
     tetra::Octagon r;
     BOOST_CHECK_EXCEPTION(r.contains({1., 2., 3.}), std::runtime_error,
                           empty_oct_message);
@@ -198,6 +221,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_1)
  */
 BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_1)
 {
+    tetra::init_tetra();
     auto rnd = Randgen{};
     // p1-p4 define the randomized adjacent side of the Octagons
     Vec3d p1 = {rnd(), 1., 1.};
@@ -239,6 +263,7 @@ BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_1)
  */
 BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_2)
 {
+    tetra::init_tetra();
     auto rnd = Randgen{};
     // p1-p4 define the randomized adjacent side of the Octagons
     Vec3d p1 = {1., rnd(), 1.};
@@ -280,6 +305,7 @@ BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_2)
  */
 BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_3)
 {
+    tetra::init_tetra();
     auto rnd = Randgen{};
     // p1-p4 define the randomized adjacent side of the Octagons
     Vec3d p1 = {1., 1., rnd()};
@@ -320,6 +346,7 @@ BOOST_AUTO_TEST_CASE(test_acceptance_of_two_domains_3)
  */
 BOOST_AUTO_TEST_CASE(test_tetra_3)
 {
+    tetra::init_tetra();
     using namespace repa;
 
     // Array with grid points of all Octagons.
@@ -327,14 +354,8 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
 
     // Create the 8 Octagons
     array<octaVertices, 8> corners = {};
-    int index = 0;
-    for (int x = 0; x < 2; x++) {
-        for (int y = 0; y < 2; y++) {
-            for (int z = 0; z < 2; z++) {
-                corners[index] = p.getVerticesAtPosition(x, y, z);
-                index++;
-            }
-        }
+    for (int i = 0; i < 8; i++) {
+        corners[i] = p.getVerticesAtPosition(i);
     }
 
     // Test acceptance of N points
@@ -358,6 +379,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_3)
  */
 BOOST_AUTO_TEST_CASE(test_tetra_4)
 {
+    tetra::init_tetra();
     octaVertices cs = {{{1., 1., 1.},
                         {0., 1., 1.},
                         {1., 0., 1.},
@@ -385,6 +407,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_4)
 BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
 {
     double max_cutoff = 2.;
+    tetra::init_tetra(0.1, {16., 16., 16.});
 
     {
         // This Octagon should NOT be accepted.
@@ -421,6 +444,118 @@ BOOST_AUTO_TEST_CASE(test_validity_of_tetra)
                                    {15., 0., 0.},
                                    {0., 0., 0.}}};
         BOOST_CHECK(tetra::Octagon(cs3, max_cutoff).is_valid());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(check_random_shift_over_boundaries)
+{
+    tetra::init_tetra(.1, {1, 1, 1});
+    PointArray p{};
+    auto rnd = Randgen{};
+
+    Vec3d addit = {(rnd() - .5) / 5, (rnd() - .5) / 5, (rnd() - .5) / 5};
+
+    for (int x = 0; x < 3; x++) {
+        for (int y = 0; y < 3; y++) {
+            for (int z = 0; z < 3; z++) {
+                for (int d = 0; d < 3; d++) {
+                    p.point[x][y][z][d] += addit[d];
+                }
+            }
+        }
+    }
+    for (int i = 0; i < 8; i++) {
+        BOOST_CHECK(
+            tetra::Octagon(p.getVerticesAtPosition(i), 0.00001).is_valid());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(check_points_over_boundaries)
+{
+    tetra::init_tetra(.1, {1., 1., 1.});
+    PointArray p{};
+
+    // Decrease all points in the PointArray by 0.1
+    for (int x = 0; x < 3; x++) {
+        for (int y = 0; y < 3; y++) {
+            for (int z = 0; z < 3; z++) {
+                for (int d = 0; d < 3; d++) {
+                    p.point[x][y][z][d] -= 0.1;
+                }
+            }
+        }
+    }
+    // Since point[1][1][1] is randomized, it's set manually here.
+    p.point[1][1][1] = {0.4, 0.4, 0.4};
+
+    for (int i = 0; i < 8; i++) {
+        // The 0-th octagon must contain all corners because of the shift above.
+        auto octa = tetra::Octagon(p.getVerticesAtPosition(i), 0.00001);
+        BOOST_CHECK(octa.is_valid());
+
+        static constexpr std::array<double, 2> _boundary = {{0.0, 1.0}};
+        for (double x : _boundary) {
+            for (double y : _boundary) {
+                for (double z : _boundary) {
+                    if (i == 0)
+                        BOOST_CHECK(octa.contains(Vec3d{x, y, z}));
+                    if (i != 0)
+                        BOOST_CHECK(!octa.contains(Vec3d{x, y, z}));
+                }
+            }
+        }
+
+        // Check an arbitrary point not on the boundary
+        Vec3d point;
+        for (int d = 0; d < 3; d++) {
+            const bool is_upper_subdomain = !!(i & (1 << d));
+            const double subdomain_lower_bound
+                = 0.5 * (is_upper_subdomain ? 1.0 : 0.0);
+            point[d] = 0.15 + subdomain_lower_bound;
+        }
+        BOOST_CHECK(octa.contains(point));
+
+        // Since all subdomains are shifted downwards, the points on the upper
+        // boundary should be accepted by the lower domain in this dimension.
+        for (int d = 0; d < 3; d++) {
+            const bool is_lower_subomain = !(i & (1 << d));
+            const double subdomain_upper_bound
+                = 0.5 * (is_lower_subomain ? 1.0 : 0.0);
+            point[d] = 0.45 + subdomain_upper_bound;
+        }
+        BOOST_CHECK(octa.contains(point));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_rotated_tetra)
+{
+    tetra::init_tetra(.1, {1., 1., 1.});
+    PointArray p{};
+
+    octaVertices vertices = p.getVerticesAtPosition(0);
+    auto o = tetra::Octagon(vertices, 0.01);
+    BOOST_CHECK(o.is_valid());
+
+    octaVertices rotate1Dim{};
+    std::vector<int> upper, lower;
+    for (int rotate = 0; rotate < 3; rotate++) {
+        // get the points to rotate
+        int rotate_bit = 1 << (2 - rotate);
+        for (int i = 0; i < 8; i++) {
+            if ((i & rotate_bit) == 0)
+                upper.push_back(i);
+            else
+                lower.push_back(i);
+        }
+        int before = 3;
+        // Change the position of the points.
+        for (int i = 0; i < 4; i++) {
+            Vec3d up_before = vertices[before], low_before = vertices[before];
+            rotate1Dim[upper[i]] = up_before;
+            rotate1Dim[lower[i]] = low_before;
+            before = i;
+        }
+        BOOST_CHECK(!tetra::Octagon(rotate1Dim, 0.01).is_valid());
     }
 }
 

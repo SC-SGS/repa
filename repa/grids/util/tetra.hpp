@@ -31,7 +31,18 @@ namespace tetra {
 // Opaque struct to reduce compile times on inclusion site
 struct _Octagon_Impl;
 
-extern int16_t precision;
+/** Initialize precision and box_size
+ */
+void init_tetra(double min_cell_size, Vec3d box_size);
+
+/** Makes tetra use the defaults. Do not use this function.
+ */
+void init_tetra();
+
+/** Returns the precision currently used.
+ * The precision is the amount of gridpoints used per unit length (1.0).
+ */
+int16_t get_precision();
 
 struct Octagon {
     Octagon();

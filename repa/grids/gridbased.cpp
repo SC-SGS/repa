@@ -51,8 +51,8 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r) const
     // (c0,     c1,     c2) upper right back corner,
     // (c0 - 1, c1,     c2) upper left back corner,
     // (c0,     c1 - 1, c2) lower right back corner,
-    // (c0,     c1,     c2 - 1) upper right front corner,
     // (c0 - 1, c1 - 1, c2) lower left back corner
+    // (c0,     c1,     c2 - 1) upper right front corner,
     // ... 2 more ...
     // (c0 - 1, c1 - 1, c2 - 1) lower left front corner
     // In total the set: {c0, c0 - 1} x {c1, c1 - 1} x {c2, c2 - 1}
@@ -94,11 +94,9 @@ void GridBasedGrid::pre_init(bool firstcall)
             if (comm_cart.rank() == 0)
                 std::cerr
                     << "Warning: There is an odd number of processes in at "
-                       "least one "
-                       "dimension. "
+                       "least one dimension. "
                     << " The nodes on the domain boundary in these "
-                       "dimensions are *not* "
-                       "shifted. "
+                       "dimensions are *not* shifted. "
                     << " This *only* affects load-balancing quality, not "
                        "functionality ."
                     << std::endl;
@@ -179,12 +177,16 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
                              ExtraParams ep)
     : GloMethod(comm, box_size, min_cell_size, ep),
       mu(1.0),
-      subdomain_midpoint(ep.subdomain_midpoint
-                             ? ep.subdomain_midpoint
-                             : decltype(subdomain_midpoint){std::bind(
-                                 &GridBasedGrid::get_subdomain_center, this)})
+      // Use cell midpoint as default cell contribution in determination of
+      // center of subdomain
+      get_subdomain_center_contribution_of_cell(
+          ep.subdomain_center_contribution_of_cell
+              ? ep.subdomain_center_contribution_of_cell
+              : [this](local_cell_index_type i) {
+                    return std::make_pair(1, gbox.midpoint(cells[i]));
+                })
 {
-    util::tetra::precision = static_cast<int16_t>(10. / min_cell_size);
+    util::tetra::init_tetra(min_cell_size, box_size);
 }
 
 GridBasedGrid::~GridBasedGrid()
@@ -237,16 +239,48 @@ Vec3d GridBasedGrid::get_subdomain_center()
 {
     using namespace util::vector_arithmetic;
     Vec3d c{0., 0., 0.};
+    double w = 0;
 
-    for (local_cell_index_type i = 0; i < n_local_cells(); ++i)
-        c += gbox.midpoint(cells[i]);
-    return c / static_cast<double>(n_local_cells());
+    Vec3d max_per_dim{0., 0., 0.};
+    Vec3d min_per_dim = box_l;
+    auto vertices = bounding_box(comm_cart.rank());
+    for (int d = 0; d < 3; d++)
+        for (Vec3d vertex : vertices) {
+            max_per_dim[d] = std::max(vertex[d], max_per_dim[d]);
+            min_per_dim[d] = std::min(vertex[d], max_per_dim[d]);
+        }
+
+    // Because this algorithm can't handle negative values, the subdomains with
+    // negative minimum are shifted upwards and after calculation back down.
+    Vec3<bool> shift_dom_up = min_per_dim < 0.;
+
+    for (local_cell_index_type i = 0; i < n_local_cells(); ++i) {
+        int wi;
+        Vec3d ci;
+        std::tie(wi, ci) = get_subdomain_center_contribution_of_cell(i);
+        double wi_d = static_cast<double>(wi);
+
+        // Compute in which dimension the cell must be shifted.
+        Vec3d cell_pos = ci / wi_d;
+        Vec3<bool> shift_cell_not_down = cell_pos <= max_per_dim;
+        Vec3<bool> shift_cell_up = cell_pos < min_per_dim;
+        Vec3d shift_cell = static_cast_vec<Vec3d>(
+            (shift_dom_up && shift_cell_not_down) || shift_cell_up);
+
+        // Add shifted cell to sum of all cells
+        c += ci + shift_cell * box_l * wi_d;
+        w += wi_d;
+    }
+    c -= static_cast_vec<Vec3d>(shift_dom_up) * box_l * w;
+
+    return c / w;
 }
 
 static Vec3d calc_shift(double local_load,
                         Vec3d subdomain_midpoint,
                         Vec3d cur_gridpoint,
-                        MPI_Comm neighcomm)
+                        MPI_Comm neighcomm,
+                        Vec3d box_l)
 {
     using namespace util::vector_arithmetic;
 
@@ -275,6 +309,13 @@ static Vec3d calc_shift(double local_load,
     for (rank_index_type i = 0; i < nneigh; ++i) {
         // Form "u"
         r[i] -= cur_gridpoint;
+        for (int d = 0; d < 3; d++) {
+            double &r_d = r[i][d];
+            // Shift the gridpoint, when the shifted gridpoint is nearer.
+            if (std::abs(r_d) > (box_l[d] / 2)) {
+                r_d += (r_d < 0) ? box_l[d] : -box_l[d];
+            }
+        }
         const double len = util::norm2(r[i]);
         // Form "f"
         r[i] *= (lambda_hat[i] - 1) / len;
@@ -297,19 +338,24 @@ static Vec3d calc_shift(double local_load,
 static Vec3d shift_gridpoint(Vec3d gp,
                              Vec3d shift_vector,
                              double factor,
-                             const boost::mpi::communicator &comm_cart)
+                             const boost::mpi::communicator &comm_cart,
+                             Vec3d box_l)
 {
     const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
 
-    // Note: Since we do not shift gridpoints over periodic boundaries,
-    // f values from periodic neighbors are not considered.
-    // Therefore, they do not need periodic mirroring.
     for (int d = 0; d < 3; ++d) {
-        // Shift only non-boundary coordinates
-        if (coords[d] == dims[d] - 1)
+        int shifted = gp[d] + shift_vector[d];
+
+        const bool is_boundary_gridpoint = coords[d] == dims[d] - 1;
+        // On non-periodic grids, shift only non-boundary coordinates
+        if (!PERIODIC(d) && is_boundary_gridpoint)
             continue;
-        gp[d] += shift_vector[d];
+        // only boundary gridpoints are allowed to shift over borders
+        if (!is_boundary_gridpoint && (shifted < 0. || shifted > box_l[d]))
+            continue;
+
+        gp[d] = shifted;
     }
 
     return gp;
@@ -324,26 +370,26 @@ bool GridBasedGrid::sub_repartition(CellMetric m, CellCellMetric ccm)
 
     const double lambda_p
         = std::accumulate(std::begin(weights), std::end(weights), 0.0);
-    const auto r_p = this->subdomain_midpoint();
-
-    auto shift_vector = calc_shift(lambda_p, r_p, gridpoint, neighcomm);
-
-    // const Vec3i coords = util::mpi_cart_get_coords(comm_cart);
-    const std::vector<rank_type> domains_to_check
-        = util::mpi_directed_neighbors(neighcomm).first;
+    const auto r_p = get_subdomain_center();
+    const auto shift_vector
+        = calc_shift(lambda_p, r_p, gridpoint, neighcomm, box_l);
 
     // Colored shifting scheme to avoid multiple node conflicts at once,
     // according to:
     // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
+
+    const std::vector<rank_type> subdomains_adjacent_to_gridpoint
+        = util::mpi_directed_neighbors(neighcomm).first;
+
     util::independent_process_sets(comm_cart)
         .for_each([&]() {
-            double neighborhood_valid = false;
+            bool neighborhood_valid = false;
             for (double factor = 1.0; !neighborhood_valid && factor > .2;
                  factor /= 2.) {
                 gridpoints[comm_cart.rank()] = shift_gridpoint(
-                    gridpoint, shift_vector, mu * factor, comm_cart);
-                neighborhood_valid
-                    = check_validity_of_subdomains(domains_to_check);
+                    gridpoint, shift_vector, mu * factor, comm_cart, box_l);
+                neighborhood_valid = check_validity_of_subdomains(
+                    subdomains_adjacent_to_gridpoint);
             }
             // Restore old info in "gridpoints" vector or accept new gridpoint
             if (neighborhood_valid)
@@ -353,7 +399,7 @@ bool GridBasedGrid::sub_repartition(CellMetric m, CellCellMetric ccm)
         })
         .for_all_after_each_round([&]() {
             // Update gridpoint and gridpoints
-            // Currently allgather. Structly, only the changed gridpoints need
+            // Currently allgather. Strictly, only the changed gridpoints need
             // to be communicated
             gridpoints.clear();
             boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);

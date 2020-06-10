@@ -38,14 +38,16 @@ static struct EPCallCount {
     int ncalls = 0;
     repa::ExtraParams ep;
 
-    repa::Vec3d operator()()
+    std::pair<int, repa::Vec3d> operator()(repa::local_cell_index_type)
     {
         ncalls++;
-        return {0., 0., 0.};
+        return std::make_pair(0, repa::Vec3d{0., 0., 0.});
     }
 
     EPCallCount()
-        : ep(repa::ExtraParams{std::bind(&EPCallCount::operator(), this), {}})
+        : ep(repa::ExtraParams{
+            std::bind(&EPCallCount::operator(), this, std::placeholders::_1),
+            {}})
     {
     }
 } epcallcount;
@@ -54,9 +56,9 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     static int ncalls = 0;
     // On second call (the call to 'test' after repartition),
-    // ExtraParams::subdomain_midpoint must have been called.
-    // Before that it must not have been called.
-    BOOST_CHECK(ncalls == epcallcount.ncalls);
+    // ExtraParams::subdomain_midpoint must have been called for each cell
+    // exactly once. Before that it must not have been called.
+    BOOST_CHECK(epcallcount.ncalls == ncalls * grid->n_local_cells());
     ncalls++;
 }
 
