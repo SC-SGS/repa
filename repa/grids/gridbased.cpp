@@ -163,11 +163,22 @@ void GridBasedGrid::init_octagons()
     my_dom = util::tetra::Octagon(bounding_box(comm_cart.rank()));
 
     neighbor_doms.clear();
-    neighbor_doms.reserve(n_neighbors());
 
-    for (rank_index_type nidx = 0; nidx < n_neighbors(); ++nidx) {
-        neighbor_doms.push_back(
-            util::tetra::Octagon(bounding_box(neighbor_rank(nidx))));
+    if (is_regular_grid) {
+        // Create bounding boxes for all processes.
+        // Need to be able to resolve the whole domain.
+        neighbor_doms.reserve(comm_cart.size());
+        for (rank_index_type rank = 0; rank < comm_cart.size(); ++rank) {
+            neighbor_doms.push_back(util::tetra::Octagon(bounding_box(rank)));
+        }
+    }
+    else {
+        // Create bounding boxes only for neighbors
+        neighbor_doms.reserve(n_neighbors());
+        for (rank_index_type nidx = 0; nidx < n_neighbors(); ++nidx) {
+            neighbor_doms.push_back(
+                util::tetra::Octagon(bounding_box(neighbor_rank(nidx))));
+        }
     }
 }
 
@@ -193,33 +204,10 @@ GridBasedGrid::~GridBasedGrid()
 {
 }
 
-rank_type GridBasedGrid::cart_topology_position_to_rank(Vec3d pos) const
-{
-    // Cache the octagons for each process.
-    // They become invalid after the first repartitioning.
-    // DO NOT CALL this function then.
-    assert(is_regular_grid);
-
-    static std::map<rank_type, util::tetra::Octagon> all_octs;
-    for (rank_type i = 0; i < comm_cart.size(); ++i) {
-        if (all_octs.find(i) == std::end(all_octs))
-            all_octs[i] = util::tetra::Octagon(bounding_box(i));
-
-        if (all_octs[i].contains(pos))
-            return i;
-    }
-
-    throw std::runtime_error(
-        "Position globally unknown. This is a bug, please report it.");
-}
-
 rank_type GridBasedGrid::rank_of_cell(global_cell_index_type cellidx) const
 {
     // Cell ownership is based on the cell midpoint.
     const auto mp = gbox.midpoint(cellidx);
-
-    if (is_regular_grid)
-        return cart_topology_position_to_rank(mp);
 
     // .contains() is mutually exclusive. The expectation is that most
     // queried positions belong to this node, so check it first. The order
@@ -228,8 +216,12 @@ rank_type GridBasedGrid::rank_of_cell(global_cell_index_type cellidx) const
         return comm.rank();
 
     for (rank_index_type i = 0; i < neighbor_doms.size(); ++i) {
-        if (neighbor_doms[i].contains(mp))
-            return neighbor_rank(i);
+        if (neighbor_doms[i].contains(mp)) {
+            if (is_regular_grid)
+                return i;
+            else
+                return neighbor_rank(i);
+        }
     }
 
     return UNKNOWN_RANK;

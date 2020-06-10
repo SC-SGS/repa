@@ -108,10 +108,6 @@ private:
     // Check if shifted gridpoint is valid
     bool check_validity_of_subdomains(const std::vector<rank_type> &) const;
 
-    // Resolves a position on the initial Cartesian decomposition, set
-    // by init_regular_partitioning.
-    rank_type cart_topology_position_to_rank(Vec3d pos) const;
-
     // Function returning the contribution of a single cell to the subdomain
     // midpoint. Either a user-passed function via ExtraParams in the
     // constructor or as a default returns the midpoint of a cell
