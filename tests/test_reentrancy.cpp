@@ -29,12 +29,9 @@
 #include <boost/test/unit_test.hpp>
 
 #include "testenv.hpp"
-#include <boost/mpi/collectives.hpp>
 #include <boost/mpi/communicator.hpp>
 #include <boost/mpi/environment.hpp>
-#include <random>
 #include <repa/repa.hpp>
-
 
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
