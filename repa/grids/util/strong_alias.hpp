@@ -25,7 +25,11 @@
 
 #include <boost/serialization/serialization.hpp>
 
-#include "common_types.hpp" // REPA_ON_DEBUG
+#ifndef NDEBUG
+#define REPA_ON_DEBUG(stmt) (stmt)
+#else
+#define REPA_ON_DEBUG(stmt) ((void)0)
+#endif
 
 namespace repa {
 namespace util {

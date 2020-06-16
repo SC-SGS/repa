@@ -30,12 +30,6 @@
 
 namespace repa {
 
-#ifndef NDEBUG
-#define REPA_ON_DEBUG(stmt) (stmt)
-#else
-#define REPA_ON_DEBUG(stmt) ((void)0)
-#endif
-
 namespace __ensure_impl {
 [[noreturn]] inline void __ensure_fail(const char *expr,
                                        const char *file,
