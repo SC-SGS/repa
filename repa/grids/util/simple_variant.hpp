@@ -23,8 +23,6 @@
 #include <type_traits>
 #include <variant>
 
-#include "common_types.hpp" // ensure_not_reached
-
 namespace repa {
 namespace util {
 
@@ -216,7 +214,7 @@ struct simple_variant {
                 assert(false);
         }
         // Not reached. (see static_assert above)
-        ensure_not_reached();
+        abort();
     }
 
     /** Calls "f" with the held object, if it is of type "T".
