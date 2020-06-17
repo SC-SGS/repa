@@ -21,7 +21,7 @@
 # define_test(NAME name SRC src.cpp [LIBRARIES lib1 lib2...])
 #
 function(define_test)
-    set(options SINGLEPROC)
+    set(options SINGLEPROC TWOPROC)
     set(oneValueArgs NAME SRC)
     set(multiValueArgs LIBRARIES)
     cmake_parse_arguments(TEST
@@ -45,10 +45,15 @@ function(define_test)
                            PRIVATE ${REPA_DEFAULT_COMPILE_OPTIONS})
 
     set(TEST_UPPER_BOUND ${TEST_MAX_NPROC})
+    set(TEST_LOWER_BOUND 1)
     if(TEST_SINGLEPROC)
         set(TEST_UPPER_BOUND 1)
     endif(TEST_SINGLEPROC)
-    foreach(nproc RANGE 1 ${TEST_UPPER_BOUND} 1)
+    if(TEST_TWOPROC)
+        set(TEST_LOWER_BOUND 2)
+        set(TEST_UPPER_BOUND 2)
+    endif(TEST_TWOPROC)
+    foreach(nproc RANGE ${TEST_LOWER_BOUND} ${TEST_UPPER_BOUND} 1)
         add_test(NAME "${TEST_NAME}-${nproc}"
                  COMMAND ${MPIEXEC}
                          ${MPIEXEC_NUMPROC_FLAG} ${nproc}
