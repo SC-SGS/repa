@@ -16,13 +16,15 @@
  * You should have received a copy of the GNU General Public License
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
+#define BOOST_TEST_DYN_LINK
+#define BOOST_TEST_MODULE neighbor_offsets
+#include <boost/test/unit_test.hpp>
 
 #include <algorithm>
-#include <doctest/doctest.h>
 
-#include "../neighbor_offsets.hpp"
+#include <repa/grids/util/neighbor_offsets.hpp>
 
-TEST_CASE("neighbor_offsets uniqueness")
+BOOST_AUTO_TEST_CASE(uniqueness)
 {
     // Create copy
     auto no = repa::util::NeighborOffsets3D::raw;
@@ -31,10 +33,10 @@ TEST_CASE("neighbor_offsets uniqueness")
         return a.as_array() < b.as_array();
     });
     auto it = std::unique(no.begin(), no.end());
-    CHECK(it == no.end());
+    BOOST_TEST(it == no.end());
 }
 
-TEST_CASE("neighbor_offsets half-shellness")
+BOOST_AUTO_TEST_CASE(half_shell)
 {
     const auto &no = repa::util::NeighborOffsets3D::raw;
     const auto hs_begin = no.begin() + 1;
@@ -45,17 +47,18 @@ TEST_CASE("neighbor_offsets half-shellness")
         repa::Vec3i v = no[i];
         for (int d = 0; d < 3; ++d)
             v[d] = -v[d];
-        CHECK(std::find(hs_begin, hs_end, v) == hs_end);
+        BOOST_TEST(std::find(hs_begin, hs_end, v) == hs_end);
     }
 }
 
-TEST_CASE("neighbor_offsets order")
+BOOST_AUTO_TEST_CASE(order)
 {
-    CHECK(repa::util::neighbor_type(0) == repa::util::NeighborCellType::SELF);
+    BOOST_TEST(
+        (repa::util::neighbor_type(0) == repa::util::NeighborCellType::SELF));
     for (int i = 1; i <= 13; ++i)
-        CHECK(repa::util::neighbor_type(i)
-              == repa::util::NeighborCellType::HALF_SHELL);
+        BOOST_TEST((repa::util::neighbor_type(i)
+                    == repa::util::NeighborCellType::HALF_SHELL));
     for (int i = 14; i < 27; ++i)
-        CHECK(repa::util::neighbor_type(i)
-              == repa::util::NeighborCellType::FULL_SHELL);
+        BOOST_TEST((repa::util::neighbor_type(i)
+                    == repa::util::NeighborCellType::FULL_SHELL));
 }

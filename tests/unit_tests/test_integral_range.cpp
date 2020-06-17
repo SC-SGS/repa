@@ -17,19 +17,22 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "common_types.hpp"
-#include <doctest/doctest.h>
+#define BOOST_TEST_DYN_LINK
+#define BOOST_TEST_MODULE integral_range
+#include <boost/test/unit_test.hpp>
 
-TEST_CASE("integral_range domain")
+#include <repa/common_types.hpp>
+
+BOOST_AUTO_TEST_CASE(domain)
 {
     for (repa::fs_neighidx::value_type i = 0; i <= 26; ++i) {
         repa::fs_neighidx ni{i};
-        CHECK(static_cast<repa::fs_neighidx::value_type>(ni) == i);
+        BOOST_TEST(static_cast<repa::fs_neighidx::value_type>(ni) == i);
     }
 
 #ifndef NDEBUG
     repa::fs_neighidx ni = 0;
-    CHECK_THROWS_AS(ni = 27, std::domain_error);
-    CHECK_THROWS_AS(ni = -1, std::domain_error);
+    BOOST_CHECK_THROW(ni = 27, std::domain_error);
+    BOOST_CHECK_THROW(ni = -1, std::domain_error);
 #endif
 }

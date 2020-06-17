@@ -16,70 +16,72 @@
  * You should have received a copy of the GNU General Public License
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
+#define BOOST_TEST_DYN_LINK
+#define BOOST_TEST_MODULE ioptional
+#include <boost/test/unit_test.hpp>
 
-#include <doctest/doctest.h>
 #include <map>
 #include <string>
 #include <unordered_map>
 
-#include "../ioptional.hpp"
+#include <repa/grids/util/ioptional.hpp>
 
 using optional_int = repa::util::ioptional<repa::rank_type>;
 
-TEST_CASE("ioptional empty")
+BOOST_AUTO_TEST_CASE(empty)
 {
     auto io = optional_int{};
-    CHECK_FALSE(io.has_value());
+    BOOST_TEST((!io.has_value()));
     io = 12;
-    CHECK(io.has_value());
+    BOOST_TEST((io.has_value()));
 
     auto io2 = optional_int{12};
-    CHECK(io2.has_value());
+    BOOST_TEST((io2.has_value()));
 }
 
-TEST_CASE("ioptional value")
+BOOST_AUTO_TEST_CASE(value)
 {
     auto io = optional_int{};
-    CHECK(io.value_or(-255) == -255);
+    BOOST_TEST((io.value_or(-255) == -255));
 
-    CHECK_THROWS_WITH_AS((io.value_or_throw<std::runtime_error>("test")),
-                         "test", std::runtime_error);
+    BOOST_CHECK_THROW(io.value_or_throw<std::runtime_error>("test"),
+                      std::runtime_error);
 
     io = 12;
-    CHECK(io.value() == 12);
-    CHECK(io.value_or(-255) == 12);
-    CHECK(io.ensure_value() == 12);
-    CHECK(io.value_or_throw<std::runtime_error>("test") == 12);
+    BOOST_TEST((io.value() == 12));
+    BOOST_TEST((io.value_or(-255) == 12));
+    BOOST_TEST((io.ensure_value() == 12));
+    BOOST_TEST((io.value_or_throw<std::runtime_error>("test") == 12));
 }
 
-TEST_CASE("ioptional operator bool")
+BOOST_AUTO_TEST_CASE(operator_bool)
 {
     auto io = optional_int{};
-    CHECK_FALSE(io);
+    BOOST_TEST((!static_cast<bool>(io)));
     io = 12;
-    CHECK(io);
+    BOOST_TEST(static_cast<bool>(io));
 }
 
-TEST_CASE("ioptional deref")
+BOOST_AUTO_TEST_CASE(deref)
 {
     auto io = optional_int{12};
-    CHECK_EQ(*io, 12);
+    BOOST_TEST((*io == 12));
 }
 
-TEST_CASE("ioptional reset")
+BOOST_AUTO_TEST_CASE(reset)
 {
     auto io = optional_int{12};
-    CHECK(io.has_value());
+    BOOST_TEST((io.has_value()));
     io.reset();
-    CHECK_FALSE(io.has_value());
+    BOOST_TEST((!io.has_value()));
 }
 
-TEST_CASE("ioptional cmp")
+BOOST_AUTO_TEST_CASE(cmp)
 {
     auto io = optional_int{};
     auto io2 = optional_int{12};
-    CHECK(io != io2);
+    BOOST_TEST((io != io2));
 
     io = io2;
-    CHECK(io == io2);
+    BOOST_TEST((io == io2));
 }

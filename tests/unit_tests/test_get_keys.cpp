@@ -17,32 +17,35 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <doctest/doctest.h>
+#define BOOST_TEST_DYN_LINK
+#define BOOST_TEST_MODULE get_keys
+#include <boost/test/unit_test.hpp>
+
 #include <map>
 #include <string>
 #include <unordered_map>
 
-#include "../get_keys.hpp"
+#include <repa/grids/util/get_keys.hpp>
 
-TEST_CASE("get_keys map")
+BOOST_AUTO_TEST_CASE(map)
 {
     const std::map<int, std::string> m{{1, "one"}, {2, "two"}, {3, "three"}};
     auto keys = repa::util::get_keys(m);
     for (const auto &k : m) {
-        CHECK(keys.find(k.first) != std::end(keys));
+        BOOST_TEST((keys.find(k.first) != std::end(keys)));
         keys.erase(k.first);
     }
-    CHECK(keys.empty());
+    BOOST_TEST(keys.empty());
 }
 
-TEST_CASE("get_keys unordered_map")
+BOOST_AUTO_TEST_CASE(unordered_map)
 {
     const std::unordered_map<int, std::string> m{
         {1, "one"}, {2, "two"}, {3, "three"}};
     auto keys = repa::util::get_keys(m);
     for (const auto &k : m) {
-        CHECK(keys.find(k.first) != std::end(keys));
+        BOOST_TEST((keys.find(k.first) != std::end(keys)));
         keys.erase(k.first);
     }
-    CHECK(keys.empty());
+    BOOST_TEST(keys.empty());
 }

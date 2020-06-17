@@ -16,31 +16,33 @@
  * You should have received a copy of the GNU General Public License
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
+#define BOOST_TEST_DYN_LINK
+#define BOOST_TEST_MODULE set_union
+#include <boost/test/unit_test.hpp>
 
-#include <algorithm>
-#include <doctest/doctest.h>
+#include <set>
 
-#include "../vector_coerce.hpp"
+#include <repa/grids/util/set_union.hpp>
 
-TEST_CASE("vector_coerce different types")
+BOOST_AUTO_TEST_CASE(superset_eq)
 {
-    std::vector<int> v{1, 2, 3, 4};
+    std::set<int> s1{1, 2, 3, 4, 5}, s2{4, 5, 6, 7, 8, 9};
+    const auto su = repa::util::set_union(s1, s2);
 
-    const auto w = repa::util::coerce_vector_to<unsigned>(v);
-
-    CHECK(v.size() == w.size());
-    CHECK(std::equal(v.begin(), v.end(), w.begin()));
-    CHECK(static_cast<const void *>(w.cref().data())
-          != static_cast<void *>(v.data()));
+    for (const auto i : s1)
+        BOOST_CHECK(su.find(i) != su.end());
+    for (const auto i : s2)
+        BOOST_CHECK(su.find(i) != su.end());
 }
 
-TEST_CASE("vector_coerce same types")
+BOOST_AUTO_TEST_CASE(subset_eq)
 {
-    std::vector<int> v{1, 2, 3, 4};
+    std::set<int> s1{1, 2, 3, 4, 5}, s2{4, 5, 6, 7, 8, 9};
+    auto su = repa::util::set_union(s1, s2);
 
-    const auto w = repa::util::coerce_vector_to<int>(v);
-
-    CHECK(v.size() == w.size());
-    CHECK(std::equal(v.begin(), v.end(), w.begin()));
-    CHECK(w.cref().data() == v.data());
+    for (const auto i : s1)
+        su.erase(i);
+    for (const auto i : s2)
+        su.erase(i);
+    BOOST_CHECK(su.empty());
 }

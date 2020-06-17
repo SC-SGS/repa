@@ -16,12 +16,13 @@
  * You should have received a copy of the GNU General Public License
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
+#define BOOST_TEST_DYN_LINK
+#define BOOST_TEST_MODULE linearize
+#include <boost/test/unit_test.hpp>
 
-#include <doctest/doctest.h>
+#include <repa/grids/util/linearize.hpp>
 
-#include "../linearize.hpp"
-
-TEST_CASE("linearize bijectivity")
+BOOST_AUTO_TEST_CASE(bijectivity)
 {
     const auto grid = repa::Vec3i{10, 10, 10};
     std::vector<bool> hit(1000, false);
@@ -31,16 +32,16 @@ TEST_CASE("linearize bijectivity")
         for (x[1] = 0; x[1] < grid[1]; x[1]++) {
             for (x[2] = 0; x[2] < grid[2]; x[2]++) {
                 auto lin_i = repa::util::linearize(x, grid);
-                CHECK(lin_i >= 0);
-                CHECK(lin_i < 1000);
-                CHECK_FALSE(hit[lin_i]);
+                BOOST_TEST(lin_i >= 0);
+                BOOST_TEST(lin_i < 1000);
+                BOOST_TEST((!hit[lin_i]));
                 hit[lin_i] = true;
             }
         }
     }
 }
 
-TEST_CASE("linearize/unlinearize inverse")
+BOOST_AUTO_TEST_CASE(lin_unlin_inverse)
 {
     const auto grid = repa::Vec3i{10, 10, 10};
     std::vector<bool> used(1000, false);
@@ -51,7 +52,7 @@ TEST_CASE("linearize/unlinearize inverse")
             for (x[2] = 0; x[2] < grid[2]; x[2]++) {
                 auto y = repa::util::unlinearize(repa::util::linearize(x, grid),
                                                  grid);
-                CHECK(x == y);
+                BOOST_TEST(x == y);
             }
         }
     }

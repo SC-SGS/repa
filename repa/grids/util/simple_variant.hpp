@@ -26,27 +26,40 @@
 namespace repa {
 namespace util {
 
-#define SIMPLE_VARIANT_DEFINE_COMPARISON(_op_)                                 \
+#define SIMPLE_VARIANT_DEFINE_COMPARISON(_op_, _stmt_diff_types_)              \
     bool operator _op_(const T1 &v) const                                      \
     {                                                                          \
         assert(is_first() || is_second());                                     \
-        return is_first() && _a _op_ v;                                        \
+        if (is_first()) {                                                      \
+            return _a _op_ v;                                                  \
+        }                                                                      \
+        else {                                                                 \
+            _stmt_diff_types_;                                                 \
+        }                                                                      \
     }                                                                          \
     bool operator _op_(const T2 &v) const                                      \
     {                                                                          \
         assert(is_first() || is_second());                                     \
-        return is_second() && _b _op_ v;                                       \
+        if (is_second()) {                                                     \
+            return _b _op_ v;                                                  \
+        }                                                                      \
+        else {                                                                 \
+            _stmt_diff_types_;                                                 \
+        }                                                                      \
     }                                                                          \
     bool operator _op_(const simple_variant &v) const                          \
     {                                                                          \
         assert(is_first() || is_second());                                     \
         assert(v.is_first() || v.is_second());                                 \
-        if (is_first())                                                        \
-            return v.is_first() && _a _op_ v._a;                               \
-        else if (is_second())                                                  \
-            return v.is_second() && _b _op_ v._b;                              \
-        else                                                                   \
-            return false;                                                      \
+        if (v.is_first()) {                                                    \
+            return *this _op_ v._a;                                            \
+        }                                                                      \
+        else if (v.is_second()) {                                              \
+            return *this _op_ v._b;                                            \
+        }                                                                      \
+        else {                                                                 \
+            _stmt_diff_types_;                                                 \
+        }                                                                      \
     }
 
 /** Simple variant of two distinct types.
@@ -156,12 +169,12 @@ struct simple_variant {
         return *this;
     }
 
-    SIMPLE_VARIANT_DEFINE_COMPARISON(==)
-    SIMPLE_VARIANT_DEFINE_COMPARISON(!=)
-    SIMPLE_VARIANT_DEFINE_COMPARISON(<)
-    SIMPLE_VARIANT_DEFINE_COMPARISON(<=)
-    SIMPLE_VARIANT_DEFINE_COMPARISON(>)
-    SIMPLE_VARIANT_DEFINE_COMPARISON(>=)
+    SIMPLE_VARIANT_DEFINE_COMPARISON(==, return false)
+    SIMPLE_VARIANT_DEFINE_COMPARISON(!=, return true)
+    SIMPLE_VARIANT_DEFINE_COMPARISON(<, std::abort())
+    SIMPLE_VARIANT_DEFINE_COMPARISON(<=, std::abort())
+    SIMPLE_VARIANT_DEFINE_COMPARISON(>, std::abort())
+    SIMPLE_VARIANT_DEFINE_COMPARISON(>=, std::abort())
 
     /** Returns true iff the object holds an element of the first template
      * parameter type. Consider using is() to make your code clearer.

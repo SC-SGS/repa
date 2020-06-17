@@ -44,16 +44,18 @@ function(define_test)
     target_compile_options(${TEST_NAME}
                            PRIVATE ${REPA_DEFAULT_COMPILE_OPTIONS})
 
-    set(TEST_UPPER_BOUND ${TEST_MAX_NPROC})
     if(TEST_SINGLEPROC)
-        set(TEST_UPPER_BOUND 1)
-    endif(TEST_SINGLEPROC)
-    foreach(nproc RANGE 1 ${TEST_UPPER_BOUND} 1)
-        add_test(NAME "${TEST_NAME}-${nproc}"
-                 COMMAND ${MPIEXEC}
-                         ${MPIEXEC_NUMPROC_FLAG} ${nproc}
-                         ${MPIEXEC_PREFLAGS}
-                         ${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}
-                         ${MPIEXEC_POSTFLAGS})
-    endforeach()
+        add_test(NAME "${TEST_NAME}"
+                 COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME})
+    else()
+        set(TEST_UPPER_BOUND ${TEST_MAX_NPROC})
+        foreach(nproc RANGE 1 ${TEST_UPPER_BOUND} 1)
+            add_test(NAME "${TEST_NAME}-${nproc}"
+                    COMMAND ${MPIEXEC}
+                            ${MPIEXEC_NUMPROC_FLAG} ${nproc}
+                            ${MPIEXEC_PREFLAGS}
+                            ${CMAKE_CURRENT_BINARY_DIR}/${TEST_NAME}
+                            ${MPIEXEC_POSTFLAGS})
+        endforeach()
+    endif()
 endfunction(define_test)

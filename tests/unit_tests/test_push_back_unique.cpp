@@ -16,33 +16,32 @@
  * You should have received a copy of the GNU General Public License
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
+#define BOOST_TEST_DYN_LINK
+#define BOOST_TEST_MODULE push_back_unique
+#include <boost/test/unit_test.hpp>
 
-#include <doctest/doctest.h>
+#include "repa/grids/util/push_back_unique.hpp"
 
-#include "../push_back_unique.hpp"
-
-TEST_CASE("push_back_unique POD")
+BOOST_AUTO_TEST_CASE(POD_data)
 {
     std::vector<int> v{1, 2, 3, 4};
     const auto v_original = v;
 
-    SUBCASE("Add already existant value")
     {
         repa::util::push_back_unique(v, 1);
         repa::util::push_back_unique(v, 4);
-        CHECK(v == v_original);
+        BOOST_TEST(v == v_original);
     }
 
-    SUBCASE("Add new value")
     {
         repa::util::push_back_unique(v, 5);
         repa::util::push_back_unique(v, 6);
-        CHECK(v.size() == v_original.size() + 2);
+        BOOST_TEST(v.size() == v_original.size() + 2);
 
         std::vector<int> comp = v_original;
         comp.push_back(5);
         comp.push_back(6);
-        CHECK(v == comp);
+        BOOST_TEST(v == comp);
     }
 }
 
@@ -56,13 +55,13 @@ bool operator==(const Empty &a, const Empty &b)
     return true;
 }
 
-TEST_CASE("push_back_unique on empty")
+BOOST_AUTO_TEST_CASE(empty_custom_struct)
 {
     std::vector<Empty> v;
 
     repa::util::push_back_unique(v, Empty{});
-    CHECK(v.size() == 1);
+    BOOST_TEST(v.size() == 1);
 
     repa::util::push_back_unique(v, Empty{});
-    CHECK(v.size() == 1);
+    BOOST_TEST(v.size() == 1);
 }

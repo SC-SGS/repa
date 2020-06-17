@@ -16,75 +16,76 @@
  * You should have received a copy of the GNU General Public License
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
-
-#include <doctest/doctest.h>
+#define BOOST_TEST_DYN_LINK
+#define BOOST_TEST_MODULE vec
+#include <boost/test/unit_test.hpp>
 
 #include <array>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
 #include <chrono>
 #include <random>
 #include <sstream>
 
-#include <boost/archive/text_iarchive.hpp>
-#include <boost/archive/text_oarchive.hpp>
+#include <repa/common_types.hpp>
 
-#include "common_types.hpp"
-
-TEST_CASE("vec size")
+BOOST_AUTO_TEST_CASE(size)
 {
     repa::Vec3d v;
 
-    CHECK(v.size() == 3);
-    CHECK(v.max_size() == 3);
-    CHECK(!v.empty());
-    CHECK(v.data() != nullptr);
+    BOOST_TEST(v.size() == 3);
+    BOOST_TEST(v.max_size() == 3);
+    BOOST_TEST((!v.empty()));
+    BOOST_TEST(v.data() != nullptr);
 
-    CHECK(static_cast<size_t>(std::distance(v.begin(), v.end())) == v.size());
-    CHECK(std::distance(v.begin(), v.end())
-          == static_cast<ptrdiff_t>(v.size()));
+    BOOST_TEST(static_cast<size_t>(std::distance(v.begin(), v.end()))
+               == v.size());
+    BOOST_TEST(std::distance(v.begin(), v.end())
+               == static_cast<ptrdiff_t>(v.size()));
 }
 
-TEST_CASE("vec iterators")
+BOOST_AUTO_TEST_CASE(iterators)
 {
     repa::Vec3i v{1, 2, 3};
 
     int i = 1;
     for (const auto x : v) {
-        CHECK(x == i);
+        BOOST_TEST(x == i);
         i++;
     }
 
     for (repa::Vec3i::reverse_iterator it = v.rbegin(); it != v.rend(); it++) {
         i--;
-        CHECK(*it == i);
+        BOOST_TEST(*it == i);
     }
 
     i = 1;
     const repa::Vec3i &vconst = v;
     for (const auto x : vconst) {
-        CHECK(x == i);
+        BOOST_TEST(x == i);
         i++;
     }
 
     for (repa::Vec3i::const_reverse_iterator it = vconst.rbegin();
          it != vconst.rend(); it++) {
         i--;
-        CHECK(*it == i);
+        BOOST_TEST(*it == i);
     }
 }
 
-TEST_CASE("vec uninitialized")
+BOOST_AUTO_TEST_CASE(uninitialized)
 {
     repa::Vec3d v;
 
     for (const auto x : v)
-        CHECK(x == 0.0);
+        BOOST_TEST(x == 0.0);
 
     const repa::Vec3d &vconst = v;
     for (const auto x : vconst)
-        CHECK(x == 0.0);
+        BOOST_TEST(x == 0.0);
 }
 
-TEST_CASE("vec memory loc")
+BOOST_AUTO_TEST_CASE(memory_loc)
 {
     repa::Vec3d v;
     repa::Vec3d w{v};
@@ -93,33 +94,33 @@ TEST_CASE("vec memory loc")
     const repa::Vec3d &wconst = w;
 
     for (size_t i = 0; i < w.size(); ++i) {
-        CHECK_EQ(&w.data()[i], &w[i]);
-        CHECK_NE(&w[i], &v[i]);
-        CHECK_EQ(&wconst.data()[i], &w[i]);
-        CHECK_EQ(&w.as_array().data()[i], &w[i]);
-        CHECK_EQ(&wconst.as_array().data()[i], &w[i]);
+        BOOST_CHECK_EQUAL(&w.data()[i], &w[i]);
+        BOOST_CHECK_NE(&w[i], &v[i]);
+        BOOST_CHECK_EQUAL(&wconst.data()[i], &w[i]);
+        BOOST_CHECK_EQUAL(&w.as_array().data()[i], &w[i]);
+        BOOST_CHECK_EQUAL(&wconst.as_array().data()[i], &w[i]);
     }
 }
 
-TEST_CASE("vec cmp")
+BOOST_AUTO_TEST_CASE(cmp)
 {
     repa::Vec3d v;
     repa::Vec3d w{v};
 
-    CHECK(v == v);
-    CHECK(w == w);
-    CHECK(v == w);
+    BOOST_TEST(v == v);
+    BOOST_TEST(w == w);
+    BOOST_TEST(v == w);
 
     for (size_t i = 0; i < w.size(); ++i) {
         w[i] = 1.0;
-        CHECK(v != w);
+        BOOST_TEST(v != w);
 
         w[i] = v[i];
-        CHECK(v == w);
+        BOOST_TEST(v == w);
     }
 }
 
-TEST_CASE("vec move")
+BOOST_AUTO_TEST_CASE(move)
 {
     repa::Vec3d w;
     w[1] = 1.0;
@@ -128,25 +129,25 @@ TEST_CASE("vec move")
 
     // Move constructor
     repa::Vec3d u{std::move(w)};
-    CHECK(u[0] == 0.0);
-    CHECK(u[1] == 1.0);
-    CHECK(u[2] == 0.0);
+    BOOST_TEST(u[0] == 0.0);
+    BOOST_TEST(u[1] == 1.0);
+    BOOST_TEST(u[2] == 0.0);
 
-    CHECK(u == w_copy);
+    BOOST_TEST(u == w_copy);
 }
 
-TEST_CASE("vec assignment")
+BOOST_AUTO_TEST_CASE(assignment)
 {
     repa::Vec3i i{1, 2, 3};
     // Assignment operator
     repa::Vec3i k;
     k = i;
-    CHECK(i == k);
+    BOOST_TEST(i == k);
     k[0] -= 1;
-    CHECK(i != k);
+    BOOST_TEST(i != k);
 }
 
-TEST_CASE("vec serialization")
+BOOST_AUTO_TEST_CASE(serialization)
 {
     repa::Vec3i k{1, 2, 3};
     std::stringstream sstr;
@@ -156,11 +157,11 @@ TEST_CASE("vec serialization")
     }
 
     repa::Vec3i k2;
-    CHECK(k != k2);
+    BOOST_TEST(k != k2);
     {
         boost::archive::text_iarchive iar{sstr};
         iar >> k2;
     }
 
-    CHECK(k == k2);
+    BOOST_TEST(k == k2);
 }
