@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2019 Steffen Hirschmann
+ * Copyright 2017-2020 Steffen Hirschmann
  *
  * This file is part of Repa.
  *
@@ -17,33 +17,16 @@
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/**
- * Checks integral_range
- */
-
-#define BOOST_TEST_NO_MAIN
-#define BOOST_TEST_ALTERNATIVE_INIT_API
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE integral_range
-#include <boost/test/unit_test.hpp>
-
+#include <boost/mpi.hpp>
 #include <repa/repa.hpp>
 
-BOOST_AUTO_TEST_CASE(test_integral_range)
+int main()
 {
-    for (std::int_fast32_t i = 0; i <= 26; ++i) {
-        repa::fs_neighidx ni{i};
-        BOOST_CHECK(ni == i);
-    }
+    boost::mpi::environment env;
+    boost::mpi::communicator comm;
+    // Create a 3d Cartesian grid distributed across "comm"
 
-#ifndef NDEBUG
-    repa::fs_neighidx ni = 0;
-    BOOST_CHECK_THROW(ni = 27, std::domain_error);
-    BOOST_CHECK_THROW(ni = -1, std::domain_error);
-#endif
-}
-
-int main(int argc, char **argv)
-{
-    return boost::unit_test::unit_test_main(init_unit_test, argc, argv);
+    auto grid
+        = repa::make_pargrid(repa::GridType::CART, comm, {1., 1., 1.}, 1e-1);
+    // "grid" is of type std::unique_ptr<repa::ParallelLCGrid>
 }

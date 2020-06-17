@@ -35,7 +35,7 @@
 
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
-    BOOST_TEST(grid->n_local_cells() > 0);
+    BOOST_TEST(grid->local_cells().size() > size_t{0});
 }
 
 BOOST_AUTO_TEST_CASE(test_reentrancy)

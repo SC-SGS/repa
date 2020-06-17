@@ -22,9 +22,7 @@
 #include <array>
 #include <cassert>
 #include <exception>
-#include <functional>
 #include <numeric>
-#include <sstream>
 #include <type_traits>
 #include <vector>
 
@@ -54,6 +52,11 @@ namespace __ensure_impl {
                              : __ensure_impl::__ensure_fail(                   \
                                  #expr, __FILE__, __LINE__, __func__, msg))
 
+/** Aborts program execution.
+ */
+#define ensure_not_reached()                                                   \
+    (ensure(false, "Logic error. Must not be reached."))
+
 /** Base type for Expression Templates in vec_arith.hpp
  */
 template <typename T, size_t N, typename Expr>
@@ -63,13 +66,6 @@ struct VecExpression {
         return static_cast<const Expr &>(*this)[i];
     }
 };
-
-namespace _impl_tt {
-template <typename T, typename...>
-struct head {
-    typedef T type;
-};
-} // namespace _impl_tt
 
 /** Behaves like a std::array.
  */
@@ -121,10 +117,9 @@ struct Vec : VecExpression<T, N, Vec<T, N>> {
     // Only accept this very general template if all arguments are convertible
     // to "T".
     template <typename... Args,
-              typename = _impl_tt::head<
-                  typename std::enable_if<
-                      std::is_convertible<Args, T>::value>::type...,
-                  typename std::enable_if<sizeof...(Args) == N>::type>>
+              typename
+              = std::enable_if_t<sizeof...(Args) == N
+                                 && (std::is_convertible_v<Args, T> && ...)>>
     explicit constexpr Vec(Args... values) : m_data({{values...}})
     {
     }
@@ -267,10 +262,6 @@ using Vec3 = Vec<T, 3>;
 
 typedef Vec3<int> Vec3i;
 typedef Vec3<double> Vec3d;
-
-typedef std::function<std::vector<double>(void)> CellMetric;
-typedef std::function<double(int, int)> CellCellMetric;
-typedef std::function<void(void)> Thunk;
 
 /** Type that behaves like an integral POD and can be restricted to a
  * range. Range is tested at construction time. Should not compile to any

@@ -25,7 +25,7 @@ namespace repa {
 namespace util {
 
 template <typename T, typename Size_type>
-void all_gatherv_displ(boost::mpi::communicator &comm,
+void all_gatherv_displ(const boost::mpi::communicator &comm,
                        const std::vector<T> &sendbuf,
                        const std::vector<Size_type> &prefix_per_proc,
                        std::vector<T> &recvbuf)

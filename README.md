@@ -1,6 +1,13 @@
 # Librepa ("Repa")
 
-Repa is a library for *load-balanced*, regular grids.
+Librepa is a library for parallel, distributed-memory, load-balanced, regular,
+three-dimensional grids.
+
+It provides these under a common interface, that can be used to query the
+structure of the grid, map positions to cells and ranks and repartition it.
+Librepa does not handle numeric payload.
+
+**For the documentation, see [DOC.md](DOC.md).**
 
 ## Dependencies
 

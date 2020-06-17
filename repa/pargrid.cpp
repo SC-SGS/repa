@@ -30,11 +30,18 @@ ParallelLCGrid::ParallelLCGrid(const boost::mpi::communicator &_comm,
     : comm(_comm, boost::mpi::comm_duplicate),
       comm_cart(util::make_cartesian_communicator(_comm),
                 boost::mpi::comm_take_ownership),
-      box_l(box_size),
-      node_grid(util::mpi_cart_get_dims(comm_cart)),
-      node_pos(util::mpi_cart_get_coords(comm_cart)),
-      max_range(min_cell_size)
+      box_size(box_size),
+      min_cell_size(min_cell_size)
 {
+    // Grid should have at least three cells in each direction to be guaranteed
+    // to work. Otherwise cell neighborhoods might be incorrect.
+    //
+    // Cell size is guaranteed to be:
+    // min_cell_size <= cell_size <= 2 * min_cell_size
+    if (box_size[0] < 6 * min_cell_size || box_size[1] < 6 * min_cell_size
+        || box_size[2] < 6 * min_cell_size)
+        throw std::invalid_argument(
+            "Grid needs a minimum of three cells per dimension.");
 }
 
 } // namespace grids

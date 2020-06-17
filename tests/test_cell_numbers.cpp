@@ -32,27 +32,49 @@
 #include <boost/mpi/environment.hpp>
 #include <repa/repa.hpp>
 
-static bool if_then(bool a, bool b)
+/**
+ * Relative distance between a and b.
+ * Only meaningfully defined for floating point types.
+ */
+template <typename T,
+          typename
+          = typename std::enable_if<std::is_floating_point<T>::value>::type>
+T relative_distance(T a, T b)
 {
-    return !a || b;
+    return std::fabs((a - b) / std::min(a, b));
+}
+
+/**
+ * Returns true if the relative distance between a and b is smaller than eps.
+ */
+template <typename T,
+          typename
+          = typename std::enable_if<std::is_floating_point<T>::value>::type>
+bool is_close(T a, T b, T eps = T{1e-14})
+{
+    return relative_distance(a, b) < eps;
 }
 
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
-    int nlocalcells = grid->n_local_cells();
-    BOOST_TEST(nlocalcells >= 0);
+    BOOST_TEST(grid->local_cells().size() >= 0);
 
-    int nglobalcells
-        = boost::mpi::all_reduce(t.comm(), nlocalcells, std::plus<int>{});
+    size_t nglobalcells = boost::mpi::all_reduce(
+        t.comm(), grid->local_cells().size(), std::plus<size_t>{});
     BOOST_TEST(nglobalcells > 0);
 
-    auto gs = grid->grid_size();
-    BOOST_TEST((nglobalcells == gs[0] * gs[1] * gs[2]));
+    auto grid_size = grid->grid_size();
+    auto cell_size = grid->cell_size();
+    for (size_t i = 0; i < grid_size.size(); ++i) {
+        BOOST_TEST((cell_size[i] > 0.));
+        BOOST_TEST((grid_size[i] > 0));
+        BOOST_TEST(grid_size[i] >= t.mings());
+        BOOST_TEST(is_close(grid_size[i] * cell_size[i], t.box()[i]));
+    }
 
-    // Full-halo grids might have more ghost than local cells on 1 process only
-    // and very small grids.
     BOOST_TEST(
-        if_then(t.comm().size() >= 2, grid->n_ghost_cells() <= nglobalcells));
+        (nglobalcells
+         == static_cast<size_t>(grid_size[0] * grid_size[1] * grid_size[2])));
 }
 
 BOOST_AUTO_TEST_CASE(test_cell_numbers)

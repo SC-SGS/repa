@@ -21,6 +21,7 @@
 
 #include "mpi_graph.hpp"
 #include <boost/mpi.hpp>
+#include <boost/range/irange.hpp>
 
 namespace repa {
 namespace util {
@@ -39,12 +40,12 @@ std::vector<T> mpi_subset_alltoall(const boost::mpi::communicator &comm,
     std::vector<boost::mpi::request> sreq_cells(neighbors.size());
     std::vector<boost::mpi::request> rreq_cells(neighbors.size());
 
-    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
+    for (const auto i : boost::irange(neighbors.size())) {
         sreq_cells[i] = comm.isend(neighbors[i], 2, data[i]);
     }
 
     std::vector<T> gathered_data(neighbors.size());
-    for (rank_index_type i = 0; i < neighbors.size(); ++i) {
+    for (const auto i : boost::irange(neighbors.size())) {
         rreq_cells[i] = comm.irecv(neighbors[i], 2, gathered_data[i]);
     }
 
