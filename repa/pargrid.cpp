@@ -22,7 +22,6 @@
 #include "grids/util/mpi_cart.hpp"
 #include "grids/util/vec_arith.hpp"
 
-
 namespace repa {
 namespace grids {
 
