@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE(test_unknown_exceptions)
                           message_unknown_grid_type_ff);
 
     BOOST_CHECK_EXCEPTION(
-        repa::make_pargrid(repa::GridType::CART, comm, {5., 5., 5.}, 1.),
+        repa::make_pargrid(repa::GridType::CART, comm, {2., 3., 5.}, 1.),
         std::invalid_argument, ignore_message);
 
     gt = repa::GridType::CART;

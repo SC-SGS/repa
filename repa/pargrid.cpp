@@ -20,6 +20,8 @@
 #include "pargrid.hpp"
 
 #include "grids/util/mpi_cart.hpp"
+#include "grids/util/vec_arith.hpp"
+
 
 namespace repa {
 namespace grids {
@@ -38,8 +40,9 @@ ParallelLCGrid::ParallelLCGrid(const boost::mpi::communicator &_comm,
     //
     // Cell size is guaranteed to be:
     // min_cell_size <= cell_size <= 2 * min_cell_size
-    if (box_size[0] < 6 * min_cell_size || box_size[1] < 6 * min_cell_size
-        || box_size[2] < 6 * min_cell_size)
+    using namespace util::vector_arithmetic;
+    Vec3i assumed_grid_size = static_cast_vec<Vec3i>(box_size / min_cell_size);
+    if (any(assumed_grid_size < 3))
         throw std::invalid_argument(
             "Grid needs a minimum of three cells per dimension.");
 }
