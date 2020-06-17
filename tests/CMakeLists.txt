@@ -39,7 +39,7 @@ define_test(NAME utest_vec_arith SRC unit_tests/test_vec_arith.cpp SINGLEPROC)
 define_test(NAME utest_vector_coerce SRC unit_tests/test_vector_coerce.cpp SINGLEPROC)
 
 # Integration tests
-define_test(NAME test_unknown_exceptions SRC test_unknown_exceptions.cpp SINGLEPROC)
+define_test(NAME itest_unknown_exceptions SRC test_unknown_exceptions.cpp SINGLEPROC)
 define_test(NAME itest_coloring SRC test_coloring.cpp)
 define_test(NAME itest_small_grid SRC test_small_grid.cpp LIBRARIES testenv SINGLEPROC)
 define_test(NAME itest_extra_params SRC test_extra_params.cpp LIBRARIES testenv SINGLEPROC)
