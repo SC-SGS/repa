@@ -36,8 +36,16 @@
 #include "util/range.hpp"
 #include "util/vec_arith.hpp"
 
-#ifdef __BMI2__
-#include <x86intrin.h>
+#ifdef __INTEL_COMPILER
+#   ifdef __BMI__
+#       include <immintrin.h>
+#       define HAS_PDEP_INTRINSIC
+#   endif
+#else
+#   ifdef __BMI2__
+#       include <x86intrin.h>
+#       define HAS_PDEP_INTRINSIC
+#   endif
 #endif
 
 namespace repa {
@@ -133,7 +141,7 @@ static bool is_boundary(const Vec3i &idx, const Vec3i &grid_size)
 // cells.
 static global_cell_index_type cell_morton_idx(Vec3i idx)
 {
-#ifdef __BMI2__
+#ifdef HAS_PDEP_INTRINSIC
     static constexpr unsigned mask_x = 0x49249249;
     static constexpr unsigned mask_y = 0x92492492;
     static constexpr unsigned mask_z = 0x24924924;
