@@ -36,6 +36,7 @@
 #include "util/range.hpp"
 #include "util/vec_arith.hpp"
 
+// clang-format off
 #ifdef __INTEL_COMPILER
 #   ifdef __BMI__
 #       include <immintrin.h>
@@ -47,6 +48,7 @@
 #       define HAS_PDEP_INTRINSIC
 #   endif
 #endif
+// clang-format on
 
 namespace repa {
 namespace grids {
