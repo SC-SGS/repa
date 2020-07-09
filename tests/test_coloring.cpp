@@ -78,26 +78,34 @@ BOOST_AUTO_TEST_CASE(test_coloring)
     std::vector<int> colors;
     boost::mpi::all_gather(comm, my_color, colors);
 
-    // Check if a dimension has only lenght 1.
-    // In this case all nodes have the color -1.
-    // This means that NO node will be shifted, but it's valid in the test case.
-    if (dims[0] == 1 || dims[1] == 1 || dims[2] == 1) {
-        BOOST_CHECK(std::count(colors.begin(), colors.end(), -1)
-                    == colors.size());
-    }
-    else {
-        for (int col = 0; col < 8; col++) {
-            BOOST_CHECK(std::find(colors.begin(), colors.end(), col)
-                        != colors.end());
+    // Compute all colors we expect
+    std::vector<int> expected_c{0};
+    for (int d = 0; d < 3; d++) {
+        if (dims[d] > 1) {
+            std::vector<int> add_cols = expected_c;
+            for (int &col : add_cols) {
+                col += std::pow(2, d);
+            }
+            expected_c.insert(expected_c.end(), add_cols.begin(),
+                              add_cols.end());
         }
-        // If all dimensions are even, no node has the color -1 and all will be
-        // shifted.
-        bool all_dims_even = std::all_of(dims.begin(), dims.end(),
-                                         [](int d) { return d % 2 == 0; });
-        BOOST_CHECK(
-            iff(all_dims_even,
-                std::find(colors.begin(), colors.end(), -1) == colors.end()));
     }
+
+    // Check if colors contains only the colors we expect
+    for (int col = 0; col < 8; col++) {
+        bool expected = std::find(expected_c.begin(), expected_c.end(), col)
+                        != expected_c.end();
+        bool actual
+            = std::find(colors.begin(), colors.end(), col) != colors.end();
+        BOOST_CHECK(iff(expected, actual));
+    }
+    // If all dimensions are flat (len==1) or even, no node has the color -1 and
+    // all will be shifted.
+    bool all_dims_flat_or_even = std::all_of(
+        dims.begin(), dims.end(), [](int d) { return d == 1 || d % 2 == 0; });
+    BOOST_CHECK(
+        iff(all_dims_flat_or_even,
+            std::find(colors.begin(), colors.end(), -1) == colors.end()));
 
     if (colors.at(comm.rank()) != -1) {
         repa::Vec3i off;
