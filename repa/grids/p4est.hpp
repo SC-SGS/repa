@@ -31,27 +31,24 @@ struct P4estGrid : public ParallelLCGrid {
     P4estGrid(const boost::mpi::communicator &comm,
               Vec3d box_size,
               double min_cell_size);
-    local_cell_index_type n_local_cells() const override;
-    ghost_cell_index_type n_ghost_cells() const override;
-    rank_index_type n_neighbors() const override;
-    rank_type neighbor_rank(rank_index_type i) const override;
+    util::const_span<rank_type> neighbor_ranks() const override;
     Vec3d cell_size() const override;
     Vec3i grid_size() const override;
     local_or_ghost_cell_index_type
     cell_neighbor_index(local_cell_index_type cellidx,
                         fs_neighidx neigh) override;
-    std::vector<GhostExchangeDesc> get_boundary_info() override;
+    util::const_span<GhostExchangeDesc> get_boundary_info() override;
     local_cell_index_type position_to_cell_index(Vec3d pos) override;
-    /**
-     * @throws std::domain_error if position is not on a neighboring process.
-     */
     rank_type position_to_rank(Vec3d pos) override;
-    rank_index_type position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;
     global_cell_index_type
     global_hash(local_or_ghost_cell_index_type cellidx) override;
+
+protected:
+    local_cell_index_type n_local_cells() const override;
+    ghost_cell_index_type n_ghost_cells() const override;
 
 private:
     struct _P4estGrid_impl;

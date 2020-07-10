@@ -40,9 +40,10 @@ static void repartition_helper(repa::grids::ParallelLCGrid *grid,
                                testenv::TEnv::MetricFunc f)
 {
     auto noop = []() {};
-    auto ccm = [](int, int) { return 1.0; };
+    auto ccm = [](repa::local_cell_index_type,
+                  repa::local_or_ghost_cell_index_type) { return 1.0; };
     std::vector<double> metric_values
-        = (f ? f : get_random_vec)(static_cast<size_t>(grid->n_local_cells()));
+        = (f ? f : get_random_vec)(grid->local_cells().size());
     auto metric = [&metric_values]() { return metric_values; };
 
     BOOST_CHECK_NO_THROW(grid->repartition(metric, ccm, noop));
@@ -215,6 +216,7 @@ void TEnv::TEnv_impl::run(TestFunc test_func)
     } initial_partitioning_confs[] = {
         {repa::GridType::DIFF, "Linear"},
         {repa::GridType::PS_DIFF, "Cart1D"},
+        {repa::GridType::CART, "Cart2D"},
         {repa::GridType::PS_DIFF, "Cart3D"},
     };
 

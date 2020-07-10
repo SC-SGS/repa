@@ -30,7 +30,8 @@ build-debug:
             - build/tests/CTestTestfile.cmake
             - build/Makefile
             - build/repa/librepa.so
-            - build/tests/test_*
+            - build/tests/utest_*
+            - build/tests/itest_*
         expire_in: 1 day
 
 build-relwithdebinfo:
@@ -46,7 +47,8 @@ build-relwithdebinfo:
             - build/tests/CTestTestfile.cmake
             - build/Makefile
             - build/repa/librepa.so
-            - build/tests/test_*
+            - build/tests/utest_*
+            - build/tests/itest_*
         expire_in: 1 day
 
 build-release:
@@ -62,7 +64,8 @@ build-release:
             - build/tests/CTestTestfile.cmake
             - build/Makefile
             - build/repa/librepa.so
-            - build/tests/test_*
+            - build/tests/utest_*
+            - build/tests/itest_*
         expire_in: 1 day
 
 test-debug:

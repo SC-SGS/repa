@@ -89,7 +89,7 @@ std::string grid_type_to_string(GridType gt)
             return p.first;
     }
 
-    throw UnknownGridTypeError();
+    throw UnknownGridTypeError(std::to_string(static_cast<int>(gt)));
 }
 
 bool has_grid_type(GridType gt)
@@ -98,7 +98,7 @@ bool has_grid_type(GridType gt)
         return grid_type_availability.at(gt);
     }
     catch (const std::out_of_range &) {
-        throw UnknownGridTypeError();
+        throw UnknownGridTypeError(std::to_string(static_cast<int>(gt)));
     }
 }
 

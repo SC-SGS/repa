@@ -26,7 +26,7 @@ namespace util {
 template <typename Map>
 std::set<typename Map::key_type> get_keys(const Map &m)
 {
-    std::set<std::string> keys;
+    std::set<typename Map::key_type> keys;
     for (const auto &v : m) {
         keys.insert(v.first);
     }

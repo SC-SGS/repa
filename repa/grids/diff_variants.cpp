@@ -96,7 +96,7 @@ SchornVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
                                MPI_DOUBLE, neighcomm);
 
         double old_load = load;
-        for (int j = 0; j < neighloads.size(); j++) {
+        for (size_t j = 0; j < neighloads.size(); j++) {
             double new_f = alpha[j] * (old_load - neighloads[j]);
             deficiency[j] += new_f;
             load -= new_f;
@@ -122,7 +122,7 @@ SOVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
 
     double alpha = 1.0 / nneigh;
 
-    for (int i = 0; i < _nflow_iter; i++) {
+    for (uint32_t i = 0; i < _nflow_iter; i++) {
         // Exchange load in local neighborhood
         std::vector<double> neighloads(nneigh);
         MPI_Neighbor_allgather(&load, 1, MPI_DOUBLE, neighloads.data(), 1,
@@ -131,7 +131,7 @@ SOVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
         double old_load = load;
         if (_prev_deficiency.size() == 0) {
             _prev_deficiency.reserve(nneigh);
-            for (int j = 0; j < neighbors.size(); j++) {
+            for (size_t j = 0; j < neighbors.size(); j++) {
                 double new_f = alpha * (old_load - neighloads[j]);
                 deficiency[j] += new_f;
                 load -= new_f;
@@ -139,7 +139,7 @@ SOVolumeComputation::compute_flow(boost::mpi::communicator neighcomm,
             }
         }
         else {
-            for (int j = 0; j < neighbors.size(); j++) {
+            for (size_t j = 0; j < neighbors.size(); j++) {
                 double new_f = (_beta - 1) * _prev_deficiency[neighbors[j]]
                                + _beta * alpha * (old_load - neighloads[j]);
                 deficiency[j] += new_f;

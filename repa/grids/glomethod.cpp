@@ -20,10 +20,13 @@
 
 #include "glomethod.hpp"
 #include <algorithm>
+#include <boost/iterator/transform_iterator.hpp>
 #include <boost/mpi.hpp>
+#include <boost/range/adaptors.hpp>
+#include <boost/range/algorithm.hpp>
 
-#include "util/initial_partitioning.hpp"
 #include "util/push_back_unique.hpp"
+#include "util/range.hpp"
 
 #ifndef NDEBUG
 #define GLOMETHOD_DEBUG
@@ -34,22 +37,17 @@ namespace grids {
 
 local_cell_index_type GloMethod::n_local_cells() const
 {
-    return localCells;
+    return local_cell_index_type{cell_store.local_cells().size()};
 }
 
 ghost_cell_index_type GloMethod::n_ghost_cells() const
 {
-    return ghostCells;
+    return ghost_cell_index_type{cell_store.ghost_cells().size()};
 }
 
-rank_index_type GloMethod::n_neighbors() const
+util::const_span<rank_type> GloMethod::neighbor_ranks() const
 {
-    return neighbors.size();
-}
-
-rank_type GloMethod::neighbor_rank(rank_index_type i) const
-{
-    return neighbors[i];
+    return util::make_const_span(neighbors);
 }
 
 Vec3d GloMethod::cell_size() const
@@ -65,22 +63,22 @@ Vec3i GloMethod::grid_size() const
 local_or_ghost_cell_index_type
 GloMethod::cell_neighbor_index(local_cell_index_type cellidx, fs_neighidx neigh)
 {
-    assert(cellidx >= 0 && cellidx < n_local_cells());
-    return global_to_local[gbox.neighbor(cells[cellidx], neigh)];
+    return cell_store.as_local_or_ghost_index(
+        gbox.neighbor(cell_store.as_global_index(cellidx), neigh));
 }
 
-std::vector<GhostExchangeDesc> GloMethod::get_boundary_info()
+util::const_span<GhostExchangeDesc> GloMethod::get_boundary_info()
 {
-    return exchangeVector;
+    return util::make_const_span(exchangeVector);
 }
 
 local_cell_index_type GloMethod::position_to_cell_index(Vec3d pos)
 {
     try {
-        const auto c = global_to_local.at(gbox.cell_at_pos(pos));
-        if (c >= n_local_cells())
+        const auto c = cell_store.as_local_index(gbox.cell_at_pos(pos));
+        if (!c)
             throw std::domain_error("Particle not in local subdomain");
-        return c;
+        return *c;
     }
     catch (const std::out_of_range &e) {
         throw std::domain_error("Particle not in local subdomain");
@@ -89,25 +87,8 @@ local_cell_index_type GloMethod::position_to_cell_index(Vec3d pos)
 
 rank_type GloMethod::position_to_rank(Vec3d pos)
 {
-    auto r = rank_of_cell(gbox.cell_at_pos(pos));
-
-    if (r == UNKNOWN_RANK)
-        throw std::runtime_error("Cell not in scope of process");
-    else
-        return r;
-}
-
-rank_index_type GloMethod::position_to_neighidx(Vec3d pos)
-{
-    rank_type rank = position_to_rank(pos);
-
-    // Need to iterate neighbor_rank because GridBasedGrid provides a custom
-    // implementation of it.
-    for (rank_index_type i = 0; i < n_neighbors(); ++i) {
-        if (neighbor_rank(i) == rank)
-            return i;
-    }
-    throw std::domain_error("Position not within a neighbor process.");
+    return rank_of_cell(gbox.cell_at_pos(pos))
+        .value_or_throw<std::runtime_error>("Cell not in scope of process");
 }
 
 /*
@@ -158,104 +139,85 @@ GloMethod::~GloMethod()
  */
 void GloMethod::init(bool firstcall)
 {
-    const global_cell_index_type nglocells = gbox.ncells();
-
     pre_init(firstcall);
-
-    localCells = 0;
-    ghostCells = 0;
-    cells.clear();
-    global_to_local.clear();
+    cell_store.clear();
     neighbors.clear();
 
     // Extract the local cells from "partition".
-    for (global_cell_index_type i = 0; i < nglocells; i++) {
-        if (rank_of_cell(i) == comm_cart.rank()) {
-            // Vector of own cells
-            cells.push_back(i);
-            // Index mapping from global to local
-            global_to_local[i] = localCells;
-            // Number of own cells
-            localCells++;
+    for (const auto i : gbox.global_cells()) {
+        if (auto r = rank_of_cell(i); r && *r == comm_cart.rank()) {
+            cell_store.push_back_local(i);
         }
     }
 
-    // Temporary storage for exchange descriptors.
-    // Will be filled only for neighbors
-    // and moved from later.
-    std::vector<GhostExchangeDesc> tmp_ex_descs(comm_cart.size());
+    //
+    // In the following, we first collect the communication volume as global
+    // cell indices. We do this to ensure the same sorting among all processes.
+    // After sorting, we map these indices to local ones.
+    //
+    using GlobalCellIndices = std::vector<global_cell_index_type>;
+    std::vector<GlobalCellIndices> recvvol_per_rank(comm_cart.size()),
+        sendvol_per_rank(comm_cart.size());
 
-    // Determine ghost cells and communication volume
-    for (local_cell_index_type i = 0; i < localCells; i++) {
-        for (global_cell_index_type neighborIndex :
-             gbox.full_shell_neigh_without_center(cells[i])) {
-            const rank_type owner = rank_of_cell(neighborIndex);
-            assert(owner != UNKNOWN_RANK);
+    // Step 1. Determine ghost cells and communication volume
+    for (const auto i : cell_store.local_cells()) {
+        for (const global_cell_index_type neighborIndex :
+             gbox.full_shell_neigh_without_center(
+                 cell_store.as_global_index(i))) {
+            const rank_type owner = rank_of_cell(neighborIndex).value();
+
             if (owner == comm_cart.rank())
                 continue;
 
             init_new_foreign_cell(i, neighborIndex, owner);
 
             // Register "neighborIndex" as ghost cell
-            if (global_to_local.find(neighborIndex)
-                == std::end(global_to_local)) {
-                cells.push_back(neighborIndex);
-                global_to_local[neighborIndex] = localCells + ghostCells;
-                ghostCells++;
+            if (!cell_store.holds_global_index(neighborIndex)) {
+                cell_store.push_back_ghost(neighborIndex);
             }
             else {
+                // Cannot be local cell, skipped above if this rank is owner.
+                assert(cell_store.as_local_or_ghost_index(neighborIndex)
+                           .is<ghost_cell_index_type>());
                 // Must have been registered before as ghost cell to be received
                 // from "owner".
-                assert(std::find(std::begin(tmp_ex_descs[owner].recv),
-                                 std::end(tmp_ex_descs[owner].recv),
+                assert(std::find(std::begin(recvvol_per_rank[owner]),
+                                 std::end(recvvol_per_rank[owner]),
                                  neighborIndex)
-                       != std::end(tmp_ex_descs[owner].recv));
+                       != std::end(recvvol_per_rank[owner]));
             }
 
-            // Initialize exdesc and add "owner" as neighbor if unknown.
-            if (tmp_ex_descs[owner].dest == -1) {
-                neighbors.push_back(owner);
-                tmp_ex_descs[owner].dest = owner;
-            }
+            util::push_back_unique(neighbors, owner);
 
-            util::push_back_unique(tmp_ex_descs[owner].recv, neighborIndex);
-            util::push_back_unique(tmp_ex_descs[owner].send, cells[i]);
+            util::push_back_unique(recvvol_per_rank[owner], neighborIndex);
+            util::push_back_unique(sendvol_per_rank[owner],
+                                   cell_store.as_global_index(i));
         }
     }
 
-    // Move all existent exchange descriptors from "tmp_ex_descs" to
-    // "exchangeVector".
+    // Step 2. Sort the indices globally uniquely and map them to local ones.
     exchangeVector.clear();
     for (rank_type i = 0; i < comm_cart.size(); ++i) {
-        if (tmp_ex_descs[i].dest != -1) {
-            auto ed = std::move(tmp_ex_descs[i]);
+        // Move it so that it is directly deleted at the end of this scope
+        auto recv = std::move(recvvol_per_rank[i]);
+        auto send = std::move(sendvol_per_rank[i]);
 
-            // Make sure, index ordering is the same on every process
-            // and global to local index conversion
-            std::sort(std::begin(ed.recv), std::end(ed.recv));
-            std::transform(std::begin(ed.recv), std::end(ed.recv),
-                           std::begin(ed.recv),
-                           [this](global_cell_index_type i) {
-                               return global_to_local[i];
-                           });
-            std::sort(std::begin(ed.send), std::end(ed.send));
-            std::transform(std::begin(ed.send), std::end(ed.send),
-                           std::begin(ed.send),
-                           [this](global_cell_index_type i) {
-                               return global_to_local[i];
-                           });
+        assert(recv.empty() == send.empty());
 
-            exchangeVector.push_back(std::move(ed));
-        }
+        if (recv.empty())
+            continue;
+
+        exchangeVector.emplace_back(
+            i,
+            boost::copy_range<std::vector<ghost_cell_index_type>>(
+                boost::sort(recv)
+                | boost::adaptors::transformed(
+                    cell_store.global_to_ghost_transformer())),
+            boost::copy_range<std::vector<local_cell_index_type>>(
+                boost::sort(send)
+                | boost::adaptors::transformed(
+                    cell_store.global_to_local_transformer())));
     }
-
-#ifdef GLOMETHOD_DEBUG
-    for (rank_type i = 0; i < comm_cart.size(); ++i) {
-        if (tmp_ex_descs[i].dest != -1)
-            assert(tmp_ex_descs[i].recv.size() == 0
-                   && tmp_ex_descs[i].send.size() == 0);
-    }
-#endif
 
     post_init(firstcall);
 }
@@ -264,7 +226,7 @@ global_cell_index_type
 GloMethod::global_hash(local_or_ghost_cell_index_type cellidx)
 {
     // No need to define this away. Does currently not require extra data.
-    return cells[cellidx];
+    return cell_store.as_global_index(cellidx);
 }
 
 } // namespace grids

@@ -55,14 +55,9 @@ ghost_cell_index_type HybridGPDiff::n_ghost_cells() const
     return active_implementation->n_ghost_cells();
 }
 
-rank_index_type HybridGPDiff::n_neighbors() const
+util::const_span<rank_type> HybridGPDiff::neighbor_ranks() const
 {
-    return active_implementation->n_neighbors();
-}
-
-rank_type HybridGPDiff::neighbor_rank(rank_index_type i) const
-{
-    return active_implementation->neighbor_rank(i);
+    return active_implementation->neighbor_ranks();
 }
 
 Vec3d HybridGPDiff::cell_size() const
@@ -82,7 +77,7 @@ HybridGPDiff::cell_neighbor_index(local_cell_index_type cellidx,
     return active_implementation->cell_neighbor_index(cellidx, neigh);
 }
 
-std::vector<GhostExchangeDesc> HybridGPDiff::get_boundary_info()
+util::const_span<GhostExchangeDesc> HybridGPDiff::get_boundary_info()
 {
     return active_implementation->get_boundary_info();
 }
@@ -95,11 +90,6 @@ local_cell_index_type HybridGPDiff::position_to_cell_index(Vec3d pos)
 rank_type HybridGPDiff::position_to_rank(Vec3d pos)
 {
     return active_implementation->position_to_rank(pos);
-}
-
-rank_index_type HybridGPDiff::position_to_neighidx(Vec3d pos)
-{
-    return active_implementation->position_to_neighidx(pos);
 }
 
 bool HybridGPDiff::repartition(CellMetric m,
@@ -132,14 +122,15 @@ void HybridGPDiff::switch_implementation()
     switch (switch_to_state) {
     case State::GRAPH:
         active_implementation = &graph_impl;
-        std::copy(std::begin(diff_impl.partition),
-                  std::end(diff_impl.partition),
-                  std::begin(graph_impl.partition));
+        // Copy mapping empty optionals to "-1".
+        for (size_t i = 0; i < diff_impl.partition.size(); ++i)
+            graph_impl.partition[i] = diff_impl.partition[i].value_or(-1);
         MPI_Allreduce(MPI_IN_PLACE, graph_impl.partition.data(),
                       graph_impl.partition.size(),
                       MPI_ELEM_DECLTYPE_T(graph_impl.partition), MPI_MAX,
                       comm_cart);
 #ifndef NDEBUG
+        // Check that all -1 are gone.
         for (const auto &el : graph_impl.partition)
             assert(el >= 0 && el < comm.size());
 #endif

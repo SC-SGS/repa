@@ -20,6 +20,7 @@
 #pragma once
 
 #include <set>
+#include <stdexcept>
 #include <string>
 
 #include "pargrid.hpp"
@@ -33,17 +34,10 @@ struct VariantSetter {
     virtual void set_variant(const std::string &) = 0;
 };
 
-struct UnknownVariantError {
-    UnknownVariantError() : w(std::string("Unknown grid type."))
+struct UnknownVariantError : public std::runtime_error {
+    UnknownVariantError() : std::runtime_error("Unknown grid variant.")
     {
     }
-    virtual const char *what() const
-    {
-        return w.c_str();
-    }
-
-private:
-    std::string w;
 };
 
 /** Returns a reference to a variant setter object if the grid supports it.

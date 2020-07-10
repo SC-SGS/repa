@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2019 Steffen Hirschmann
+ * Copyright 2017-2020 Steffen Hirschmann
  *
  * This file is part of Repa.
  *
@@ -16,18 +16,26 @@
  * You should have received a copy of the GNU General Public License
  * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
  */
-#pragma once
 
-/** Assigns a new given value to the elements in the index range
- * [first, last) if index satisfies a predicate.
- * Here, "first" corresponds to index 0 and "last-1" to index (last-first-1).
- */
-template <typename FwdIt, typename T, typename Pred>
-static void fill_if_index(FwdIt first, FwdIt last, const T &val, Pred p)
+#include <boost/mpi.hpp>
+#include <iostream>
+#include <repa/repa.hpp>
+
+int main()
 {
-    for (size_t i = 0; first != last; ++first) {
-        if (*first != val && p(i))
-            *first = val;
-        ++i;
+    boost::mpi::environment env;
+    boost::mpi::communicator comm;
+
+    auto grid
+        = repa::make_pargrid(repa::GridType::CART, comm, {1., 1., 1.}, 1e-1);
+
+    const auto gexds = grid->get_boundary_info();
+
+    for (const auto &gexd : gexds) {
+        // Print the number of cells to be send and received for each ghost
+        // exchange
+        std::cout << "Communication " << comm.rank() << " -> " << gexd.dest
+                  << " send: " << gexd.send.size()
+                  << " recv: " << gexd.recv.size() << std::endl;
     }
 }

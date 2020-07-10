@@ -20,6 +20,7 @@
 #pragma once
 
 #include <set>
+#include <stdexcept>
 #include <string>
 
 namespace repa {
@@ -39,21 +40,11 @@ enum class GridType {
     GRIDBASED
 };
 
-struct UnknownGridTypeError {
-    UnknownGridTypeError() : w(std::string("Unknown grid type."))
+struct UnknownGridTypeError : public std::runtime_error {
+    UnknownGridTypeError(const std::string &s)
+        : std::runtime_error("Unknown grid type: " + s)
     {
     }
-    UnknownGridTypeError(std::string s)
-        : w(std::string("Unknown grid type: `") + s + std::string("'"))
-    {
-    }
-    virtual const char *what() const
-    {
-        return w.c_str();
-    }
-
-private:
-    std::string w;
 };
 
 /** Returns the GridType associated with a descriptive string for the grid

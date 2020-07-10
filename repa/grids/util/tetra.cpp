@@ -97,7 +97,7 @@ std::pair<Vec3i64, Vec3i64> min_max_per_dim_of_subset(const Vertices &vertices,
     constexpr int64_t max_i64 = std::numeric_limits<int64_t>::max();
     Vec3i64 min = {max_i64, max_i64, max_i64};
     Vec3i64 max{0, 0, 0};
-    for (int i = 0; i < vertices.size(); ++i) {
+    for (size_t i = 0; i < vertices.size(); ++i) {
         for (int d = 0; d < 3; d++) {
             if (which_func(i, d) == WhichFunc::MIN)
                 min[d] = std::min(vertices[i][d], min[d]);

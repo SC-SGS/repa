@@ -23,7 +23,7 @@ namespace repa {
 namespace util {
 
 template <typename Set>
-Set set_union(Set s, Set t)
+Set set_union(Set s, const Set &t)
 {
     for (const auto &el : t)
         s.insert(el);

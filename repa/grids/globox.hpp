@@ -27,6 +27,7 @@
 #include "_compat.hpp"
 #include "util/linearize.hpp"
 #include "util/neighbor_offsets.hpp"
+#include "util/range.hpp"
 
 namespace repa {
 namespace grids {
@@ -51,9 +52,8 @@ public:
     using value_type = typename base_type::value_type;
     using difference_type = typename base_type::difference_type;
 
-    NeighborIterator() : cell(-1), idx(27), g(nullptr)
-    {
-    }
+    NeighborIterator() = delete;
+
     NeighborIterator(const GloBox *g, value_type cell, int start)
         : cell(cell), idx(start), g(g)
     {
@@ -115,20 +115,24 @@ struct GlobalBox {
     std::array<index_type_1d, 27> m_neigh_offset_1d;
 
     /** Initialization with a regular grid
-     * @param box_l box size
-     * @param max_range minimum cell size
+     * @param box_size box size
+     * @param min_cell_size minimum cell size
      */
-    GlobalBox(Vec3d box_l, double max_range)
-        : m_cell_grid(static_cast<index_type_3d>(box_l[0] / max_range),
-                      static_cast<index_type_3d>(box_l[1] / max_range),
-                      static_cast<index_type_3d>(box_l[2] / max_range)),
-          m_cell_size(box_l[0] / m_cell_grid[0],
-                      box_l[1] / m_cell_grid[1],
-                      box_l[2] / m_cell_grid[2])
+    GlobalBox(Vec3d box_size, double min_cell_size)
+        : m_cell_grid(static_cast<index_type_3d>(box_size[0] / min_cell_size),
+                      static_cast<index_type_3d>(box_size[1] / min_cell_size),
+                      static_cast<index_type_3d>(box_size[2] / min_cell_size)),
+          m_cell_size(box_size[0] / m_cell_grid[0],
+                      box_size[1] / m_cell_grid[1],
+                      box_size[2] / m_cell_grid[2])
     {
-        m_cell_grid_corr[0] = linearize(cell_index_type{m_cell_grid[0], 0, 0});
-        m_cell_grid_corr[1] = linearize(cell_index_type{0, m_cell_grid[1], 0});
-        m_cell_grid_corr[2] = linearize(cell_index_type{0, 0, m_cell_grid[2]});
+        constexpr auto zero = index_type_3d{0};
+        m_cell_grid_corr[0]
+            = linearize(cell_index_type{m_cell_grid[0], zero, zero});
+        m_cell_grid_corr[1]
+            = linearize(cell_index_type{zero, m_cell_grid[1], zero});
+        m_cell_grid_corr[2]
+            = linearize(cell_index_type{zero, zero, m_cell_grid[2]});
 
         std::transform(std::begin(util::NeighborOffsets3D::raw),
                        std::end(util::NeighborOffsets3D::raw),
@@ -152,9 +156,9 @@ struct GlobalBox {
             // Can be out of bounds by at most 1, i.e. subtracting m_cell_grid
             // once suffices.
             if (idx[d] == 0 && no[d] < 0)
-                ni += m_cell_grid_corr[d];
+                ni += index_type_1d{m_cell_grid_corr[d]};
             else if (idx[d] == m_cell_grid[d] - 1 && no[d] > 0)
-                ni -= m_cell_grid_corr[d];
+                ni -= index_type_1d{m_cell_grid_corr[d]};
         }
         return ni;
     }
@@ -165,7 +169,7 @@ struct GlobalBox {
     using NeighIt = NeighborIterator<GlobalBox>;
     boost::iterator_range<NeighIt> full_shell_neigh(index_type_1d index) const
     {
-        return {NeighIt(this, index, 0), NeighIt()};
+        return {NeighIt(this, index, 0), NeighIt(this, index, 27)};
     }
 
     /** Returns a range object that allows iterating over the full
@@ -174,11 +178,11 @@ struct GlobalBox {
     boost::iterator_range<NeighIt>
     full_shell_neigh_without_center(index_type_1d index) const
     {
-        return {NeighIt(this, index, 1), NeighIt()};
+        return {NeighIt(this, index, 1), NeighIt(this, index, 27)};
     }
 
     /** Returns the index of the cell at position "pos".
-     * @param pos coordinates of the position in [0.0, box_l[i])
+     * @param pos coordinates of the position in [0.0, box_size[i])
      */
     inline index_type_1d cell_at_pos(Vec3d pos) const noexcept
     {
@@ -190,15 +194,19 @@ struct GlobalBox {
         return linearize(cell);
     }
 
-    /** Returns the number of cells
+    /** Returns an iterator range to all global cell indices
      */
-    inline index_type_1d ncells() const noexcept
+    inline auto global_cells() const
     {
-        return static_cast<index_type_1d>(m_cell_grid[0]) * m_cell_grid[1]
-               * m_cell_grid[2];
+        return util::range(ncells());
     }
 
-    /** Returns the resulting cell size, greater or equal to max_range.
+    inline bool is_valid_global_index(index_type_1d i) const
+    {
+        return i >= 0 && i < ncells();
+    }
+
+    /** Returns the resulting cell size, greater or equal to min_cell_size.
      */
     inline position_type cell_size() const noexcept
     {
@@ -229,14 +237,22 @@ private:
     template <typename T>
     inline index_type_1d linearize(const Vec3<T> &cell) const noexcept
     {
-        return util::linearize(cell, m_cell_grid);
+        return index_type_1d{util::linearize(cell, m_cell_grid)};
     }
 
     inline cell_index_type unlinearize(index_type_1d pos) const
     {
         return util::unlinearize(pos, m_cell_grid);
     }
-};
+
+    /** Returns the number of cells
+     */
+    inline index_type_1d ncells() const noexcept
+    {
+        return index_type_1d{m_cell_grid[0] * m_cell_grid[1] * m_cell_grid[2]};
+    }
+
+}; // namespace globox
 
 } // namespace globox
 } // namespace grids

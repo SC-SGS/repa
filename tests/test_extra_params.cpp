@@ -58,7 +58,9 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
     // On second call (the call to 'test' after repartition),
     // ExtraParams::subdomain_midpoint must have been called for each cell
     // exactly once. Before that it must not have been called.
-    BOOST_CHECK(epcallcount.ncalls == ncalls * grid->n_local_cells());
+    const auto nlocalcells = grid->local_cells().size();
+    BOOST_CHECK(static_cast<size_t>(epcallcount.ncalls)
+                == ncalls * nlocalcells);
     ncalls++;
 }
 

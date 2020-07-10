@@ -50,7 +50,7 @@ static Vec3i map_coords_to_opposite_side(const Vec3i &c0,
 {
     using namespace util::vector_arithmetic;
     Vec3i te, ts;
-    for (int i = 0; i < te.size(); i++) {
+    for (size_t i = 0; i < te.size(); i++) {
         te[i] = c2[i] - c0[i] > 1;
         ts[i] = c0[i] - c2[i] > 1;
     }
@@ -127,9 +127,10 @@ bool PSDiffusion::coords_based_allow_sending(local_cell_index_type c,
     // Determine any of the processes owning neighboring cells of "c" would
     // be new neighbors to "neighrank".
     for (const global_cell_index_type &d :
-         gbox.full_shell_neigh_without_center(cells[c])) {
-        rank_type rank_d = rank_of_cell(d);
-        if (rank_d == rank_of_cell(cells[c]) || rank_d == neighrank)
+         gbox.full_shell_neigh_without_center(cell_store.as_global_index(c))) {
+        rank_type rank_d = rank_of_cell(d).value();
+        if (rank_d == rank_of_cell(cell_store.as_global_index(c)).value()
+            || rank_d == neighrank)
             continue;
         Vec3i c2 = map_coords_to_opposite_side(
             c0, util::mpi_cart_get_coords(init_topology_comm, rank_d),

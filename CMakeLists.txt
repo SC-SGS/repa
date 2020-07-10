@@ -21,7 +21,7 @@ project(Repa)
 cmake_minimum_required(VERSION 3.9)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -71,7 +71,6 @@ set(REPA_DEFAULT_COMPILE_OPTIONS
       "-pedantic-errors"
       #[[ Exclude common things ]]
       "-Wno-unused-parameter"
-      "-Wno-sign-compare"
       #[[ The following flags (without "no-") currently cause warnings
           in the code. However, they are not enabled by Wall or Wextra.
           Still list them here as disabled as a reminder. ]]
@@ -107,6 +106,8 @@ if(WITH_TESTS)
   enable_testing()
   add_subdirectory(tests)
 endif(WITH_TESTS)
+
+add_subdirectory(examples)
 
 include(FeatureSummary)
 feature_summary(WHAT ALL)

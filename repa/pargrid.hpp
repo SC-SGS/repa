@@ -24,6 +24,10 @@
 #include <vector>
 
 #include "common_types.hpp"
+#include "grids/util/range.hpp"
+#include "grids/util/simple_variant.hpp"
+#include "grids/util/span.hpp"
+#include "grids/util/strong_alias.hpp"
 
 #ifndef NDEBUG
 #define GLOBAL_HASH_NEEDED
@@ -35,6 +39,17 @@
 
 namespace repa {
 
+namespace type_tags {
+
+struct LocalCellIndexTag {
+};
+struct GhostCellIndexTag {
+};
+struct GlobalCellIndexTag {
+};
+
+} // namespace type_tags
+
 /** Some typedefs to document what an integer is supposed to mean
  */
 
@@ -42,38 +57,46 @@ namespace repa {
  */
 typedef int rank_type;
 
-/** Encodes an unknown rank. Denotes an error if necessary rank == UNKNOWN_RANK.
+/** Index of a local cell (0..n_local_cells-1).
  */
-#define UNKNOWN_RANK (static_cast<repa::rank_type>(-1))
+using local_cell_index_type
+    = util::StrongAlias<int_fast32_t, type_tags::LocalCellIndexTag>;
 
-/** Index of a neighboring process (rank) (0..n_neighbors-1)
- * or the total number of neighbor ranks (n_neighbors).
+/** Index of a ghost cell (0..n_ghost_cells-1).
  */
-typedef int rank_index_type;
+using ghost_cell_index_type
+    = util::StrongAlias<int_fast32_t, type_tags::GhostCellIndexTag>;
 
-/** Index of a local cell (0..n_local_cells-1) or the
- * total number of local cells (n_local_cells).
+/** cell_range.
+ * Offers functions to conveniently iterate over a range of cells.
+ * Do not rely on the specific implementation.
+ *
+ * Local and ghost cells are, however, ensured to be continuously numbered
+ * starting from 0.
  */
-typedef int local_cell_index_type;
+template <
+    typename T,
+    typename = std::enable_if_t<
+        std::is_same_v<
+            T,
+            ghost_cell_index_type> || std::is_same_v<T, local_cell_index_type>>>
+using cell_range = util::iota_range<T>;
 
-/** Index of a ghost cell (0..n_ghost_cells-1) or the
- * total number of ghost cells (n_ghost_cells).
+/** Index of a local or ghost cell.
  */
-typedef int ghost_cell_index_type;
+using local_or_ghost_cell_index_type
+    = util::simple_variant<local_cell_index_type, ghost_cell_index_type>;
 
-/** Index of a local (0..n_local_cells-1) or
- * ghost cell
- * (n_local_cells..n_local_cells+n_ghost_cells-1)
- * or the total number of cells on this
- * process (n_local_cells + n_ghost_cells).
+/** Global cell index (unique across all processes).
  */
-typedef int local_or_ghost_cell_index_type;
+using global_cell_index_type
+    = util::StrongAlias<int_fast64_t, type_tags::GlobalCellIndexTag>;
 
-/** Global cell index (unique across all
- * processes) or the number total number of
- * cells across all processes.
- */
-typedef int global_cell_index_type;
+typedef std::function<std::vector<double>(void)> CellMetric;
+typedef std::function<double(local_cell_index_type,
+                             local_or_ghost_cell_index_type)>
+    CellCellMetric;
+typedef std::function<void(void)> Thunk;
 
 /** Interface for implementations to query additional information
  * from the caller.
@@ -112,7 +135,7 @@ namespace grids {
  */
 struct GhostExchangeDesc {
     rank_type dest; // Destination rank
-    std::vector<local_or_ghost_cell_index_type>
+    std::vector<ghost_cell_index_type>
         recv; // Ghost cell indices which are to be received
     std::vector<local_cell_index_type>
         send; // Local cell indices which are to be sent
@@ -121,7 +144,7 @@ struct GhostExchangeDesc {
     {
     }
     GhostExchangeDesc(rank_type dest,
-                      std::vector<local_or_ghost_cell_index_type> &&recv,
+                      std::vector<ghost_cell_index_type> &&recv,
                       std::vector<local_cell_index_type> &&send)
         : dest(dest), recv(std::move(recv)), send(std::move(send))
     {
@@ -131,6 +154,9 @@ struct GhostExchangeDesc {
 /** Interface for a parallel linked-cell grid implementation.
  */
 struct ParallelLCGrid {
+    /**
+     * @throws std::invalid_argument if box_size[i] <= 6 * min_cell_size.
+     */
     ParallelLCGrid(const boost::mpi::communicator &comm,
                    Vec3d box_size,
                    double min_cell_size);
@@ -143,25 +169,23 @@ struct ParallelLCGrid {
 
     virtual ~ParallelLCGrid() = default;
 
-    /** Returns the number of local cells.
+    /** Returns the range of local cells.
      */
-    virtual local_cell_index_type n_local_cells() const = 0;
+    cell_range<local_cell_index_type> local_cells() const
+    {
+        return cell_range<local_cell_index_type>(n_local_cells());
+    }
 
-    /** Returns the number of ghost cells
+    /** Returns the range of ghost cells.
      */
-    virtual ghost_cell_index_type n_ghost_cells() const = 0;
+    cell_range<ghost_cell_index_type> ghost_cells() const
+    {
+        return cell_range<ghost_cell_index_type>(n_ghost_cells());
+    }
 
-    /** Returns the number of neighboring processes over faces, edges and
-     * corners
+    /** Returns a span/range of ranks of all neighbor processes.
      */
-    virtual rank_index_type n_neighbors() const = 0;
-
-    /** Returns the rank of a neighbor process.
-     * Is specified only for 0 > i or i >= n_neighbors().
-     * Might throw a std::domain_error otherwise.
-     * @param i index of neighbor process. 0 <= i < n_neighbors()
-     */
-    virtual rank_type neighbor_rank(rank_index_type i) const = 0;
+    virtual util::const_span<rank_type> neighbor_ranks() const = 0;
 
     /** Returns the cell sizes of Linked Cell grid.
      */
@@ -173,14 +197,9 @@ struct ParallelLCGrid {
 
     /** Returns the index of a cell neighboring a given cell (by index).
      *
-     * A resulting index N can be interpreted as follows:
-     * Case 1: 0 <= N < n_local_cells(): local cell N.
-     * Case 2: n_local_cells() <= N < n_local_cells() + n_ghost_cells():
-     *  ghost cell no. (N - n_local_cells()).
-     * Other values for N cannot occur.
+     * The neighbor can either be a local cell or a ghost cell.
      *
-     * Might throw a std::domain_error if 0 > cellidx or cellidx >=
-     * get_n_local_cells().
+     * @throws std::domain_error if cellidx is not a valid local cell.
      *
      * Neighbor 0 is the cells itself, i.e. "cell_neighbor_index(c, 0) == c"
      * Neighbors 1-13: Half shell neighborhood
@@ -196,7 +215,7 @@ struct ParallelLCGrid {
     /** Returns the ghost exchange info.
      * @see GhostExchangeDesc
      */
-    virtual std::vector<GhostExchangeDesc> get_boundary_info() = 0;
+    virtual util::const_span<GhostExchangeDesc> get_boundary_info() = 0;
 
     /** Returns the index of a local cell at position "pos".
      * @throws std::domain_error if position is not in the local subdomain.
@@ -204,31 +223,23 @@ struct ParallelLCGrid {
     virtual local_cell_index_type position_to_cell_index(Vec3d pos) = 0;
 
     /** Returns the rank of the process which is responsible for the cell at
-     * position "pos". Works for the whole domain!
+     * position "pos". Before the first call to repartition() is guaranteed to
+     * work for the whole domain! After the first repartition() might only work
+     * for the process itself and its neighbors or its ghost layer.
+     *
+     * @throws std::runtime_error if position cannot be resolved because the
+     * specific class supports resolving only its subdomain and ghost layer (see
+     * above).
      */
     virtual rank_type position_to_rank(Vec3d pos) = 0;
-
-    /** Returns the index of a neighboring process which is responsible for the
-     * cell at position "pos".
-     * The implementation might require, that "pos" is in the ghost layer of
-     * this process *OR*---a more relaxed condition---is on any neighboring
-     * process. In any case, the position cannot be resolved and throws a
-     * std::domain_error. As a consequence, the user *MUST NOT* rely on this
-     * method throwing a std::domain_error means that the position is not in a
-     * ghost layer.
-     *
-     * @throws std::domain_error If position cannot be resolved by this process.
-     *                           See comment above!
-     */
-    virtual rank_index_type position_to_neighidx(Vec3d pos) = 0;
 
     /** *Maybe* repartitions the grid. Returns true if grid has been changed
      * (repartitioned). This means all data of this class is invalidated.
      * If false is returned, *no* data returned since the last call to
-     * repartition() or topology_init() has been invalidated.
+     * repartition() is invalidated.
      *
-     * Be careful: If the call returns true also old cell indices are
-     * invalidated and silently get a new meaning.
+     * The data invalidation includes cell indices. These silently get a new
+     * meaning (underlying global cell index).
      *
      * @param exchange_start_callback is a function with no arguments which
      * starts the data migration. This function is only called if the return
@@ -239,19 +250,11 @@ struct ParallelLCGrid {
     repartition(CellMetric m, CellCellMetric ccm, Thunk exchange_start_callback)
         = 0;
 
-    struct UnknwonCommandError : public std::exception {
-        UnknwonCommandError(std::string s)
-            : w(std::string("Could not interpret command `") + s
-                + std::string("'"))
+    struct UnknwonCommandError : public std::runtime_error {
+        UnknwonCommandError(const std::string &s)
+            : std::runtime_error("Unknown command: " + s)
         {
         }
-        const char *what() const noexcept override
-        {
-            return w.c_str();
-        }
-
-    private:
-        std::string w;
     };
     /** Deliver implementation-defined commands to the partitioner.
      *
@@ -260,16 +263,14 @@ struct ParallelLCGrid {
     virtual void command(std::string s)
     {
         throw UnknwonCommandError{s};
-    };
+    }
 
     /** Returns a globally unique id for a local cell.
-     * This id is uniquely assigned to the global cell
-     * corresponding to a local one, i.e. two different
-     * processes will return the same global_hash
-     * if the (most likely different) local cellidxs correspond to the same
-     * global cell.
-     * If NDEBUG is set, additionally to the above stated semantics,
-     * this function is allowed to return constant 0.
+     * This id is uniquely assigned to the global cell corresponding to a local
+     * one, i.e. two different processes will return the same global_hash if the
+     * (most likely different) local cellidxs correspond to the same global
+     * cell. If NDEBUG is set, additionally to the above stated semantics, this
+     * function is allowed to return constant 0.
      *
      * This function is useful for testing purposes only.
      * Use *only* if NDEBUG is *not* set.
@@ -280,10 +281,20 @@ struct ParallelLCGrid {
         = 0;
 
 protected:
-    boost::mpi::communicator comm, comm_cart;
-    Vec3d box_l;
-    Vec3i node_grid, node_pos;
-    double max_range;
+    friend class HybridGPDiff; // HybridGPDiff needs to call the following
+                               // functions of its members, they are, however
+                               // not exposed to users.
+    /** Returns the number of local cells.
+     */
+    virtual local_cell_index_type n_local_cells() const = 0;
+
+    /** Returns the number of ghost cells
+     */
+    virtual ghost_cell_index_type n_ghost_cells() const = 0;
+
+    const boost::mpi::communicator comm, comm_cart;
+    const Vec3d box_size;
+    const double min_cell_size;
 };
 
 } // namespace grids

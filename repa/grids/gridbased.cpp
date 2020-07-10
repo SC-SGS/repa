@@ -30,7 +30,7 @@
 #include "util/mpi_cart_coloring.hpp"
 #include "util/mpi_graph.hpp"
 #include "util/push_back_unique.hpp"
-#include "util/vdist.hpp"
+#include "util/range.hpp"
 #include "util/vec_arith.hpp"
 
 #ifndef NDEBUG
@@ -68,7 +68,7 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r) const
                 // expecting it.
                 const Vec3i mirror
                     = -static_cast_vec<Vec3i>((coord == 0) && (off == 1));
-                result[i] = gridpoints[proc] + mirror * box_l;
+                result[i] = gridpoints[proc] + mirror * box_size;
                 i++;
             }
         }
@@ -76,14 +76,9 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r) const
     return result;
 }
 
-rank_index_type GridBasedGrid::n_neighbors() const
+util::const_span<rank_type> GridBasedGrid::neighbor_ranks() const
 {
-    return const_neighborhood.size();
-}
-
-rank_type GridBasedGrid::neighbor_rank(rank_index_type i) const
-{
-    return const_neighborhood[i];
+    return util::make_const_span(const_neighborhood);
 }
 
 void GridBasedGrid::pre_init(bool firstcall)
@@ -114,7 +109,9 @@ void GridBasedGrid::init_regular_partitioning()
     is_regular_grid = true;
 
     using namespace util::vector_arithmetic;
-    gridpoint = (node_pos + 1) * (box_l / node_grid);
+    const auto node_pos = util::mpi_cart_get_coords(comm_cart);
+    const auto node_grid = util::mpi_cart_get_dims(comm_cart);
+    gridpoint = (node_pos + 1) * (box_size / node_grid);
 
     create_cartesian_neighborhood(); // Necessary only once. Communication
                                      // structure does not change
@@ -168,16 +165,16 @@ void GridBasedGrid::init_octagons()
         // Create bounding boxes for all processes.
         // Need to be able to resolve the whole domain.
         neighbor_doms.reserve(comm_cart.size());
-        for (rank_index_type rank = 0; rank < comm_cart.size(); ++rank) {
+        for (int rank = 0; rank < comm_cart.size(); ++rank) {
             neighbor_doms.push_back(util::tetra::Octagon(bounding_box(rank)));
         }
     }
     else {
         // Create bounding boxes only for neighbors
-        neighbor_doms.reserve(n_neighbors());
-        for (rank_index_type nidx = 0; nidx < n_neighbors(); ++nidx) {
-            neighbor_doms.push_back(
-                util::tetra::Octagon(bounding_box(neighbor_rank(nidx))));
+        const auto neigh_ranks = neighbor_ranks();
+        neighbor_doms.reserve(neigh_ranks.size());
+        for (const auto neigh : neigh_ranks) {
+            neighbor_doms.push_back(util::tetra::Octagon(bounding_box(neigh)));
         }
     }
 }
@@ -194,7 +191,8 @@ GridBasedGrid::GridBasedGrid(const boost::mpi::communicator &comm,
           ep.subdomain_center_contribution_of_cell
               ? ep.subdomain_center_contribution_of_cell
               : [this](local_cell_index_type i) {
-                    return std::make_pair(1, gbox.midpoint(cells[i]));
+                    return std::make_pair(
+                        1, gbox.midpoint(cell_store.as_global_index(i)));
                 })
 {
     util::tetra::init_tetra(min_cell_size, box_size);
@@ -204,7 +202,8 @@ GridBasedGrid::~GridBasedGrid()
 {
 }
 
-rank_type GridBasedGrid::rank_of_cell(global_cell_index_type cellidx) const
+util::ioptional<rank_type>
+GridBasedGrid::rank_of_cell(global_cell_index_type cellidx) const
 {
     // Cell ownership is based on the cell midpoint.
     const auto mp = gbox.midpoint(cellidx);
@@ -215,16 +214,15 @@ rank_type GridBasedGrid::rank_of_cell(global_cell_index_type cellidx) const
     if (my_dom.contains(mp))
         return comm.rank();
 
-    for (rank_index_type i = 0; i < neighbor_doms.size(); ++i) {
+    for (size_t i = 0; i < neighbor_doms.size(); ++i) {
         if (neighbor_doms[i].contains(mp)) {
             if (is_regular_grid)
-                return i;
+                return static_cast<rank_type>(i);
             else
-                return neighbor_rank(i);
+                return neighbor_ranks()[i];
         }
     }
-
-    return UNKNOWN_RANK;
+    return {};
 }
 
 Vec3d GridBasedGrid::get_subdomain_center()
@@ -234,7 +232,7 @@ Vec3d GridBasedGrid::get_subdomain_center()
     double w = 0;
 
     Vec3d max_per_dim{0., 0., 0.};
-    Vec3d min_per_dim = box_l;
+    Vec3d min_per_dim = box_size;
     auto vertices = bounding_box(comm_cart.rank());
     for (int d = 0; d < 3; d++)
         for (Vec3d vertex : vertices) {
@@ -246,7 +244,7 @@ Vec3d GridBasedGrid::get_subdomain_center()
     // negative minimum are shifted upwards and after calculation back down.
     Vec3<bool> shift_dom_up = min_per_dim < 0.;
 
-    for (local_cell_index_type i = 0; i < n_local_cells(); ++i) {
+    for (const auto i : local_cells()) {
         int wi;
         Vec3d ci;
         std::tie(wi, ci) = get_subdomain_center_contribution_of_cell(i);
@@ -260,10 +258,10 @@ Vec3d GridBasedGrid::get_subdomain_center()
             (shift_dom_up && shift_cell_not_down) || shift_cell_up);
 
         // Add shifted cell to sum of all cells
-        c += ci + shift_cell * box_l * wi_d;
+        c += ci + shift_cell * box_size * wi_d;
         w += wi_d;
     }
-    c -= static_cast_vec<Vec3d>(shift_dom_up) * box_l * w;
+    c -= static_cast_vec<Vec3d>(shift_dom_up) * box_size * w;
 
     return c / w;
 }
@@ -278,8 +276,7 @@ static Vec3d calc_shift(double local_load,
 
     // The node displacement is calculated according to
     // C. Begau, G. Sutmann, Comp. Phys. Comm. 190 (2015), p. 51 - 61
-    const rank_index_type nneigh
-        = util::mpi_undirected_neighbor_count(neighcomm);
+    const int nneigh = util::mpi_undirected_neighbor_count(neighcomm);
     const double lambda_p = local_load;
     const auto r_p = subdomain_midpoint;
 
@@ -298,7 +295,7 @@ static Vec3d calc_shift(double local_load,
     MPI_Neighbor_allgather(r_p.data(), sizeof(Vec3d), MPI_BYTE, r.data(),
                            sizeof(Vec3d), MPI_BYTE, neighcomm);
 
-    for (rank_index_type i = 0; i < nneigh; ++i) {
+    for (const auto i : boost::irange(nneigh)) {
         // Form "u"
         r[i] -= cur_gridpoint;
         for (int d = 0; d < 3; d++) {
@@ -308,7 +305,7 @@ static Vec3d calc_shift(double local_load,
                 r_d += (r_d < 0) ? box_l[d] : -box_l[d];
             }
         }
-        const double len = util::norm2(r[i]);
+        const double len = norm(r[i]);
         // Form "f"
         r[i] *= (lambda_hat[i] - 1) / len;
     }
@@ -362,13 +359,13 @@ bool GridBasedGrid::sub_repartition(CellMetric m, CellCellMetric ccm)
     using namespace util::vector_arithmetic;
 
     const auto weights = m();
-    assert(weights.size() == n_local_cells());
+    assert(weights.size() == local_cells().size());
 
     const double lambda_p
         = std::accumulate(std::begin(weights), std::end(weights), 0.0);
     const auto r_p = get_subdomain_center();
     const auto shift_vector
-        = calc_shift(lambda_p, r_p, gridpoint, neighcomm, box_l);
+        = calc_shift(lambda_p, r_p, gridpoint, neighcomm, box_size);
 
     // Colored shifting scheme to avoid multiple node conflicts at once,
     // according to:
@@ -383,7 +380,7 @@ bool GridBasedGrid::sub_repartition(CellMetric m, CellCellMetric ccm)
             for (double factor = 1.0; !neighborhood_valid && factor > .2;
                  factor /= 2.) {
                 gridpoints[comm_cart.rank()] = shift_gridpoint(
-                    gridpoint, shift_vector, mu * factor, comm_cart, box_l);
+                    gridpoint, shift_vector, mu * factor, comm_cart, box_size);
                 neighborhood_valid = check_validity_of_subdomains(
                     subdomains_adjacent_to_gridpoint);
             }
@@ -399,7 +396,7 @@ bool GridBasedGrid::sub_repartition(CellMetric m, CellCellMetric ccm)
             // to be communicated
             gridpoints.clear();
             boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
-            assert(gridpoints.size() == comm_cart.size());
+            assert(gridpoints.size() == static_cast<size_t>(comm_cart.size()));
         })();
 
     is_regular_grid = false;

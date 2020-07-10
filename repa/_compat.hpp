@@ -19,9 +19,6 @@
 
 #pragma once
 
-// Compatibility with old code.
-#define ROUND_ERROR_PREC 1e-14
-
 // Currently only full-periodic grids are supported
 #define PERIODIC(x) (1)
 

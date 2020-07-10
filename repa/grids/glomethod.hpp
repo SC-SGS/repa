@@ -22,7 +22,10 @@
 
 #include "globox.hpp"
 #include "pargrid.hpp"
+#include "util/global_index_storage.hpp"
 #include "util/initial_partitioning.hpp"
+#include "util/ioptional.hpp"
+#include <optional>
 #include <unordered_map>
 
 namespace repa {
@@ -35,22 +38,15 @@ struct GloMethod : public ParallelLCGrid {
               ExtraParams ep);
     virtual ~GloMethod();
     void after_construction() override;
-    local_cell_index_type n_local_cells() const override;
-    ghost_cell_index_type n_ghost_cells() const override;
-    rank_index_type n_neighbors() const override;
-    rank_type neighbor_rank(rank_index_type i) const override;
+    util::const_span<rank_type> neighbor_ranks() const override;
     Vec3d cell_size() const override;
     Vec3i grid_size() const override;
     local_or_ghost_cell_index_type
     cell_neighbor_index(local_cell_index_type cellidx,
                         fs_neighidx neigh) override;
-    std::vector<GhostExchangeDesc> get_boundary_info() override;
+    util::const_span<GhostExchangeDesc> get_boundary_info() override;
     local_cell_index_type position_to_cell_index(Vec3d pos) override;
     rank_type position_to_rank(Vec3d pos) override;
-    /**
-     * @throws std::domain_error if "pos" is not in ghost layer.
-     */
-    rank_index_type position_to_neighidx(Vec3d pos) override;
     bool repartition(CellMetric m,
                      CellCellMetric ccm,
                      Thunk exchange_start_callback) override;
@@ -59,12 +55,11 @@ struct GloMethod : public ParallelLCGrid {
     global_hash(local_or_ghost_cell_index_type cellidx) override;
 
 protected:
+    local_cell_index_type n_local_cells() const override;
+    ghost_cell_index_type n_ghost_cells() const override;
+
     virtual bool sub_repartition(CellMetric m, CellCellMetric ccm) = 0;
 
-    // Number of local cells
-    local_cell_index_type localCells;
-    // Number of ghost cells
-    ghost_cell_index_type ghostCells;
     /** All neighbor ranks (ranks of subdomains neighboring this subdomain)
      * Do not use raw access to this vector in the implementation of GloMethod.
      * Use n_neighbors() and neighbor_rank(rank_index_type) instead.
@@ -74,24 +69,19 @@ protected:
      * during initialization).
      */
     std::vector<rank_type> neighbors;
+
     // Communication descriptors
     std::vector<GhostExchangeDesc> exchangeVector;
 
     // Defines the linearization and global cell neighborhoods.
-    globox::GlobalBox<global_cell_index_type, global_cell_index_type> gbox;
+    globox::GlobalBox<global_cell_index_type, int> gbox;
 
     // Stores the initial partitioning enum
     const util::InitialPartitionType initial_partitioning;
 
     // Stores the global index of local cells and the ghost cells of the
-    // subdomain associated to this process. This ordering is imposed via
-    // pargrid.hpp and ESPResSo.
-    std::vector<global_cell_index_type> cells;
-
-    // Stores the mapping of a global linearized index to a
-    // local linearized index or an ghost linearized index.
-    std::unordered_map<global_cell_index_type, local_cell_index_type>
-        global_to_local;
+    // subdomain associated to this process.
+    util::global_index_storage cell_store;
 
     // Called before init()
     // To override by subclasses if necessary
@@ -120,13 +110,14 @@ protected:
     }
 
     // Function that globally resolves a cell index to a rank.
-    // Might return UNKNOWN_RANK if cell "idx" is irrelevant for
+    // Return value may be empty if cell "idx" is irrelevant for
     // this process (no local cell and no ghost cell).
     //
     //
     // @param idx cell index to resolve
     // @returns rank which is responsible for global cell index idx
-    virtual rank_type rank_of_cell(global_cell_index_type idx) const = 0;
+    virtual util::ioptional<rank_type>
+    rank_of_cell(global_cell_index_type idx) const = 0;
 
     // Reinitializes the subdomain and communication data structures
     // after repartitioning.

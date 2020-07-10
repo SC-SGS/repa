@@ -58,10 +58,13 @@ struct Diffusion : public GloMethod, public VariantSetter {
 protected:
     virtual void post_init(bool firstcall) override;
 
-    virtual rank_type rank_of_cell(global_cell_index_type idx) const override
+    virtual util::ioptional<rank_type>
+    rank_of_cell(global_cell_index_type idx) const override
     {
-        assert(idx >= 0 && idx < gbox.ncells());
-        return partition[idx];
+        assert(gbox.is_valid_global_index(idx));
+        auto r = partition[idx];
+        assert(!r.has_value() || (*r >= 0 && *r < comm.size()));
+        return r;
     }
 
     //
@@ -79,7 +82,7 @@ protected:
 
     // Stores the global partitioning. One rank per cell. Index via global
     // index.
-    std::vector<rank_type> partition;
+    std::vector<util::ioptional<rank_type>> partition;
 
     // Neighborhood communicator
     boost::mpi::communicator neighcomm;

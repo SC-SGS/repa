@@ -39,18 +39,18 @@ bool ignore_message(const E &e)
 
 bool message_unknown_grid_type(const repa::UnknownGridTypeError &e)
 {
-    return std::string{e.what()} == "Unknown grid type: `unknown'";
+    return std::string{e.what()} == "Unknown grid type: unknown";
 }
 
 bool message_unknown_grid_type_ff(const repa::UnknownGridTypeError &e)
 {
-    return std::string{e.what()} == "Unknown grid type: `255'";
+    return std::string{e.what()} == "Unknown grid type: 255";
 }
 
 bool message_unknown_command(
     const repa::grids::ParallelLCGrid::UnknwonCommandError &e)
 {
-    return std::string{e.what()} == "Could not interpret command `unknown'";
+    return std::string{e.what()} == "Unknown command: unknown";
 }
 
 BOOST_AUTO_TEST_CASE(test_unknown_exceptions)
@@ -68,12 +68,16 @@ BOOST_AUTO_TEST_CASE(test_unknown_exceptions)
                           repa::UnknownGridTypeError, ignore_message);
 
     boost::mpi::communicator comm;
-    BOOST_CHECK_EXCEPTION(repa::make_pargrid(gt, comm, {1., 1., 1.}, 1.),
+    BOOST_CHECK_EXCEPTION(repa::make_pargrid(gt, comm, {10., 10., 10.}, 1.),
                           repa::UnknownGridTypeError,
                           message_unknown_grid_type_ff);
 
+    BOOST_CHECK_EXCEPTION(
+        repa::make_pargrid(repa::GridType::CART, comm, {2., 3., 5.}, 1.),
+        std::invalid_argument, ignore_message);
+
     gt = repa::GridType::CART;
-    auto g = repa::make_pargrid(gt, comm, {1., 1., 1.}, 1. / (comm.size()));
+    auto g = repa::make_pargrid(gt, comm, {10., 10., 10.}, 1. / (comm.size()));
     BOOST_CHECK_EXCEPTION(g->command("unknown"),
                           repa::grids::ParallelLCGrid::UnknwonCommandError,
                           message_unknown_command);

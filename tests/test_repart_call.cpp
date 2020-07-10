@@ -57,15 +57,18 @@ bool if_then(bool a, bool b)
 static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
 {
     (void)t;
-    auto nlc = grid->n_local_cells();
-
-    auto all_ones = [nlc]() { return std::vector<double>(nlc, 1.0); };
-    auto constant_one = [](int i, int j) { return 1.0; };
+    auto f_all_ones = [](size_t size) {
+        return [size]() { return std::vector<double>(size, 1.0); };
+    };
+    auto constant_one
+        = [](repa::local_cell_index_type i,
+             repa::local_or_ghost_cell_index_type j) { return 1.0; };
 
     auto cc = CallCounter{};
     bool grid_changed = false;
     BOOST_CHECK_NO_THROW(
-        grid_changed = grid->repartition(all_ones, constant_one, std::ref(cc)));
+        grid_changed = grid->repartition(f_all_ones(grid->local_cells().size()),
+                                         constant_one, std::ref(cc)));
 
     // Callback needs to be evaluated exactly once and only if grid was changed.
     BOOST_TEST(if_then(grid_changed, cc.get_count() == 1));
