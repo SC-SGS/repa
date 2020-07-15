@@ -334,7 +334,7 @@ static Vec3d shift_gridpoint(Vec3d gp,
     const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
 
     for (int d = 0; d < 3; ++d) {
-        int shifted = gp[d] + shift_vector[d];
+        double shifted = gp[d] + factor * shift_vector[d];
 
         const bool is_boundary_gridpoint = coords[d] == dims[d] - 1;
         // On non-periodic grids, shift only non-boundary coordinates
