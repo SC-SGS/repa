@@ -51,6 +51,28 @@ Vec3i64 box_size{0, 0, 0};
 
 using namespace vector_arithmetic;
 
+std::array<Vec3d, 8> shift_vertices(const std::array<Vec3d, 8> vertices)
+{
+    Vec3d shift_dim = {0., 0., 0.};
+    for (const Vec3d &vertex : vertices) {
+        for (int d = 0; d < 3; d++) {
+            if (vertex[d] < 0)
+                shift_dim[d] = 1.;
+        }
+    }
+
+    auto shifted_v = vertices;
+    if (any(shift_dim > 0.)) {
+        Vec3d box_d
+            = static_cast_vec<Vec3d>(box_size) / static_cast<double>(precision);
+        box_d = box_d * shift_dim;
+        for (Vec3d &vertex : shifted_v) {
+            vertex += box_d;
+        }
+    }
+    return shifted_v;
+}
+
 Vec3i64 integerize(const Vec3d &v)
 {
     return static_cast_vec<Vec3i64>(v * static_cast<double>(precision));
@@ -59,8 +81,9 @@ Vec3i64 integerize(const Vec3d &v)
 Vertices integerizedArray(const std::array<Vec3d, 8> &vertices)
 {
     Vertices intVert;
+    auto shifted_vertices = shift_vertices(vertices);
     for (int i = 0; i < 8; i++) {
-        intVert[i] = integerize(vertices[i]);
+        intVert[i] = integerize(shifted_vertices[i]);
     }
     return intVert;
 }
@@ -260,8 +283,8 @@ public:
         using namespace util::vector_arithmetic;
         Vec3i64 min, max;
         std::tie(min, max) = min_max_per_dim(vertices);
-        const Vec3<bool> shifted_above = max >= box_size;
-        const Vec3<bool> shifted_below = min < Vec3i64{0, 0, 0};
+        periodic = max >= box_size;
+        min_dim = min;
 
         if (any((max - min) > box_size)) {
             valid_status |= E_TETRA_TOOLARGE;
@@ -271,15 +294,6 @@ public:
                       << std::endl;
 #endif
         }
-
-        if (any(shifted_below)) {
-            for (Vec3i64 &vertex : vertices) {
-                vertex += static_cast_vec<Vec3i64>(shifted_below) * box_size;
-            }
-            std::tie(min, max) = min_max_per_dim(vertices);
-        }
-        periodic = shifted_above || shifted_below;
-        min_dim = min;
     }
 
     /** Returns 4 planes that represent the faces of a tetrahedron.
