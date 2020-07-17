@@ -35,11 +35,10 @@ using Vertices = std::array<Vec3i64, 8>;
 /** Constants for a bitset error value.
  */
 enum TetraValidityError {
-    E_TETRA_OK = 0,       // All good
-    E_TETRA_ROTATED = 1,  // Wrong orientation
-    E_TETRA_TOOLARGE = 2, // Too large in at least one direction
+    E_TETRA_OK = 0,      // All good
+    E_TETRA_ROTATED = 1, // Wrong orientation
     E_TETRA_INVALID
-    = 4 // Invalid node order, not a convex object, not of minimum required size
+    = 3 // Invalid node order, not a convex object, not of minimum required size
 };
 
 // Anonymous namespace for internal linkage
@@ -285,15 +284,6 @@ public:
         std::tie(min, max) = min_max_per_dim(vertices);
         periodic = max >= box_size;
         min_dim = min;
-
-        if (any((max - min) > box_size)) {
-            valid_status |= E_TETRA_TOOLARGE;
-#ifndef NDEBUG
-            std::cerr << "Subdomain too large! This subdomain is larger than "
-                      << "the domain itself in at least one dimension!"
-                      << std::endl;
-#endif
-        }
     }
 
     /** Returns 4 planes that represent the faces of a tetrahedron.
