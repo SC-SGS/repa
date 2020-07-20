@@ -337,6 +337,10 @@ static Vec3d shift_gridpoint(Vec3d gp,
         double shifted = gp[d] + factor * shift_vector[d];
 
         const bool is_boundary_gridpoint = coords[d] == dims[d] - 1;
+        // Shifting is only allowed if there is another subdomain in this
+        // dimension.
+        if (dims[d] == 1)
+            continue;
         // On non-periodic grids, shift only non-boundary coordinates
         if (!PERIODIC(d) && is_boundary_gridpoint)
             continue;

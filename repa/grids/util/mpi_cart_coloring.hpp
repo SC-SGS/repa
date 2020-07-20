@@ -37,10 +37,10 @@ inline int get_color(MPI_Comm comm)
     Vec3i dims = mpi_cart_get_dims(comm);
 
     for (int d = 0; d < 3; d++) {
-        // Check if number of processes in this dimension is odd.
+        // Check if number of processes in this dimension is odd and greater 2.
         // If this is the case, the nodes at the border of this dimension
         // must not be shifted.
-        if ((dims[d] % 2 == 1) && (coords[d] == dims[d] - 1)) {
+        if ((dims[d] > 2) && (dims[d] % 2 == 1) && (coords[d] == dims[d] - 1)) {
             return -1;
         }
     }
