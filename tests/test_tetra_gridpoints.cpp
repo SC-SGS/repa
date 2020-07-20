@@ -81,6 +81,7 @@ BOOST_AUTO_TEST_CASE(gridpoints_1)
     std::array<tetra::Octagon, 8> octas;
     for (int i = 0; i < 8; i++) {
         octas[i] = tetra::Octagon(points.getVerticesAtPosition(i), 0.1);
+        BOOST_CHECK(octas[i].is_valid());
     }
 
     std::vector<int> accepted{};
@@ -96,9 +97,7 @@ BOOST_AUTO_TEST_CASE(gridpoints_1)
             }
         }
     }
-    for (int i = 0; i < 8; i++) {
-        BOOST_CHECK(octas[i].is_valid());
-    }
+
     BOOST_CHECK(int(std::count(accepted.begin(), accepted.end(), 1))
                 == int(accepted.size()));
 }
