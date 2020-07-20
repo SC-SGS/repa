@@ -1,4 +1,27 @@
+/**
+ * Copyright 2020 The repa authors
+ *
+ * This file is part of Repa.
+ *
+ * Repa is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Repa is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Repa.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
+/**
+ * Checks if tetra can handle a certain subdomain layout.
+ * This subdomain layout has gridpoints shifted over the periodic boundary.
+ * It is a case which is known to fail before commit ce1d346.
+ */
 #define BOOST_TEST_NO_MAIN
 #define BOOST_TEST_ALTERNATIVE_INIT_API
 #define BOOST_TEST_DYN_LINK
@@ -7,7 +30,6 @@
 
 #include <array>
 #include <iostream>
-#include <vector>
 
 #include <repa/grids/util/tetra.hpp>
 
@@ -84,6 +106,9 @@ BOOST_AUTO_TEST_CASE(gridpoints_1)
         BOOST_CHECK(octas[i].is_valid());
     }
 
+    /* Check each point on a lattice of mesh width 1.0 for
+     * being accepted by a single one of the 8 tetras.
+     */
     for (int x = 0; x < 80; x++) {
         for (int y = 0; y < 80; y++) {
             for (int z = 0; z < 80; z++) {
