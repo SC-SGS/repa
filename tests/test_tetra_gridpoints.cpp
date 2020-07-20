@@ -84,22 +84,19 @@ BOOST_AUTO_TEST_CASE(gridpoints_1)
         BOOST_CHECK(octas[i].is_valid());
     }
 
-    std::vector<int> accepted{};
     for (int x = 0; x < 80; x++) {
         for (int y = 0; y < 80; y++) {
             for (int z = 0; z < 80; z++) {
-                int acc = 0;
-                for (int id = 0; id < 8; id++) {
-                    if (octas[id].contains({double(x), double(y), double(z)}))
-                        acc++;
-                }
-                accepted.push_back(acc);
+                const Vec3d p = {double(x), double(y), double(z)};
+                auto n_accept
+                    = std::count_if(std::begin(octas), std::end(octas),
+                                    [p](const tetra::Octagon &octa) {
+                                        return octa.contains(p);
+                                    });
+                BOOST_CHECK(n_accept == 1);
             }
         }
     }
-
-    BOOST_CHECK(int(std::count(accepted.begin(), accepted.end(), 1))
-                == int(accepted.size()));
 }
 
 int main(int argc, char **argv)
