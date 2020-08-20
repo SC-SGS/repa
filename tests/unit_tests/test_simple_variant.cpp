@@ -84,20 +84,6 @@ BOOST_AUTO_TEST_CASE(fmap)
     BOOST_TEST(d == 1.0);
 }
 
-BOOST_AUTO_TEST_CASE(as_std_variant)
-{
-    const variant_type u = 1;
-
-    const auto uv = u.as_std_variant();
-    BOOST_TEST(std::holds_alternative<int>(uv));
-    BOOST_TEST(std::get<int>(uv) == 1);
-
-    const variant_type v = 12.5;
-    const auto vv = v.as_std_variant();
-    BOOST_TEST(std::holds_alternative<double>(vv));
-    BOOST_TEST(std::get<double>(vv) == 12.5);
-}
-
 BOOST_AUTO_TEST_CASE(copy_constructor)
 {
     const variant_type u = 1;

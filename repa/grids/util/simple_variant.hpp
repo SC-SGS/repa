@@ -21,7 +21,6 @@
 #include <cassert>
 #include <cstdint>
 #include <type_traits>
-#include <variant>
 
 namespace repa {
 namespace util {
@@ -277,17 +276,6 @@ struct simple_variant {
             return f(_b);
     }
 
-    /** Returns a std::variant holding a copy of this object.
-     */
-    std::variant<T1, T2> as_std_variant() const
-    {
-        std::variant<T1, T2> v;
-        auto assign_value = [&v](const auto val) { v = val; };
-        visit(assign_value, assign_value);
-        assert(std::holds_alternative<T1>(v) || std::holds_alternative<T2>(v));
-        return v;
-    }
-
 private:
     union {
         T1 _a;
@@ -340,13 +328,15 @@ private:
  */
 template <typename T1, typename T2>
 struct std::hash<repa::util::simple_variant<T1, T2>> {
-    auto operator()(const repa::util::simple_variant<T1, T2> &val) const
+    size_t operator()(const repa::util::simple_variant<T1, T2> &val) const
     {
-        return _hasher(val.as_std_variant());
+        const size_t flag = val.is_first() ? 1 : 0;
+        return val.fmap([flag](auto &&v) {
+            using T = typename std::remove_cv<decltype(v)>::type;
+            const auto h = std::hash<T>{}(v);
+            // LSB: type, rest: value
+            return (h & ~static_cast<size_t>(0x1))
+                   | (flag & static_cast<size_t>(0x1));
+        });
     }
-
-private:
-    /** Simplest possible implementation: Use std::variant's hash function.
-     */
-    std::hash<std::variant<T1, T2>> _hasher;
 };
