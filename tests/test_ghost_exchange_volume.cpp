@@ -117,14 +117,24 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
         return *it;
     };
 
-    // Check if send indices fit receive indices on the other side.
+    // Check if send indices fit receive indices on the other side and vice
+    // versa.
     for (int r = 0; r < comm.size(); ++r) {
         for (const auto &rg : ggexdss[r]) {
             const auto &counterpart = find_comm(ggexdss[rg.dest], r);
 
+            BOOST_TEST(rg.send.size() == counterpart.recv.size());
             for (size_t i = 0; i < rg.send.size(); ++i) {
                 auto sglo = rg.send[i];
                 auto rglo = counterpart.recv[i];
+
+                BOOST_TEST(sglo == rglo);
+            }
+
+            BOOST_TEST(rg.recv.size() == counterpart.send.size());
+            for (size_t i = 0; i < rg.recv.size(); ++i) {
+                auto sglo = rg.recv[i];
+                auto rglo = counterpart.send[i];
 
                 BOOST_TEST(sglo == rglo);
             }
