@@ -28,10 +28,6 @@
 #include "util/push_back_unique.hpp"
 #include "util/range.hpp"
 
-#ifndef NDEBUG
-#define GLOMETHOD_DEBUG
-#endif
-
 namespace repa {
 namespace grids {
 

@@ -33,10 +33,6 @@
 #include "util/range.hpp"
 #include "util/vec_arith.hpp"
 
-#ifndef NDEBUG
-#define GRID_DEBUG
-#endif
-
 namespace repa {
 namespace grids {
 
