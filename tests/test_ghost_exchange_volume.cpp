@@ -101,7 +101,7 @@ static void test(const testenv::TEnv &t, repa::grids::ParallelLCGrid *grid)
             std::transform(std::begin(gexds[i].recv), std::end(gexds[i].recv),
                            std::back_inserter(ggexds[i].recv), idx_to_glo);
             std::transform(std::begin(gexds[i].send), std::end(gexds[i].send),
-                           std::begin(ggexds[i].send), idx_to_glo);
+                           std::back_inserter(ggexds[i].send), idx_to_glo);
         }
     }
 
