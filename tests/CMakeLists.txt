@@ -34,6 +34,7 @@ define_test(NAME utest_simple_variant SRC unit_tests/test_simple_variant.cpp SIN
 define_test(NAME utest_span SRC unit_tests/test_span.cpp SINGLEPROC)
 define_test(NAME utest_strong_alias SRC unit_tests/test_strong_alias.cpp SINGLEPROC)
 define_test(NAME utest_tetra SRC unit_tests/test_tetra.cpp SINGLEPROC)
+define_test(NAME utest_tetra_bug SRC unit_tests/test_tetra_bug.cpp SINGLEPROC)
 define_test(NAME utest_vec SRC unit_tests/test_vec.cpp SINGLEPROC)
 define_test(NAME utest_vec_arith SRC unit_tests/test_vec_arith.cpp SINGLEPROC)
 define_test(NAME utest_vector_coerce SRC unit_tests/test_vector_coerce.cpp SINGLEPROC)
