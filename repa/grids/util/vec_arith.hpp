@@ -21,6 +21,7 @@
 
 #include "common_types.hpp"
 #include <type_traits>
+#include <cmath>
 
 /** Expression templates for efficient arithmetics based on "Vec".
  *
@@ -435,7 +436,7 @@ dot(const VecExpression<T1, N, Expr1> &v1,
 }
 
 template <typename T1, size_t N, typename Expr1>
-__REPA__EX_TMPL_EXPORT T1 norm(const VecExpression<T1, N, Expr1> &v)
+__REPA__EX_TMPL_EXPORT T1 norm2(const VecExpression<T1, N, Expr1> &v)
 {
     T1 result{0};
     for (size_t i = 0; i < N; ++i) {
@@ -443,6 +444,12 @@ __REPA__EX_TMPL_EXPORT T1 norm(const VecExpression<T1, N, Expr1> &v)
         result += val * val;
     }
     return result;
+}
+
+template <typename T1, size_t N, typename Expr1>
+__REPA__EX_TMPL_EXPORT double norm(const VecExpression<T1, N, Expr1> &v)
+{
+    return std::sqrt(norm2(v));
 }
 
 /** Sum of the absoulte values of a Vector.
