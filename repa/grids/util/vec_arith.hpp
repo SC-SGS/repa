@@ -23,7 +23,6 @@
 #include <cmath>
 #include <type_traits>
 
-
 /** Expression templates for efficient arithmetics based on "Vec".
  *
  * Do *NOT* include them in any header. Also, only once per translation unit.

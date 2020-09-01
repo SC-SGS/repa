@@ -92,7 +92,6 @@ private:
     // They need to be mirrored by "box_size" according to the mirrors.
     util::tetra::BoundingBox unshifted_bounding_box(rank_type r) const;
 
-
     bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
     util::ioptional<rank_type>
     rank_of_cell(global_cell_index_type idx) const override;
