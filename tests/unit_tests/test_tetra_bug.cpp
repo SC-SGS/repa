@@ -32,6 +32,9 @@ static const auto dims = repa::Vec3i{4, 3, 2};
 static const auto box_size
     = repa::Vec3d{133.88659001643387, 133.88659001643387, 133.88659001643387};
 static const double min_gs = 2.5;
+static const auto grid_size = repa::Vec3i{53, 53, 53};
+static const auto cell_size = repa::Vec3d{
+    2.52616207578177113207, 2.52616207578177113207, 2.52616207578177113207};
 static const std::array<repa::Vec3d, nproc> gridpoints = {{
     {{43.494856734183919, 53.899425582781973, 67.98611172561732}},
     {{38.971624032523593, 47.820236497391079, 133.64229606120034}},
@@ -80,13 +83,14 @@ static int linearize(repa::Vec3i r)
     return r[0] * dims[1] * dims[2] + r[1] * dims[2] + r[2];
 }
 
-/** Copy of gridbased.cpp: GridBasedGrid::bounding_box(rank_type).
+/** Copy of gridbased.cpp: GridBasedGrid::unshifted_bounding_box(rank_type).
  */
-std::array<repa::Vec3d, 8> bounding_box(int which_subdomain)
+repa::util::tetra::BoundingBox bounding_box(int which_subdomain)
 {
     const auto coord = unlinearize(which_subdomain);
 
-    std::array<repa::Vec3d, 8> result;
+    std::array<repa::Vec3d, 8> ps;
+    std::array<repa::Vec3i, 8> ms;
     size_t i = 0;
     // Ranks holding the bounding box grid points of "r" = (c0, c1, c2) are:
     // (c0,     c1,     c2) upper right back corner,
@@ -109,12 +113,13 @@ std::array<repa::Vec3d, 8> bounding_box(int which_subdomain)
                 // expecting it.
                 const repa::Vec3i mirror
                     = -static_cast_vec<repa::Vec3i>((coord == 0) && (off == 1));
-                result[i] = gridpoints[proc] + mirror * box_size;
+                ps[i] = gridpoints[proc];
+                ms[i] = mirror;
                 i++;
             }
         }
     }
-    return result;
+    return repa::util::tetra::BoundingBox{std::move(ps), std::move(ms)};
 }
 
 BOOST_AUTO_TEST_CASE(test_tetra_bug)
@@ -135,6 +140,7 @@ BOOST_AUTO_TEST_CASE(test_tetra_bug)
     for (p[0] = min_gs / 2; p[0] < box_size[0]; p[0] += min_gs) {
         for (p[1] = min_gs / 2; p[1] < box_size[1]; p[1] += min_gs) {
             for (p[2] = min_gs / 2; p[2] < box_size[2]; p[2] += min_gs) {
+
                 const auto naccept = std::count_if(
                     octas.begin(), octas.end(),
                     [p](const Octagon &o) { return o.contains(p); });

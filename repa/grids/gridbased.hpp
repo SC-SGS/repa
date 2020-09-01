@@ -85,7 +85,13 @@ private:
     boost::mpi::communicator neighcomm;
 
     // Returns the 8 vertices bounding the subdomain of rank "r"
-    std::array<Vec3d, 8> bounding_box(rank_type r) const;
+    util::tetra::BoundingBox shifted_bounding_box(rank_type r) const;
+
+    // Returns the 8 vertices bounding the subdomain of rank "r" in their
+    // unshifted form. I.e. without pre-processing they do not span the volume.
+    // They need to be mirrored by "box_size" according to the mirrors.
+    util::tetra::BoundingBox unshifted_bounding_box(rank_type r) const;
+
 
     bool sub_repartition(CellMetric m, CellCellMetric ccm) override;
     util::ioptional<rank_type>

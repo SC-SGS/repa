@@ -33,16 +33,21 @@
 #include "util/range.hpp"
 #include "util/vec_arith.hpp"
 
-namespace repa {
-namespace grids {
-
-std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r) const
+namespace {
+/** Calls a callback function "f" for each gridpoint in the bounding box
+ * of rank "r" (relative to communicator "comm").
+ */
+template <typename Func>
+void bounding_box_impl(const std::vector<repa::Vec3d> &gridpoints,
+                       const boost::mpi::communicator &comm,
+                       repa::rank_type r,
+                       Func &&f)
 {
-    const Vec3i coord = util::mpi_cart_get_coords(comm_cart, r);
-    const Vec3i dims = util::mpi_cart_get_dims(comm_cart);
+    using namespace repa;
 
-    std::array<Vec3d, 8> result;
-    size_t i = 0;
+    const Vec3i coord = util::mpi_cart_get_coords(comm, r);
+    const Vec3i dims = util::mpi_cart_get_dims(comm);
+
     // Ranks holding the bounding box grid points of "r" = (c0, c1, c2) are:
     // (c0,     c1,     c2) upper right back corner,
     // (c0 - 1, c1,     c2) upper left back corner,
@@ -56,20 +61,52 @@ std::array<Vec3d, 8> GridBasedGrid::bounding_box(rank_type r) const
     for (off[2] = 0; off[2] <= 1; ++off[2]) {
         for (off[1] = 0; off[1] <= 1; ++off[1]) {
             for (off[0] = 0; off[0] <= 1; ++off[0]) {
-                using namespace util::vector_arithmetic;
+                using namespace repa::util::vector_arithmetic;
                 Vec3i nc = (coord - off) % dims;
-                rank_type proc = util::mpi_cart_rank(comm_cart, nc);
+                rank_type proc = util::mpi_cart_rank(comm, nc);
 
                 // Mirror the gridpoint back to where this subdomain is
                 // expecting it.
                 const Vec3i mirror
                     = -static_cast_vec<Vec3i>((coord == 0) && (off == 1));
-                result[i] = gridpoints[proc] + mirror * box_size;
-                i++;
+                f(gridpoints[proc], mirror);
             }
         }
     }
+}
+
+} // namespace
+
+namespace repa {
+namespace grids {
+
+util::tetra::BoundingBox GridBasedGrid::shifted_bounding_box(rank_type r) const
+{
+    std::array<Vec3d, 8> result;
+    size_t i = 0;
+    bounding_box_impl(
+        gridpoints, comm_cart, r,
+        [&result, &i, this](const Vec3d &gridpoint, const Vec3i &mirror) {
+            using namespace util::vector_arithmetic;
+            result[i++] = gridpoint + mirror * box_size;
+        });
     return result;
+}
+
+util::tetra::BoundingBox
+GridBasedGrid::unshifted_bounding_box(rank_type r) const
+{
+    std::array<Vec3d, 8> ps;
+    std::array<Vec3i, 8> ms;
+    size_t i = 0;
+    bounding_box_impl(
+        gridpoints, comm_cart, r,
+        [&ps, &ms, &i, this](const Vec3d &gridpoint, const Vec3i &mirror) {
+            ps[i] = gridpoint;
+            ms[i] = mirror;
+            i++;
+        });
+    return util::tetra::BoundingBox{std::move(ps), std::move(ms)};
 }
 
 util::const_span<rank_type> GridBasedGrid::neighbor_ranks() const
@@ -153,7 +190,7 @@ void GridBasedGrid::init_octagons()
 {
     boost::mpi::all_gather(comm_cart, gridpoint, gridpoints);
 
-    my_dom = util::tetra::Octagon(bounding_box(comm_cart.rank()));
+    my_dom = util::tetra::Octagon(unshifted_bounding_box(comm_cart.rank()));
 
     neighbor_doms.clear();
 
@@ -162,7 +199,8 @@ void GridBasedGrid::init_octagons()
         // Need to be able to resolve the whole domain.
         neighbor_doms.reserve(comm_cart.size());
         for (int rank = 0; rank < comm_cart.size(); ++rank) {
-            neighbor_doms.push_back(util::tetra::Octagon(bounding_box(rank)));
+            neighbor_doms.push_back(
+                util::tetra::Octagon(unshifted_bounding_box(rank)));
         }
     }
     else {
@@ -170,7 +208,8 @@ void GridBasedGrid::init_octagons()
         const auto neigh_ranks = neighbor_ranks();
         neighbor_doms.reserve(neigh_ranks.size());
         for (const auto neigh : neigh_ranks) {
-            neighbor_doms.push_back(util::tetra::Octagon(bounding_box(neigh)));
+            neighbor_doms.push_back(
+                util::tetra::Octagon(unshifted_bounding_box(neigh)));
         }
     }
 }
@@ -229,9 +268,9 @@ Vec3d GridBasedGrid::get_subdomain_center()
 
     Vec3d max_per_dim{0., 0., 0.};
     Vec3d min_per_dim = box_size;
-    auto vertices = bounding_box(comm_cart.rank());
+    auto bb = shifted_bounding_box(comm_cart.rank());
     for (int d = 0; d < 3; d++)
-        for (Vec3d vertex : vertices) {
+        for (Vec3d vertex : bb.vertices) {
             max_per_dim[d] = std::max(vertex[d], max_per_dim[d]);
             min_per_dim[d] = std::min(vertex[d], max_per_dim[d]);
         }
@@ -408,7 +447,8 @@ bool GridBasedGrid::check_validity_of_subdomains(
 
     return std::all_of(
         std::begin(ranks), std::end(ranks), [max_cs, this](rank_type r) {
-            return util::tetra::Octagon(bounding_box(r), max_cs).is_valid();
+            return util::tetra::Octagon(unshifted_bounding_box(r), max_cs)
+                .is_valid();
         });
 }
 
