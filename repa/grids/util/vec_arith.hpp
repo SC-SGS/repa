@@ -20,8 +20,8 @@
 #pragma once
 
 #include "common_types.hpp"
-#include <type_traits>
 #include <cmath>
+#include <type_traits>
 
 /** Expression templates for efficient arithmetics based on "Vec".
  *
