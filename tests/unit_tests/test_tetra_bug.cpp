@@ -65,16 +65,6 @@ static const std::array<repa::Vec3d, nproc> gridpoints = {{
  */
 static repa::Vec3i unlinearize(int r)
 {
-    /*
-    repa::Vec3i res;
-    res[0] = r % dims[0];
-    r /= dims[0];
-    res[1] = r % dims[1];
-    r /= dims[1];
-    assert(r < dims[2]);
-    res[2] = r;
-    return res;
-    */
     repa::Vec3i res;
     res[2] = r % dims[2];
     r /= dims[2];
@@ -87,7 +77,6 @@ static repa::Vec3i unlinearize(int r)
 
 static int linearize(repa::Vec3i r)
 {
-    // return r[2] * dims[1] * dims[0] + r[1] * dims[0] + r[0];
     return r[0] * dims[1] * dims[2] + r[1] * dims[2] + r[2];
 }
 
