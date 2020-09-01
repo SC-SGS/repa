@@ -180,8 +180,18 @@ struct Plane {
 
     bool isXAbove(Vec3i64 point, double dist) const noexcept
     {
-        int64_t int_dist = static_cast<int64_t>(
-            ceil(dist * precision * static_cast<double>(sumOfAbs(normVector))));
+        // The distance d of the point to the plane without scaling is:
+        // norm(n) * d = <p, n> - height,                                    (1)
+        // where <.,.> denotes the scalar product.
+        // To be able to use the scaled vectors, we multiply (1) with
+        // precision^3.
+        //
+        // Cross and dot product are bilinear.
+        // - normVector as well as its norm are scaled with precision^2
+        // - dot(point, normVector) and heightOfPlane with precision^3
+        // Hence, dist needs to be scaled with precision^1.
+        int64_t int_dist
+            = static_cast<int64_t>(ceil(dist * precision * norm(normVector)));
         return dot(point, normVector) > heightOfPlane + int_dist;
     }
 };
@@ -247,7 +257,7 @@ public:
     _Octagon_Impl() = delete;
 
     _Octagon_Impl(Vertices vertices, double max_cutoff)
-        : min_height(2. * std::sqrt(3.) * max_cutoff),
+        : min_height(2. * max_cutoff),
           valid_status(E_TETRA_OK),
           periodic({false, false, false})
     {

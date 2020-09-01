@@ -392,7 +392,7 @@ BOOST_AUTO_TEST_CASE(half_face_acceptance)
 BOOST_AUTO_TEST_CASE(validity)
 {
     double max_cutoff = 2.;
-    tetra::init_tetra(0.1, {16., 16., 16.});
+    tetra::init_tetra(max_cutoff, {16., 16., 16.});
 
     {
         // This Octagon should NOT be accepted.
@@ -405,18 +405,6 @@ BOOST_AUTO_TEST_CASE(validity)
                                   {1., 0., 0.},
                                   {0., 0., 0.}}};
         BOOST_TEST((!tetra::Octagon(cs, max_cutoff).is_valid()));
-    }
-    {
-        // This Octagon should NOT be accepted.
-        const octaVertices cs2 = {{{12., 15., 15.},
-                                   {0., 15., 15.},
-                                   {15., 0., 15.},
-                                   {0., 0., 15.},
-                                   {15., 15., 0.},
-                                   {0., 15., 0.},
-                                   {15., 0., 0.},
-                                   {0., 0., 0.}}};
-        BOOST_TEST((!tetra::Octagon(cs2, max_cutoff).is_valid()));
     }
     {
         // This Octagon should be accepted.
