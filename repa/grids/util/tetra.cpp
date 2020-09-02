@@ -51,6 +51,7 @@ Vec3d box_size_double{0., 0., 0.};
 
 using namespace vector_arithmetic;
 
+#ifndef NDEBUG
 bool is_precision_small_enough(const Vec3d &v)
 {
     // We deal with third powers in the code below (isAbove).
@@ -69,6 +70,7 @@ bool is_precision_small_enough(const Vec3d &v)
 
     return true;
 }
+#endif
 
 Vec3i64 integerize(const Vec3d &v)
 {
