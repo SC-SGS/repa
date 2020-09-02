@@ -452,18 +452,6 @@ __REPA__EX_TMPL_EXPORT double norm(const VecExpression<T1, N, Expr1> &v)
     return std::sqrt(norm2(v));
 }
 
-/** Sum of the absoulte values of a Vector.
- *  Can be used to compute the L1-norm of the vector.
- */
-template <typename T1, size_t N, typename Expr1>
-T1 sumOfAbs(const VecExpression<T1, N, Expr1> &v)
-{
-    T1 result{0};
-    for (size_t i = 0; i < N; ++i)
-        result += std::abs(v[i]);
-    return result;
-}
-
 /** Product of the values of a Vector.
  */
 template <typename T1, size_t N, typename Expr1>

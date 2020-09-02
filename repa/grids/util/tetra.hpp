@@ -44,9 +44,33 @@ void init_tetra();
  */
 int16_t get_precision();
 
+struct BoundingBox {
+    BoundingBox(const std::array<Vec3d, 8> &_vertices) : vertices(_vertices)
+    {
+        mirrors.fill(Vec3i{0, 0, 0});
+    }
+
+    BoundingBox(std::array<Vec3d, 8> &&_vertices)
+        : vertices(std::move(_vertices))
+    {
+        mirrors.fill(Vec3i{0, 0, 0});
+    }
+
+    BoundingBox(std::array<Vec3d, 8> &&_vertices,
+                std::array<Vec3i, 8> &&_mirrors)
+        : vertices(std::move(_vertices)), mirrors(std::move(_mirrors))
+    {
+    }
+
+    BoundingBox(BoundingBox &&) = default;
+
+    std::array<Vec3d, 8> vertices;
+    std::array<Vec3i, 8> mirrors;
+};
+
 struct Octagon {
     Octagon();
-    Octagon(const std::array<Vec3d, 8> &vertices, double max_cutoff = 0.0);
+    Octagon(const BoundingBox &bb, double max_cutoff = 0.0);
     Octagon(const Octagon &o) = delete;
     Octagon(Octagon &&o);
     ~Octagon();
