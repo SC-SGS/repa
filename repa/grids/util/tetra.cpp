@@ -83,11 +83,11 @@ static int64_t integerize(const double &v)
     return static_cast<int64_t>(v * static_cast<double>(precision));
 }
 
-/** Functor to shift vertices of an unshifted bounding box to where they can be
- * used as vertices to create a valid octagon object.
+/** Functor to calculate the shift of vertices of an unshifted bounding box to
+ * where they can be used as vertices to create a valid octagon object.
  */
-struct VertexShifter {
-    VertexShifter(const BoundingBox &bb)
+struct VertexShiftCalculator {
+    VertexShiftCalculator(const BoundingBox &bb)
         : octa_shift(get_shift_for_whole_octagon(bb))
     {
     }
@@ -132,7 +132,7 @@ private:
  */
 static Vertices vertex_coordinates_of_boundingbox(const BoundingBox &bb)
 {
-    const auto get_shift = VertexShifter{bb};
+    const auto get_shift = VertexShiftCalculator{bb};
 
     Vertices ivertices;
     for (size_t i = 0; i < 8; i++) {
