@@ -101,7 +101,7 @@ GridBasedGrid::unshifted_bounding_box(rank_type r) const
     size_t i = 0;
     bounding_box_impl(
         gridpoints, comm_cart, r,
-        [&ps, &ms, &i, this](const Vec3d &gridpoint, const Vec3i &mirror) {
+        [&ps, &ms, &i](const Vec3d &gridpoint, const Vec3i &mirror) {
             ps[i] = gridpoint;
             ms[i] = mirror;
             i++;
