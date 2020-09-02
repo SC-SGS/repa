@@ -42,7 +42,6 @@ define_test(NAME utest_vector_coerce SRC unit_tests/test_vector_coerce.cpp SINGL
 # Integration tests
 define_test(NAME itest_unknown_exceptions SRC test_unknown_exceptions.cpp SINGLEPROC)
 define_test(NAME itest_coloring SRC test_coloring.cpp)
-define_test(NAME itest_tetra_gridpoints SRC test_tetra_gridpoints.cpp SINGLEPROC)
 define_test(NAME itest_small_grid SRC test_small_grid.cpp LIBRARIES testenv SINGLEPROC)
 define_test(NAME itest_reentrancy SRC test_reentrancy.cpp TWOPROC LIBRARIES testenv)
 define_test(NAME itest_extra_params SRC test_extra_params.cpp LIBRARIES testenv SINGLEPROC)
