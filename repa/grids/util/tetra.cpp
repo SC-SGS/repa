@@ -22,7 +22,6 @@
 #include "tetra.hpp"
 #include "vec_arith.hpp"
 #include <algorithm>
-#include <boost/range/combine.hpp>
 #include <cmath>
 #include <iostream>
 
@@ -115,8 +114,9 @@ private:
     static Vec3i64 get_shift_for_whole_octagon(const BoundingBox &bb)
     {
         Vec3i64 shift_dim = {0, 0, 0};
-        for (const auto &[vertex, mirror] :
-             boost::combine(bb.vertices, bb.mirrors)) {
+        for (size_t i = 0; i < 8; i++) {
+            const auto &vertex = bb.vertices[i];
+            const auto &mirror = bb.mirrors[i];
             for (int d = 0; d < 3; d++) {
                 // mirror[d] == 0 if no mirrors were passed to the BoundingBox
                 // constructor.
