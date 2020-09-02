@@ -22,6 +22,7 @@
 #include "tetra.hpp"
 #include "vec_arith.hpp"
 #include <algorithm>
+#include <boost/range/combine.hpp>
 #include <cmath>
 #include <iostream>
 
@@ -72,55 +73,84 @@ bool is_precision_small_enough(const Vec3d &v)
 }
 #endif
 
-Vec3i64 integerize(const Vec3d &v)
+static Vec3i64 integerize(const Vec3d &v)
 {
     assert(is_precision_small_enough(v));
     return static_cast_vec<Vec3i64>(v * static_cast<double>(precision));
 }
 
-static Vertices vertex_coordinates_of_boundingbox(const BoundingBox &bb)
+static int64_t integerize(const double &v)
 {
-    Vec3i64 shift_dim = {0, 0, 0};
-    for (size_t i = 0; i < 8; ++i) {
-        const auto &vertex = bb.vertices[i];
-        const auto &mirror = bb.mirrors[i];
-        for (int d = 0; d < 3; d++) {
-            // mirrir[d] == 0 if no mirrors were passed to the BoundingBox
-            // constructor.
-            if (vertex[d] < -mirror[d] * box_size_double[d])
-                shift_dim[d] = 1;
-        }
+    return static_cast<int64_t>(v * static_cast<double>(precision));
+}
+
+/** Functor to shift vertices of an unshifted bounding box to where they can be
+ * used as vertices to create a valid octagon object.
+ */
+struct VertexShifter {
+    VertexShifter(const BoundingBox &bb)
+        : octa_shift(get_shift_for_whole_octagon(bb))
+    {
     }
 
-    Vertices intVert;
+    Vec3i64 operator()(const Vec3i &mirror) const
+    {
+        const Vec3i64 final_shift
+            = (octa_shift + static_cast_vec<Vec3i64>(mirror));
+        // Although we add two shift values, the sum must not be greater than
+        // one.
+        assert(any(final_shift >= -1));
+        assert(any(final_shift <= 1));
+        const Vec3i64 shift = box_size * final_shift;
+        return shift;
+    }
+
+private:
+    const Vec3i64 octa_shift;
+
+    /** Calculates the shift to be applied to a whole octagon.
+     * This is necessary if a vertex of the octagon moved over the periodic
+     * boundary towards negative values.
+     */
+    static Vec3i64 get_shift_for_whole_octagon(const BoundingBox &bb)
+    {
+        Vec3i64 shift_dim = {0, 0, 0};
+        for (const auto &[vertex, mirror] :
+             boost::combine(bb.vertices, bb.mirrors)) {
+            for (int d = 0; d < 3; d++) {
+                // mirror[d] == 0 if no mirrors were passed to the BoundingBox
+                // constructor.
+                if (vertex[d] < -mirror[d] * box_size_double[d])
+                    shift_dim[d] = 1;
+            }
+        }
+        return shift_dim;
+    }
+};
+
+/** Shifts and integerizes vertices of a bounding box.
+ */
+static Vertices vertex_coordinates_of_boundingbox(const BoundingBox &bb)
+{
+    const auto get_shift = VertexShifter{bb};
+
+    Vertices ivertices;
     for (size_t i = 0; i < 8; i++) {
         const auto &vertex = bb.vertices[i];
         const auto &mirror = bb.mirrors[i];
+        auto &ivertex = ivertices[i];
 
-        const Vec3i64 final_shift
-            = (shift_dim + static_cast_vec<Vec3i64>(mirror));
-        const Vec3i64 shift = box_size * final_shift;
+        const Vec3i64 shift = get_shift(mirror);
 
         for (int d = 0; d < 3; ++d) {
-            assert(final_shift[d] >= -1);
-            assert(final_shift[d] <= 1);
-
             // Don't truncate (static_cast) negative values.
-            if (vertex[d] >= 0.) {
-                intVert[i][d] = static_cast<int64_t>(
-                                    vertex[d] * static_cast<double>(precision))
-                                + shift[d];
-            }
-            else {
-                intVert[i][d]
-                    = shift[d]
-                      - static_cast<int64_t>(-vertex[d]
-                                             * static_cast<double>(precision));
-            }
+            if (vertex[d] >= 0.)
+                ivertex[d] = integerize(vertex[d]) + shift[d];
+            else
+                ivertex[d] = shift[d] - integerize(-vertex[d]);
         }
     }
-
-    return intVert;
+    return ivertices;
 }
 
 /**
