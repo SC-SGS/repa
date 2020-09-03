@@ -25,7 +25,6 @@
 #include "util/global_index_storage.hpp"
 #include "util/initial_partitioning.hpp"
 #include "util/ioptional.hpp"
-#include <optional>
 #include <unordered_map>
 
 namespace repa {
