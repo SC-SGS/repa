@@ -21,6 +21,7 @@
 
 #include <boost/mpi/communicator.hpp>
 #include <boost/optional.hpp>
+#include <stdexcept>
 #include <vector>
 
 #include "common_types.hpp"
