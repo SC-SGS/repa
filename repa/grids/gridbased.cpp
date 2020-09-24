@@ -459,8 +459,10 @@ void GridBasedGrid::command(std::string s)
 
     if (std::regex_match(s, m, mure)) {
         mu = std::strtod(m[1].str().c_str(), NULL);
+#ifndef NDEBUG
         if (comm_cart.rank() == 0)
             std::cout << "Setting mu = " << mu << std::endl;
+#endif
     }
 }
 

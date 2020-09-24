@@ -417,8 +417,10 @@ void Diffusion::command(std::string s)
         "(set) (profit) (pass) (through) (([[:digit:]]*[.])?[[:digit:]]+)");
     if (std::regex_match(s, m, profit_re)) {
         double ppt = std::stod(m[5].str().c_str(), NULL);
+#ifndef NDEBUG
         if (comm_cart.rank() == 0)
             std::cout << "Setting profit pass through = " << ppt << std::endl;
+#endif
         profit_percentage_pass_through = ppt;
         return;
     }
@@ -426,14 +428,21 @@ void Diffusion::command(std::string s)
     static const std::regex iter_re("(set) (flow_count) ([[:digit:]]+)");
     if (std::regex_match(s, m, iter_re)) {
         uint32_t flow_count = std::stoul(m[3].str().c_str(), NULL);
-        if (diff_variants::diffusion_maybe_set_nflow_iter(flow_calc.get(),
-                                                          flow_count)
-            && comm_cart.rank() == 0)
-            std::cout << "Setting flow_count = " << flow_count << std::endl;
-        else if (comm_cart.rank() == 0)
-            std::cerr << "Cannot set nflow iter. Not supported by your "
-                         "selected flow calculation."
-                      << std::endl;
+
+        const bool r = diff_variants::diffusion_maybe_set_nflow_iter(
+            flow_calc.get(), flow_count);
+        if (comm_cart.rank() == 0) {
+            if (r) {
+#ifndef NDEBUG
+                std::cout << "Setting flow_count = " << flow_count << std::endl;
+#endif
+            }
+            else {
+                std::cerr << "Cannot set nflow iter. Not supported by your "
+                             "selected flow calculation."
+                          << std::endl;
+            }
+        }
         return;
     }
 
@@ -443,18 +452,19 @@ void Diffusion::command(std::string s)
         try {
             flow_calc = diff_variants::create_flow_calc(
                 supported_default_diffusion_variants.at(impl));
+#ifndef NDEBUG
             if (comm_cart.rank() == 0)
                 std::cout << "Setting implementation to: " << impl << std::endl;
+#endif
         }
         catch (const std::out_of_range &) {
             if (comm_cart.rank() == 0) {
-                std::cerr
-                    << "Cannot set implementation! Implementation \"" << impl
-                    << "\" is not found or not allowed to be used with the "
-                       "default Diffusion. If you wanna use \"so\" or \"sof\" "
-                       "use \"ps_diff\" instead. Now using default "
-                       "implementation: \"willebeek\"."
-                    << std::endl;
+                std::cerr << "Cannot set implementation! Implementation \""
+                          << impl << "\" is not found or not allowed.\n"
+                          << "Note: \"so\" or \"sof\" are not supported by "
+                          << "grid \"diff\". Use \"ps_diff\" instead.\n\n"
+                          << "Setting default implementation: \"willebeek\"."
+                          << std::endl;
             }
             assert(false);
         }
