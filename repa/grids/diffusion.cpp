@@ -304,7 +304,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
     // Normally, the flow count should not require a process to hand away
     // all its cells. But we enfore this here by removing one cell
     // if all local cells are candidates.
-    if (borderCells.size() == n_local_cells())
+    if (borderCells.size() == static_cast<size_t>(n_local_cells()))
         plist.pop_back();
 
     PerNeighbor<GlobalCellIndices> to_send(send_loads.size());
