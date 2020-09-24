@@ -303,7 +303,7 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
     // A node is required to keep at least one cell.
     // Normally, the flow count should not require a process to hand away
     // all its cells. But we enfore this here by removing one cell
-    // is all local cells are candidates.
+    // if all local cells are candidates.
     if (borderCells.size() == n_local_cells())
         plist.pop_back();
 
