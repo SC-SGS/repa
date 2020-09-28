@@ -302,8 +302,11 @@ Diffusion::compute_send_list(std::vector<double> &&send_loads,
 
     // A node is required to keep at least one cell.
     // Normally, the flow count should not require a process to hand away
-    // all its cells. But we enfore this here by removing one cell
+    // all its cells.^* But we enfore this here by removing one cell
     // if all local cells are candidates.
+    // * It can happen on very heterogeneous scenarios and flow count > 1.
+    //   For flow_count == 1 the following code is irrelevant because a
+    //   subdomain will never be required to send off *all* load.
     if (borderCells.size() == static_cast<size_t>(n_local_cells()))
         plist.pop_back();
 
