@@ -454,7 +454,7 @@ bool GridBasedGrid::check_validity_of_subdomains(
 
 void GridBasedGrid::command(std::string s)
 {
-    static const std::regex mure("\\s*mu\\s*=\\s*(\\d+\\.|\\.\\d+|\\d+.\\d+)");
+    static const std::regex mure("set\\s+mu\\s+(\\d+\\.|\\.\\d+|\\d+.\\d+)");
     std::smatch m;
 
     if (std::regex_match(s, m, mure)) {
