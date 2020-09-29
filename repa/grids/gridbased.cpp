@@ -409,15 +409,21 @@ bool GridBasedGrid::sub_repartition(CellMetric m, CellCellMetric ccm)
     const std::vector<rank_type> subdomains_adjacent_to_gridpoint
         = util::mpi_directed_neighbors(neighcomm).first;
 
+    const double max_cell_size
+        = std::max(cell_size()[0], std::max(cell_size()[1], cell_size()[2]));
+
     util::independent_process_sets(comm_cart)
         .for_each([&]() {
             bool neighborhood_valid = false;
-            for (double factor = 1.0; !neighborhood_valid && factor > .2;
+            // Find an admissible shift length
+            for (double factor = 1.0; factor * mu / max_cell_size > .1;
                  factor /= 2.) {
                 gridpoints[comm_cart.rank()] = shift_gridpoint(
                     gridpoint, shift_vector, mu * factor, comm_cart, box_size);
                 neighborhood_valid = check_validity_of_subdomains(
                     subdomains_adjacent_to_gridpoint);
+                if (neighborhood_valid)
+                    break;
             }
             // Restore old info in "gridpoints" vector or accept new gridpoint
             if (neighborhood_valid)
