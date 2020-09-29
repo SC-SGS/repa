@@ -333,7 +333,7 @@ public:
     _Octagon_Impl() = delete;
 
     _Octagon_Impl(Vertices vertices, double max_cutoff)
-        : min_height(2. * max_cutoff),
+        : min_height(max_cutoff),
           valid_status(E_TETRA_OK),
           periodic({false, false, false})
     {
