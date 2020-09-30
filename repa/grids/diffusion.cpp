@@ -441,8 +441,8 @@ void Diffusion::command(std::string s)
 #endif
             }
             else {
-                std::cerr << "Cannot set nflow iter. Not supported by your "
-                             "selected flow calculation."
+                std::cerr << "Cannot set nflow iter."
+                          << "Not supported by flow implementation."
                           << std::endl;
             }
         }

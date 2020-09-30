@@ -149,14 +149,22 @@ void PSDiffusion::command(std::string s)
     static const std::regex beta_re(
         "(set) (beta) (([[:digit:]]*[.])?[[:digit:]]+)");
     if (std::regex_match(s, m, beta_re)) {
-        double beta_value = std::stod(m[3].str().c_str(), NULL);
-        if (diff_variants::diffusion_maybe_set_beta(flow_calc.get(), beta_value)
-            && comm_cart.rank() == 0)
-            std::cout << "Setting beta = " << beta_value << std::endl;
-        else if (comm_cart.rank() == 0)
-            std::cerr << "Cannot set beta value. Not supported by your "
-                         "selected flow calculation."
-                      << std::endl;
+        const double beta_value = std::stod(m[3].str().c_str(), NULL);
+        const bool r = diff_variants::diffusion_maybe_set_beta(flow_calc.get(),
+                                                               beta_value);
+
+        if (comm_cart.rank() == 0) {
+            if (r) {
+#ifndef NDEBUG
+                std::cout << "Setting beta = " << beta_value << std::endl;
+#endif
+            }
+            else {
+                std::cerr << "Cannot set beta value."
+                          << "Not supported by flow implementation."
+                          << std::endl;
+            }
+        }
         return;
     }
 
@@ -166,11 +174,14 @@ void PSDiffusion::command(std::string s)
         try {
             flow_calc = diff_variants::create_flow_calc(
                 supported_ps_diffusion_variants.at(impl));
+#ifndef NDEBUG
             if (comm_cart.rank() == 0)
                 std::cout << "Setting implementation to: " << impl << std::endl;
+#endif
             return;
         }
         catch (const std::out_of_range &) {
+            // Let Diffusion::command() try to set it.
         }
     }
 
