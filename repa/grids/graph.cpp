@@ -61,6 +61,16 @@ Graph::~Graph()
 {
 }
 
+constexpr inline double clamp(double min, double val, double max)
+{
+    if (val < min)
+        return min;
+    else if (val > max)
+        return max;
+    else
+        return val;
+}
+
 /*
  * Repartition.
  * Every node is responsible for a certain range of cells along the
@@ -81,8 +91,10 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
     // Vertex ranges per process
     std::vector<idx_t> vtxdist(comm_cart.size() + 1);
-    for (rank_type i = 0; i < comm_cart.size(); ++i)
-        vtxdist[i] = i * ncells_per_proc;
+    for (rank_type i = 0; i < comm_cart.size(); ++i) {
+        idx_t first_index = i * ncells_per_proc;
+        vtxdist[i] = clamp(0, first_index, nglocells - 1);
+    }
     vtxdist[comm_cart.size()] = nglocells;
 
 #ifdef GRAPH_DEBUG
