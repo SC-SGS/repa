@@ -133,25 +133,30 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     const auto vertex_weights = m();
     assert(vertex_weights.size() == local_cells().size());
 
-    idx_t nglocells = static_cast<idx_t>(gbox.global_cells().size());
-    idx_t ncells_per_proc = static_cast<idx_t>(
-        std::ceil(static_cast<double>(nglocells) / comm_cart.size()));
-
-    // Vertex ranges per process
     std::vector<idx_t> vtxdist(comm_cart.size() + 1);
-    for (rank_type i = 0; i < comm_cart.size(); ++i) {
-        idx_t first_index = i * ncells_per_proc;
-        vtxdist[i] = clamp(0, first_index, nglocells - 1);
-    }
-    vtxdist[comm_cart.size()] = nglocells;
+
+    // Calculate "vtxdist". vtxdist[i] = first cell index belonging to rank i
+    {
+        const idx_t nglocells = static_cast<idx_t>(gbox.global_cells().size());
+        const double ncells_per_proc
+            = static_cast<double>(nglocells) / comm_cart.size();
+
+        // Vertex ranges per process
+        for (rank_type i = 0; i < comm_cart.size(); ++i) {
+            const idx_t first_index
+                = static_cast<idx_t>(std::round(i * ncells_per_proc));
+            vtxdist[i] = clamp(0, first_index, nglocells - 1);
+        }
+        vtxdist[comm_cart.size()] = nglocells;
 
 #ifdef GRAPH_DEBUG
-    assert(vtxdist.size() == static_cast<size_t>(comm_cart.size()) + 1);
-    for (int i = 0; i < comm_cart.size(); ++i) {
-        assert(0 <= vtxdist[i] && vtxdist[i] < nglocells);
-    }
-    assert(vtxdist[comm_cart.size()] == nglocells);
+        assert(vtxdist.size() == static_cast<size_t>(comm_cart.size()) + 1);
+        for (int i = 0; i < comm_cart.size(); ++i) {
+            assert(0 <= vtxdist[i] && vtxdist[i] < nglocells);
+        }
+        assert(vtxdist[comm_cart.size()] == nglocells);
 #endif
+    }
 
     // Receive vertex and edge weights
     std::vector<rank_type> recvranks;
@@ -257,7 +262,8 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
 #ifdef GRAPH_DEBUG
     assert(nvtx == vtxdist[comm_cart.rank() + 1] - vtxdist[comm_cart.rank()]);
-    assert(nvtx <= nglocells);
+    assert(nvtx <= vtxdist.back()); // Last element is equal to the number of
+                                    // global cells
     assert(xadj.size() == static_cast<size_t>(nvtx) + 1);
     for (int i = 0; i < nvtx; ++i) {
         assert(xadj[i] < xadj[i + 1]);
@@ -265,7 +271,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     }
 
     for (size_t i = 0; i < adjncy.size(); ++i) {
-        assert(adjncy[i] >= 0 && adjncy[i] < nglocells);
+        assert(adjncy[i] >= 0 && adjncy[i] < vtxdist.back());
     }
 #endif
 
@@ -363,15 +369,15 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     util::all_gatherv_displ(comm_cart, parti.cref(), vtxdist, partition);
 
 #ifdef GRAPH_DEBUG
-    assert(partition.size() == static_cast<size_t>(nglocells));
+    assert(partition.size() == gbox.global_cells().size());
     for (int r : partition) {
         assert(0 <= r && r < comm_cart.size());
     }
 #endif
 
 #ifdef GRAPH_DEBUG
-    auto nlc = std::count(std::begin(partition), std::end(partition),
-                          comm_cart.rank());
+    size_t nlc = std::count(std::begin(partition), std::end(partition),
+                            comm_cart.rank());
     std::vector<decltype(nlc)> nlcs;
     boost::mpi::all_gather(comm, nlc, nlcs);
 
@@ -382,7 +388,8 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
         std::cout << std::endl;
     }
 
-    assert(std::accumulate(std::begin(nlcs), std::end(nlcs), 0) == nglocells);
+    assert(std::accumulate(std::begin(nlcs), std::end(nlcs), size_t{0})
+           == gbox.global_cells().size());
 #endif
 
     return true;
