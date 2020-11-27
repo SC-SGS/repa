@@ -71,6 +71,54 @@ constexpr inline double clamp(double min, double val, double max)
         return val;
 }
 
+namespace {
+/** Searches in range [begin, end) for an element greater than the specified.
+ * Behaves like a call so std::upper_bound. However, if called successively,
+ * this class assumes that the elements searched for monotonously increase.
+ */
+template <typename It>
+struct FwdSearchUpperBound {
+    using T = typename It::value_type;
+    FwdSearchUpperBound(It begin, It end) : _begin(begin), _end(end)
+    {
+    }
+
+    // Returns the iterator to the first element greater than "element".
+    // If no such exists, return "end".
+    It upper_bound(const T &element)
+    {
+#ifndef NDEBUG
+        // Check pre-condition
+        if (!_firstcall) {
+            assert(element >= _last_el);
+            _last_el = element;
+        }
+#endif
+        for (; _begin != _end; _begin++) {
+            if (*_begin > element)
+                return _begin;
+        }
+        return _end;
+    }
+
+private:
+    It _begin, _end;
+
+#ifndef NDEBUG
+    T _last_el = T{0};
+    bool _firstcall = true;
+#endif
+};
+
+template <typename Cont>
+FwdSearchUpperBound<typename Cont::const_iterator>
+new_fwd_searcher(const Cont &c)
+{
+    return FwdSearchUpperBound<typename Cont::const_iterator>{std::cbegin(c),
+                                                              std::cend(c)};
+}
+} // namespace
+
 /*
  * Repartition.
  * Every node is responsible for a certain range of cells along the
@@ -85,25 +133,30 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     const auto vertex_weights = m();
     assert(vertex_weights.size() == local_cells().size());
 
-    idx_t nglocells = static_cast<idx_t>(gbox.global_cells().size());
-    idx_t ncells_per_proc = static_cast<idx_t>(
-        std::ceil(static_cast<double>(nglocells) / comm_cart.size()));
-
-    // Vertex ranges per process
     std::vector<idx_t> vtxdist(comm_cart.size() + 1);
-    for (rank_type i = 0; i < comm_cart.size(); ++i) {
-        idx_t first_index = i * ncells_per_proc;
-        vtxdist[i] = clamp(0, first_index, nglocells - 1);
-    }
-    vtxdist[comm_cart.size()] = nglocells;
+
+    // Calculate "vtxdist". vtxdist[i] = first cell index belonging to rank i
+    {
+        const idx_t nglocells = static_cast<idx_t>(gbox.global_cells().size());
+        const double ncells_per_proc
+            = static_cast<double>(nglocells) / comm_cart.size();
+
+        // Vertex ranges per process
+        for (rank_type i = 0; i < comm_cart.size(); ++i) {
+            const idx_t first_index
+                = static_cast<idx_t>(std::round(i * ncells_per_proc));
+            vtxdist[i] = clamp(0, first_index, nglocells - 1);
+        }
+        vtxdist[comm_cart.size()] = nglocells;
 
 #ifdef GRAPH_DEBUG
-    assert(vtxdist.size() == static_cast<size_t>(comm_cart.size()) + 1);
-    for (int i = 0; i < comm_cart.size(); ++i) {
-        assert(0 <= vtxdist[i] && vtxdist[i] < nglocells);
-    }
-    assert(vtxdist[comm_cart.size()] == nglocells);
+        assert(vtxdist.size() == static_cast<size_t>(comm_cart.size()) + 1);
+        for (int i = 0; i < comm_cart.size(); ++i) {
+            assert(0 <= vtxdist[i] && vtxdist[i] < nglocells);
+        }
+        assert(vtxdist[comm_cart.size()] == nglocells);
 #endif
+    }
 
     // Receive vertex and edge weights
     std::vector<rank_type> recvranks;
@@ -136,11 +189,26 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     // Sending vertex weights
     std::vector<boost::mpi::request> sreq;
     std::vector<std::vector<Weights>> my_weights(comm_cart.size());
+
+    auto gp_part = new_fwd_searcher(vtxdist);
     for (const auto i : cell_store.local_cells()) {
         // "Rank" is responsible for cell "gidx" / "i" (local)
         // during graph parititioning
         const global_cell_index_type gidx = cell_store.as_global_index(i);
-        const rank_type rank = gidx / ncells_per_proc;
+
+        // The inverse of cell-rank-assignment.
+        // Note that due to rounding and clamping this is not straightforward
+        // a simple "gidx / n_cells_per_proc". Therefore, we search for it
+        // in vtxdist. We don't use a binary search because of its logarithmic
+        // cost but rather use a linear forward search because the inputs
+        // ("gidx") are ordered/monotonously increasing.
+        // This makes the whole process (all upper_bound-calls) O(N+P)
+        // because "gp_part" traverses the vtxdist array concurrently to the
+        // traversal of cell_store.local_cells().
+        const auto it = gp_part.upper_bound(gidx);
+        assert(it != vtxdist.end());
+        assert(it != vtxdist.begin());
+        const rank_type rank = std::distance(vtxdist.cbegin(), it) - 1;
 
         Weights w;
         w[0] = static_cast<idx_t>(vertex_weights[i]);
@@ -194,7 +262,8 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
 
 #ifdef GRAPH_DEBUG
     assert(nvtx == vtxdist[comm_cart.rank() + 1] - vtxdist[comm_cart.rank()]);
-    assert(nvtx <= nglocells);
+    assert(nvtx <= vtxdist.back()); // Last element is equal to the number of
+                                    // global cells
     assert(xadj.size() == static_cast<size_t>(nvtx) + 1);
     for (int i = 0; i < nvtx; ++i) {
         assert(xadj[i] < xadj[i + 1]);
@@ -202,7 +271,7 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     }
 
     for (size_t i = 0; i < adjncy.size(); ++i) {
-        assert(adjncy[i] >= 0 && adjncy[i] < nglocells);
+        assert(adjncy[i] >= 0 && adjncy[i] < vtxdist.back());
     }
 #endif
 
@@ -300,15 +369,15 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
     util::all_gatherv_displ(comm_cart, parti.cref(), vtxdist, partition);
 
 #ifdef GRAPH_DEBUG
-    assert(partition.size() == static_cast<size_t>(nglocells));
+    assert(partition.size() == gbox.global_cells().size());
     for (int r : partition) {
         assert(0 <= r && r < comm_cart.size());
     }
 #endif
 
 #ifdef GRAPH_DEBUG
-    auto nlc = std::count(std::begin(partition), std::end(partition),
-                          comm_cart.rank());
+    size_t nlc = std::count(std::begin(partition), std::end(partition),
+                            comm_cart.rank());
     std::vector<decltype(nlc)> nlcs;
     boost::mpi::all_gather(comm, nlc, nlcs);
 
@@ -319,7 +388,8 @@ bool Graph::sub_repartition(CellMetric m, CellCellMetric ccm)
         std::cout << std::endl;
     }
 
-    assert(std::accumulate(std::begin(nlcs), std::end(nlcs), 0) == nglocells);
+    assert(std::accumulate(std::begin(nlcs), std::end(nlcs), size_t{0})
+           == gbox.global_cells().size());
 #endif
 
     return true;
