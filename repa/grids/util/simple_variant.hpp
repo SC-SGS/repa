@@ -75,13 +75,13 @@ struct simple_variant {
     {
     }
 
-    simple_variant(const simple_variant &other)
+    simple_variant(const simple_variant &other) : _tag(Tag::UNINITIALIZED)
     {
         // See comment in operator= to why we to this
         *this = other;
     }
 
-    simple_variant(simple_variant &&other)
+    simple_variant(simple_variant &&other) : _tag(Tag::UNINITIALIZED)
     {
         *this = std::forward<simple_variant>(other);
     }
