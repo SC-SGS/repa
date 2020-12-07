@@ -312,7 +312,12 @@ struct P4estGrid::_P4estGrid_impl {
     {
         p4est_locidx_t result;
         idx.visit(
-            [&result, this](local_cell_index_type lidx) {
+            [&result
+#ifndef NDEBUG
+             ,
+             this
+#endif
+        ](local_cell_index_type lidx) {
                 result = static_cast<int>(lidx);
                 assert(result >= 0 && result < m_num_local_cells);
             },
