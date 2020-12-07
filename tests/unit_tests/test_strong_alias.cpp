@@ -33,8 +33,8 @@ using s_alias = repa::util::StrongAlias<int, _tag_type>;
 
 BOOST_AUTO_TEST_CASE(uninitialized)
 {
-    const s_alias a;
 #ifndef NDEBUG
+    const s_alias a;
     BOOST_TEST((!a.is_initialized()));
 #endif
 }
