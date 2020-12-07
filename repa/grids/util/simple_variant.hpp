@@ -251,6 +251,8 @@ struct simple_variant {
     template <typename F1, typename F2>
     void visit(F1 &&f1, F2 &&f2)
     {
+        if (_tag == Tag::UNINITIALIZED)
+            std::abort();
         visit_if<T1>(f1);
         visit_if<T2>(f2);
     }
@@ -260,6 +262,8 @@ struct simple_variant {
     template <typename F1, typename F2>
     void visit(F1 &&f1, F2 &&f2) const
     {
+        if (_tag == Tag::UNINITIALIZED)
+            std::abort();
         visit_if<T1>(f1);
         visit_if<T2>(f2);
     }
