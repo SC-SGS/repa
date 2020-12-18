@@ -169,6 +169,13 @@ void HybridGPDiff::command(std::string s)
     else if (s == "toggle" || s == "switch") {
         switch_to_state = state == State::DIFF ? State::GRAPH : State::DIFF;
     }
+
+    // Delegate commands prefixed with "diff:" or "graph:" to implementations
+    if (s.substr(0, 5) == "diff:") {
+        diff_impl.command(s.substr(5));
+    } else if (s.substr(0, 6) == "graph:") {
+        graph_impl.command(s.substr(6));
+    }
 }
 
 global_cell_index_type
