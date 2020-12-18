@@ -474,6 +474,18 @@ void Diffusion::command(std::string s)
             assert(false);
         }
     }
+
+    if (s == "synchronize") {
+        // Make partition array globally known
+        std::vector<rank_type> buf(partition.size());
+        for (size_t i = 0; i < partition.size(); ++i)
+            buf[i] = partition[i].value_or(-1);
+        MPI_Allreduce(MPI_IN_PLACE, buf.data(), buf.size(),
+                      boost::mpi::get_mpi_datatype<rank_type>(), MPI_MAX,
+                      comm_cart);
+        for (size_t i = 0; i < partition.size(); ++i)
+            partition[i] = buf[i];
+    }
 }
 } // namespace grids
 } // namespace repa
