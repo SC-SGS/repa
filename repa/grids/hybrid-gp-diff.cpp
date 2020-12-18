@@ -173,7 +173,8 @@ void HybridGPDiff::command(std::string s)
     // Delegate commands prefixed with "diff:" or "graph:" to implementations
     if (s.substr(0, 5) == "diff:") {
         diff_impl.command(s.substr(5));
-    } else if (s.substr(0, 6) == "graph:") {
+    }
+    else if (s.substr(0, 6) == "graph:") {
         graph_impl.command(s.substr(6));
     }
 }
