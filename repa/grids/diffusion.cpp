@@ -162,6 +162,8 @@ void Diffusion::clear_unknown_cell_ownership()
     };
 
     for (auto el : boost::adaptors::index(partition)) {
+        if (!el.value().has_value())
+            continue;
         if (const auto neighborhood
             = gbox.full_shell_neigh(global_cell_index_type{el.index()});
             none_of(neighborhood, is_my_cell))
