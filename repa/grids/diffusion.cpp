@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <boost/mpi/nonblocking.hpp>
 #include <boost/range/adaptor/indexed.hpp>
+#include <boost/range/algorithm/for_each.hpp>
 #include <boost/range/algorithm_ext.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/utility.hpp> // std::pair
@@ -221,27 +222,25 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     const auto send_information
         = std::make_pair(std::cref(cells_to_send), std::cref(neighbors));
 
-    // Update partition array and invalidate unknown neighbors
+    // Update partition array
+    // Don't invalidate any neighbors of "i" in the "partition" vector yet. We
+    // need to send them to the corresponding receiver of "i", later.
+    // Invalidation is deferred to the very end.
     _impl::for_each_reassignment(
-        send_information, [this](global_cell_index_type i, rank_type r) {
-            partition[i] = r;
-            // DO NOT DO THIS. WE NEED TO SEND THIS INFO TO NEIGHBORS LATER.
-            //for (const auto neigh : gbox.full_shell_neigh_without_center(i)) {
-            //    invalidate_if_unknown(neigh);
-            //}
-        });
+        send_information,
+        [this](global_cell_index_type i, rank_type r) { partition[i] = r; });
 
-
-    std::set<global_cell_index_type> _relevant_cells;
-    // Add all ghost layer cells - not taking into account the reassignment "partition[i] = r" in line 200.
-    for (const auto lidx: local_cells()) {
-        for (const auto neighidx: gbox.full_shell_neigh_without_center(cell_store.as_global_index(lidx))) {
+    std::set<global_cell_index_type> old_ghost_cells;
+    // Add all ghost layer cells - not taking into account the reassignment
+    // "partition[i] = r" in line 200.
+    for (const auto lidx : local_cells()) {
+        for (const auto neighidx : gbox.full_shell_neigh_without_center(
+                 cell_store.as_global_index(lidx))) {
             if (cell_store.as_ghost_index(neighidx)) {
-                _relevant_cells.emplace(neighidx);
+                old_ghost_cells.emplace(neighidx);
             }
         }
     }
-
 
     //
     // First communication step
@@ -255,36 +254,26 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         const auto neighbor_sendinformation
             = util::mpi_neighbor_allgather(neighcomm, send_information);
 
-        // Which cells do we need?
-        // - Our own ghost layer
-        // - Neighbors of "cells_to_send"
-
-        // Which cells are these?
-        // - Ghost layer: clear.
-        // - Neighbors of "cells_to_send": local cells or ghost layer cells
-        //   (ghost layer as per definition before l.200 reassignment of partition[i]).
-        //   should still be present in "local_cells" somewhere?
-        // => Only update ghost layer cells.
-        //    local cells CANNOT be updated here because other processes do not own them and hence cannot reassign them.
-
-        auto is_relevant_cell = [&_relevant_cells](global_cell_index_type i){
-            return _relevant_cells.find(i) != _relevant_cells.end();
+        // We are only going to accept new entries into "partition" if they are
+        // relevant for us.
+        // Relevant for this subdomain are only cells in our ghost layer
+        // or -- because we are going to send them away -- neighbors of cells
+        // in "cells_to_send". These are, however, also ghost layer cells.
+        // (Or local cells but this does not matter.)
+        auto is_relevant_cell = [&old_ghost_cells](global_cell_index_type i) {
+            return old_ghost_cells.find(i) != old_ghost_cells.end();
         };
 
-        // Ganz am Ende dann "cells_to_send" rausnehmen. //
-        // Moment. cells_to_send sind schon als "jemand anderem gehörend" markiert.
-        std::for_each(std::begin(neighbor_sendinformation),
-                      std::end(neighbor_sendinformation),
-                      [this, &is_relevant_cell](const auto &neighbor_info) {
-                          _impl::for_each_reassignment(
-                              neighbor_info,
-                              [this, &is_relevant_cell](global_cell_index_type i, rank_type r) {
-                                  // Note: We must also update the neighbors of cells in "cells_to_send", here.
-                                  // Because these neighborhoods are sent to their new owners in the next step.
-                                  if (is_relevant_cell(i))
-                                    partition[i] = r;
-                              });
-                      });
+        boost::for_each(neighbor_sendinformation,
+                        [this, &is_relevant_cell](const auto &neighbor_info) {
+                            _impl::for_each_reassignment(
+                                neighbor_info,
+                                [this, &is_relevant_cell](
+                                    global_cell_index_type i, rank_type r) {
+                                    if (is_relevant_cell(i))
+                                        partition[i] = r;
+                                });
+                        });
     }
 
     assert(_impl::is_correct_distributed_partitioning(partition, comm_cart));
@@ -302,14 +291,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     }
 
     // Remove unnecessary entries from "partition".
-    for (const auto &i: _relevant_cells) {
-        bool is_needed = false;
-        for (const auto neigh: gbox.full_shell_neigh(i)) {
-            if (partition[neigh] == comm.rank())
-                is_needed = true;
-        }
-        if (!is_needed)
-            partition[i] = {};
+    for (const auto &i : old_ghost_cells) {
+        invalidate_if_unknown(i);
     }
 
     assert(_impl::is_correct_distributed_partitioning(partition, comm_cart));
