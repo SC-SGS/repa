@@ -164,4 +164,4 @@ struct range_iterator<const repa::util::iota_range<T>> {
     typedef repa::util::iota_iter<T> type;
 };
 
-}
+} // namespace boost
