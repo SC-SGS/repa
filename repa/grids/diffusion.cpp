@@ -463,9 +463,6 @@ void Diffusion::pre_init(bool firstcall)
 {
     borderCells.clear();
     borderCellsNeighbors.clear();
-
-    if (!firstcall)
-        clear_unknown_cell_ownership();
 }
 
 void Diffusion::post_init(bool firstcall)
