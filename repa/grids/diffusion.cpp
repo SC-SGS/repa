@@ -333,6 +333,14 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     for (const auto &i : old_ghost_cells) {
         invalidate_if_unknown(i);
     }
+    // We also need to check if an old local cell became a stale entry.
+    // If the subdomain is locally(!) a 2D/1D structure, it can happen that
+    // this structure of witdth 1 (in 3D) is completely handed off, thus, leaving
+    // no own ghost cell in the cell's neighborhood.
+    for (const auto &i : local_cells()) {
+        const auto gloidx = cell_store.as_global_index(i);
+        invalidate_if_unknown(gloidx);
+    }
 
     assert(_impl::is_correct_distributed_partitioning(partition, comm_cart));
     assert(_impl::is_ghost_layer_fully_known(partition, comm_cart, gbox));
