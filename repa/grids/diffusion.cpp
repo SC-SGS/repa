@@ -21,6 +21,9 @@
 #include <algorithm>
 #include <boost/mpi/nonblocking.hpp>
 #include <boost/range/adaptor/indexed.hpp>
+#include <boost/range/adaptor/reversed.hpp>
+#include <boost/range/adaptor/transformed.hpp>
+#include <boost/range/algorithm/fill.hpp>
 #include <boost/range/algorithm/for_each.hpp>
 #include <boost/range/algorithm_ext.hpp>
 #include <boost/serialization/array.hpp>
@@ -61,6 +64,38 @@ void for_each_reassignment(
         for (const auto &i : indices) {
             f(i, n_value);
         }
+    }
+}
+
+/** Clears all entries but "local" and "ghost" indices from "partition."
+ */
+template <typename Rng1, typename Rng2, typename PartitionEntryType>
+void clear_unknown_cell_ownership(std::vector<PartitionEntryType> &partition,
+                                  const Rng1 &local,
+                                  const Rng2 &ghost)
+{
+    static_assert(std::is_same<typename Rng1::value_type,
+                               repa::global_cell_index_type>::value);
+    static_assert(std::is_same<typename Rng2::value_type,
+                               repa::global_cell_index_type>::value);
+
+    const auto own_rank
+        = local.empty() ? repa::rank_type{0} : partition[local[0]];
+
+    // Save entries for ghost cells.
+    std::vector<PartitionEntryType> ghost_ranks(ghost.size(), 0);
+    size_t idx = 0;
+    for (const auto &gidx : ghost)
+        ghost_ranks[idx++] = partition[gidx];
+
+    boost::fill(partition, PartitionEntryType{});
+
+    // Restore entries
+    for (const auto &lidx : local)
+        partition[lidx] = own_rank;
+
+    for (const auto &gidx : boost::adaptors::reverse(ghost)) {
+        partition[gidx] = ghost_ranks[--idx];
     }
 }
 
@@ -190,13 +225,18 @@ void Diffusion::invalidate_if_unknown(global_cell_index_type cellidx)
     }
 }
 
-void Diffusion::clear_unknown_cell_ownership()
+std::set<global_cell_index_type> Diffusion::get_ghost_layer_cells() const
 {
-    for (const global_cell_index_type i : gbox.global_cells()) {
-        if (!partition[i].has_value())
-            continue;
-        invalidate_if_unknown(i);
+    std::set<global_cell_index_type> ghost_cells;
+    for (const auto &lidx : borderCells) {
+        for (const auto neighidx : gbox.full_shell_neigh_without_center(
+                 cell_store.as_global_index(lidx))) {
+            if (cell_store.as_ghost_index(neighidx)) {
+                ghost_cells.emplace(neighidx);
+            }
+        }
     }
+    return ghost_cells;
 }
 
 bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
@@ -204,8 +244,17 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     const auto cellweights = m();
     assert(cellweights.size() == local_cells().size());
 
+    const std::set<global_cell_index_type> old_ghost_cells
+        = get_ghost_layer_cells();
+
     if (stores_full_partitioning) {
-        clear_unknown_cell_ownership();
+        _impl::clear_unknown_cell_ownership(
+            partition,
+            boost::adaptors::transform(local_cells(),
+                                       [this](local_cell_index_type l) {
+                                           return cell_store.as_global_index(l);
+                                       }),
+            old_ghost_cells);
         stores_full_partitioning = false;
     }
 
@@ -229,18 +278,6 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     _impl::for_each_reassignment(
         send_information,
         [this](global_cell_index_type i, rank_type r) { partition[i] = r; });
-
-    std::set<global_cell_index_type> old_ghost_cells;
-    // Add all ghost layer cells - not taking into account the reassignment
-    // "partition[i] = r" in line 200.
-    for (const auto lidx : local_cells()) {
-        for (const auto neighidx : gbox.full_shell_neigh_without_center(
-                 cell_store.as_global_index(lidx))) {
-            if (cell_store.as_ghost_index(neighidx)) {
-                old_ghost_cells.emplace(neighidx);
-            }
-        }
-    }
 
     //
     // First communication step
@@ -270,6 +307,8 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
                                 neighbor_info,
                                 [this, &is_relevant_cell](
                                     global_cell_index_type i, rank_type r) {
+                                    if (r == comm.rank())
+                                        assert(is_relevant_cell(i));
                                     if (is_relevant_cell(i))
                                         partition[i] = r;
                                 });

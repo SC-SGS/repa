@@ -105,6 +105,8 @@ private:
  */
 template <typename T>
 struct iota_range {
+    typedef T value_type;
+
     iota_iter<T> begin() const
     {
         return iota_iter<T>(T{0});
@@ -120,6 +122,11 @@ struct iota_range {
     size_t size() const
     {
         return _last;
+    }
+
+    bool empty() const
+    {
+        return _last >= 0;
     }
 
     /** Access a specific element of the range
@@ -142,3 +149,19 @@ private:
 
 } // namespace util
 } // namespace repa
+
+namespace boost {
+
+/** Allow iota_range to be used in conjunction with boost::range
+ */
+template <typename T>
+struct range_iterator<repa::util::iota_range<T>> {
+    typedef repa::util::iota_iter<T> type;
+};
+
+template <typename T>
+struct range_iterator<const repa::util::iota_range<T>> {
+    typedef repa::util::iota_iter<T> type;
+};
+
+}

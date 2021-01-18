@@ -67,6 +67,8 @@ protected:
         return r;
     }
 
+    std::set<global_cell_index_type> get_ghost_layer_cells() const;
+
     //
     // Additional data
     //
@@ -127,9 +129,6 @@ private:
     //
 
     void invalidate_if_unknown(global_cell_index_type cellidx);
-
-    // Clears obsolete entries from "partition"
-    void clear_unknown_cell_ownership();
 
     /** Computes vector of vectors of cells to be sent to neighboring
      * processes based on the send volume passed in "send_volume".
