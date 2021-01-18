@@ -83,6 +83,33 @@ static bool is_correct_distributed_partitioning(
     return x;
 }
 
+template <typename PartitionEntryType, typename GBox>
+static bool stores_only_minimal_information(
+    const std::vector<PartitionEntryType> &partition,
+    const boost::mpi::communicator &comm,
+    const GBox &gbox)
+{
+    // Check that every cell has exactly one owner
+    for (const auto i :
+         repa::util::range(repa::global_cell_index_type{partition.size()})) {
+        if (partition[i]) {
+            if (partition[i] == comm.rank())
+                continue;
+            else {
+                bool has_own_neighbor = false;
+                for (const auto ni : gbox.full_shell_neigh_without_center(i)) {
+                    if (partition[ni] == comm.rank())
+                        has_own_neighbor = true;
+                }
+                if (!has_own_neighbor)
+                    return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 template <typename GBox, typename PartitionEntryType>
 bool is_ghost_layer_fully_known(
     const std::vector<PartitionEntryType> &partition,
@@ -270,7 +297,6 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         const auto received_neighborhood_info = util::mpi_neighbor_alltoall(
             neighcomm, get_neighborhood_information(cells_to_send));
 
-        // TODO: hier sicherstellen, dass keine falschen eingefügt werden.
         update_partitioning_from_received_neighbourhood(
             received_neighborhood_info);
     }
@@ -288,6 +314,7 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 
     assert(_impl::is_correct_distributed_partitioning(partition, comm_cart));
     assert(_impl::is_ghost_layer_fully_known(partition, comm_cart, gbox));
+    assert(_impl::stores_only_minimal_information(partition, comm, gbox));
 
     return true;
 }
