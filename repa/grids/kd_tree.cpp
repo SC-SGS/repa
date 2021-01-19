@@ -391,7 +391,8 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
 
     if (local_repart) {
         kdpart::repart_parttree_par_local(m_kdtree->t, comm_cart, m());
-    } else {
+    }
+    else {
         m_kdtree = std::make_unique<KDTreePrivateImpl>(
             kdpart::repart_parttree_par(m_kdtree->t, comm_cart, m()));
     }
@@ -405,14 +406,15 @@ void KDTreeGrid::command(std::string s)
     if (s == "set repart local") {
         local_repart = true;
         std::cout << "Setting local repart" << std::endl;
-    } else if (s == "set repart global") {
+    }
+    else if (s == "set repart global") {
         local_repart = false;
         std::cout << "Setting global repart" << std::endl;
-    } else {
+    }
+    else {
         throw UnknwonCommandError("No such command: `" + s + "'");
     }
 }
-
 
 global_cell_index_type
 KDTreeGrid::global_hash(local_or_ghost_cell_index_type cellidx)
