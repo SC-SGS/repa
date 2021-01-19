@@ -58,6 +58,19 @@ struct global_index_storage {
         _local_cells.push_back(g);
     }
 
+    /** Alternative to "push_back_local" if all local cells are given
+     * in an array.
+     */
+    void bulk_register_local_cells(std::vector<global_cell_index_type> &&cs)
+    {
+        assert(_local_cells.empty());
+        _local_cells = std::move(cs);
+        size_t i = 0;
+        for (const auto &g : _local_cells) {
+            _inverse_map.emplace(g, local_cell_index_type{i++});
+        }
+    }
+
     /** Registers a new ghost cell index
      *
      * @param g global index of the new ghost cell

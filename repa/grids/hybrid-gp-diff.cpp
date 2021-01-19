@@ -137,6 +137,9 @@ void HybridGPDiff::switch_implementation()
         graph_impl.init();
         break;
     case State::DIFF:
+        // The state of the diffusive implementation is not only given by
+        // the "partition" field but also by the set of local cell indices.
+        // We need to explicitly recompute the latter.
         active_implementation = &diff_impl;
         std::copy(std::begin(graph_impl.partition),
                   std::end(graph_impl.partition),
@@ -145,6 +148,9 @@ void HybridGPDiff::switch_implementation()
         for (const auto &el : graph_impl.partition)
             assert(el >= 0 && el < comm.size());
 #endif
+        diff_impl._local_cell_indices.clear();
+        auto data = diff_impl.GloMethod::compute_new_local_cells();
+        diff_impl._local_cell_indices.insert(data.begin(), data.end());
         diff_impl.init();
         break;
     }
