@@ -389,17 +389,45 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
     const auto weights = m();
     assert(weights.size() == local_cells().size());
 
-    m_kdtree = std::make_unique<KDTreePrivateImpl>(
-        kdpart::repart_parttree_par(m_kdtree->t, comm_cart, m()));
+    if (local_repart) {
+        kdpart::repart_parttree_par_local(m_kdtree->t, comm_cart, m());
+    } else {
+        m_kdtree = std::make_unique<KDTreePrivateImpl>(
+            kdpart::repart_parttree_par(m_kdtree->t, comm_cart, m()));
+    }
     cb();
     reinitialize();
     return true;
 }
 
+void KDTreeGrid::command(std::string s)
+{
+    if (s == "set repart local") {
+        local_repart = true;
+        std::cout << "Setting local repart" << std::endl;
+    } else if (s == "set repart global") {
+        local_repart = false;
+        std::cout << "Setting global repart" << std::endl;
+    } else {
+        throw UnknwonCommandError("No such command: `" + s + "'");
+    }
+}
+
+
 global_cell_index_type
 KDTreeGrid::global_hash(local_or_ghost_cell_index_type cellidx)
 {
     return cell_store.as_global_index(cellidx);
+}
+
+std::set<std::string> KDTreeGrid::get_supported_variants() const
+{
+    return {"local", "global"};
+}
+
+void KDTreeGrid::set_variant(const std::string &var)
+{
+    command("set repart " + var);
 }
 
 } // namespace grids

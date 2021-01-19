@@ -26,6 +26,7 @@
 
 #include "_compat.hpp"
 #include "globox.hpp"
+#include "grid_variants.hpp"
 #include "pargrid.hpp"
 #include "util/box_global_index_storage.hpp"
 
@@ -37,7 +38,7 @@ namespace grids {
  */
 struct KDTreePrivateImpl;
 
-class KDTreeGrid : public ParallelLCGrid {
+class KDTreeGrid : public ParallelLCGrid, public VariantSetter {
 public:
     KDTreeGrid(const boost::mpi::communicator &comm,
                Vec3d box_size,
@@ -55,6 +56,11 @@ public:
     repartition(CellMetric m, CellCellMetric ccm, Thunk cb) override;
     global_cell_index_type
     global_hash(local_or_ghost_cell_index_type cellidx) override;
+
+    virtual void command(std::string s);
+
+    virtual std::set<std::string> get_supported_variants() const override;
+    virtual void set_variant(const std::string &var) override;
 
     /**
      * A domain is a 3d-box defined by a tuple of vectors for the lower corner
@@ -82,6 +88,11 @@ private:
 
     globox::GlobalBox<global_cell_index_type, int> gbox;
     std::vector<GhostExchangeDesc> m_boundary_info;
+
+    /** Flag whether to perform local or global repartitioning,
+     * modified via command().
+     */
+    bool local_repart = false;
 
     /**
      * Initializes datastructure that contains neighbor ranks and ghost
