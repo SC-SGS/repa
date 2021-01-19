@@ -67,6 +67,9 @@ protected:
         return r;
     }
 
+    virtual std::vector<global_cell_index_type>
+    compute_new_local_cells() const override;
+
     std::set<global_cell_index_type> get_ghost_layer_cells() const;
 
     //
@@ -116,6 +119,12 @@ private:
     friend struct HybridGPDiff; // Needs access to "partition" vector
 
     double profit_percentage_pass_through = 1.0;
+
+    /** This vector keeps track of all local cells during the repartition
+     * process in order to efficiently implement "compute_new_local_cells".
+     * Don't use it for something else.
+     */
+    std::set<global_cell_index_type> _local_cell_indices;
 
     void pre_init(bool firstcall) override;
     void init_new_foreign_cell(local_cell_index_type localcell,

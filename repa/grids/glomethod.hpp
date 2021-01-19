@@ -54,6 +54,8 @@ struct GloMethod : public ParallelLCGrid {
     global_hash(local_or_ghost_cell_index_type cellidx) override;
 
 protected:
+    friend struct HybridGPDiff;
+
     local_cell_index_type n_local_cells() const override;
     ghost_cell_index_type n_ghost_cells() const override;
 
@@ -107,6 +109,12 @@ protected:
                                        rank_type owner)
     {
     }
+
+    // For re-initialization, computes the new set of local cells
+    // owned by this process/subdomain.
+    // Override this if the subclass can do this more efficiently.
+    // @returns Vector of global indices of the new local cells
+    virtual std::vector<global_cell_index_type> compute_new_local_cells() const;
 
     // Function that globally resolves a cell index to a rank.
     // Return value may be empty if cell "idx" is irrelevant for

@@ -146,6 +146,33 @@ static bool stores_only_minimal_information(
     return true;
 }
 
+template <typename PartitionEntryType, typename Range>
+static bool local_cell_indices_are_consistent(
+    const std::vector<PartitionEntryType> &partition,
+    const boost::mpi::communicator &comm,
+    const Range &local_cell_indices)
+{
+    static_assert(std::is_same<typename Range::value_type,
+                               repa::global_cell_index_type>::value);
+
+    for (const auto &el : local_cell_indices) {
+        if (partition[el] != comm.rank())
+            return false;
+    }
+
+    for (const auto i :
+         repa::util::range(repa::global_cell_index_type{partition.size()})) {
+        if (partition[i] == comm.rank()
+            && std::find(local_cell_indices.begin(), local_cell_indices.end(),
+                         i)
+                   == local_cell_indices.end()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 template <typename GBox, typename PartitionEntryType>
 bool is_ghost_layer_fully_known(
     const std::vector<PartitionEntryType> &partition,
@@ -275,9 +302,11 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     // Don't invalidate any neighbors of "i" in the "partition" vector yet. We
     // need to send them to the corresponding receiver of "i", later.
     // Invalidation is deferred to the very end.
-    _impl::for_each_reassignment(
-        send_information,
-        [this](global_cell_index_type i, rank_type r) { partition[i] = r; });
+    _impl::for_each_reassignment(send_information,
+                                 [this](global_cell_index_type i, rank_type r) {
+                                     partition[i] = r;
+                                     _local_cell_indices.erase(i);
+                                 });
 
     //
     // First communication step
@@ -307,8 +336,10 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
                                 neighbor_info,
                                 [this, &is_relevant_cell](
                                     global_cell_index_type i, rank_type r) {
-                                    if (r == comm.rank())
+                                    if (r == comm.rank()) {
                                         assert(is_relevant_cell(i));
+                                        _local_cell_indices.emplace(i);
+                                    }
                                     if (is_relevant_cell(i))
                                         partition[i] = r;
                                 });
@@ -345,8 +376,16 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     assert(_impl::is_correct_distributed_partitioning(partition, comm_cart));
     assert(_impl::is_ghost_layer_fully_known(partition, comm_cart, gbox));
     assert(_impl::stores_only_minimal_information(partition, comm, gbox));
+    assert(_impl::local_cell_indices_are_consistent(partition, comm,
+                                                    _local_cell_indices));
 
     return true;
+}
+
+std::vector<global_cell_index_type> Diffusion::compute_new_local_cells() const
+{
+    return std::vector<global_cell_index_type>{_local_cell_indices.begin(),
+                                               _local_cell_indices.end()};
 }
 
 Diffusion::Diffusion(const boost::mpi::communicator &comm,
@@ -363,6 +402,9 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
     boost::push_back(partition, util::StaticRankAssigner{initial_partitioning,
                                                          gbox, comm_cart}
                                     .partitioning());
+    // Initially, compute _local_cell_indices by hard
+    auto data = GloMethod::compute_new_local_cells();
+    _local_cell_indices.insert(data.begin(), data.end());
     assert(partition.size() == gbox.global_cells().size());
 }
 

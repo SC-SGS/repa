@@ -130,6 +130,17 @@ GloMethod::~GloMethod()
 {
 }
 
+std::vector<global_cell_index_type> GloMethod::compute_new_local_cells() const
+{
+    std::vector<global_cell_index_type> res;
+    for (const auto i : gbox.global_cells()) {
+        if (auto r = rank_of_cell(i); r && *r == comm_cart.rank()) {
+            res.push_back(i);
+        }
+    }
+    return res;
+}
+
 /*
  * Rebuild the data structures describing subdomain and communication.
  */
@@ -139,12 +150,7 @@ void GloMethod::init(bool firstcall)
     cell_store.clear();
     neighbors.clear();
 
-    // Extract the local cells from "partition".
-    for (const auto i : gbox.global_cells()) {
-        if (auto r = rank_of_cell(i); r && *r == comm_cart.rank()) {
-            cell_store.push_back_local(i);
-        }
-    }
+    cell_store.bulk_register_local_cells(compute_new_local_cells());
 
     //
     // In the following, we first collect the communication volume as global
