@@ -67,6 +67,8 @@ protected:
         return r;
     }
 
+    std::set<global_cell_index_type> get_ghost_layer_cells() const;
+
     //
     // Additional data
     //
@@ -86,6 +88,9 @@ protected:
 
     // Neighborhood communicator
     boost::mpi::communicator neighcomm;
+
+    // "True" if the whole domain is known. "false" if not.
+    bool stores_full_partitioning;
 
     /** Type "Per_Neighbor": an element designated for communication with
      * a neighboring process (one per rank_index_type).
@@ -123,11 +128,10 @@ private:
     // Additional methods
     //
 
-    // Clears obsolete entries from "partition"
-    void clear_unknown_cell_ownership();
+    void invalidate_if_unknown(global_cell_index_type cellidx);
 
-    /** Computes vector of vectors of cells to be sent to neighboring processes
-     * based on the send volume passed in "send_volume".
+    /** Computes vector of vectors of cells to be sent to neighboring
+     * processes based on the send volume passed in "send_volume".
      */
     PerNeighbor<GlobalCellIndices>
     compute_send_list(std::vector<double> &&send_volume,

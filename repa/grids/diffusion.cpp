@@ -21,6 +21,10 @@
 #include <algorithm>
 #include <boost/mpi/nonblocking.hpp>
 #include <boost/range/adaptor/indexed.hpp>
+#include <boost/range/adaptor/reversed.hpp>
+#include <boost/range/adaptor/transformed.hpp>
+#include <boost/range/algorithm/fill.hpp>
+#include <boost/range/algorithm/for_each.hpp>
 #include <boost/range/algorithm_ext.hpp>
 #include <boost/serialization/array.hpp>
 #include <boost/serialization/utility.hpp> // std::pair
@@ -45,15 +49,9 @@ using GlobalIndices = std::vector<repa::global_cell_index_type>;
 using SendVolIndices = std::vector<GlobalIndices>;
 using RankVector = std::vector<repa::rank_type>;
 
-/** Does a number of "set partition[i] = v for all i in i-vector".
- *
- * The different operations are given as vectors and the values and
- * i-vector-vector are passed as std::pair.
- */
-template <typename PartitionEntryType>
-void mark_new_owners_from_sendvolume(
-    std::vector<PartitionEntryType> &partition,
-    const std::pair<SendVolIndices, RankVector> &sendvolume)
+template <typename F>
+void for_each_reassignment(
+    const std::pair<SendVolIndices, RankVector> &sendvolume, F &&f)
 {
     const auto &indicess = std::get<0>(sendvolume);
     const auto &new_values = std::get<1>(sendvolume);
@@ -63,8 +61,41 @@ void mark_new_owners_from_sendvolume(
         const auto &indices = indicess[set_num];
         const auto &n_value = new_values[set_num];
 
-        for (const auto &i : indices)
-            partition[i] = n_value;
+        for (const auto &i : indices) {
+            f(i, n_value);
+        }
+    }
+}
+
+/** Clears all entries but "local" and "ghost" indices from "partition."
+ */
+template <typename Rng1, typename Rng2, typename PartitionEntryType>
+void clear_unknown_cell_ownership(std::vector<PartitionEntryType> &partition,
+                                  const Rng1 &local,
+                                  const Rng2 &ghost)
+{
+    static_assert(std::is_same<typename Rng1::value_type,
+                               repa::global_cell_index_type>::value);
+    static_assert(std::is_same<typename Rng2::value_type,
+                               repa::global_cell_index_type>::value);
+
+    const auto own_rank
+        = local.empty() ? repa::rank_type{0} : partition[local[0]];
+
+    // Save entries for ghost cells.
+    std::vector<PartitionEntryType> ghost_ranks(ghost.size(), 0);
+    size_t idx = 0;
+    for (const auto &gidx : ghost)
+        ghost_ranks[idx++] = partition[gidx];
+
+    boost::fill(partition, PartitionEntryType{});
+
+    // Restore entries
+    for (const auto &lidx : local)
+        partition[lidx] = own_rank;
+
+    for (const auto &gidx : boost::adaptors::reverse(ghost)) {
+        partition[gidx] = ghost_ranks[--idx];
     }
 }
 
@@ -86,6 +117,33 @@ static bool is_correct_distributed_partitioning(
                          [](int el) { return el == 1; });
     assert(x);
     return x;
+}
+
+template <typename PartitionEntryType, typename GBox>
+static bool stores_only_minimal_information(
+    const std::vector<PartitionEntryType> &partition,
+    const boost::mpi::communicator &comm,
+    const GBox &gbox)
+{
+    // Check that every cell has exactly one owner
+    for (const auto i :
+         repa::util::range(repa::global_cell_index_type{partition.size()})) {
+        if (partition[i]) {
+            if (partition[i] == comm.rank())
+                continue;
+            else {
+                bool has_own_neighbor = false;
+                for (const auto ni : gbox.full_shell_neigh_without_center(i)) {
+                    if (partition[ni] == comm.rank())
+                        has_own_neighbor = true;
+                }
+                if (!has_own_neighbor)
+                    return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 template <typename GBox, typename PartitionEntryType>
@@ -155,18 +213,30 @@ bool none_of(const Rng &rng, Pred &&p)
     return std::none_of(rng.begin(), rng.end(), std::forward<Pred>(p));
 }
 
-void Diffusion::clear_unknown_cell_ownership()
+void Diffusion::invalidate_if_unknown(global_cell_index_type cellidx)
 {
     auto is_my_cell = [this](global_cell_index_type neighcell) {
         return partition[neighcell] == comm_cart.rank();
     };
 
-    for (auto el : boost::adaptors::index(partition)) {
-        if (const auto neighborhood
-            = gbox.full_shell_neigh(global_cell_index_type{el.index()});
-            none_of(neighborhood, is_my_cell))
-            el.value() = {}; // Declare the owner to be unknown.
+    if (const auto neighborhood = gbox.full_shell_neigh(cellidx);
+        none_of(neighborhood, is_my_cell)) {
+        partition[cellidx] = {}; // Declare the owner to be unknown.
     }
+}
+
+std::set<global_cell_index_type> Diffusion::get_ghost_layer_cells() const
+{
+    std::set<global_cell_index_type> ghost_cells;
+    for (const auto &lidx : borderCells) {
+        for (const auto neighidx : gbox.full_shell_neigh_without_center(
+                 cell_store.as_global_index(lidx))) {
+            if (cell_store.as_ghost_index(neighidx)) {
+                ghost_cells.emplace(neighidx);
+            }
+        }
+    }
+    return ghost_cells;
 }
 
 bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
@@ -174,7 +244,19 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     const auto cellweights = m();
     assert(cellweights.size() == local_cells().size());
 
-    clear_unknown_cell_ownership();
+    const std::set<global_cell_index_type> old_ghost_cells
+        = get_ghost_layer_cells();
+
+    if (stores_full_partitioning) {
+        _impl::clear_unknown_cell_ownership(
+            partition,
+            boost::adaptors::transform(local_cells(),
+                                       [this](local_cell_index_type l) {
+                                           return cell_store.as_global_index(l);
+                                       }),
+            old_ghost_cells);
+        stores_full_partitioning = false;
+    }
 
     // compute local, estimated load
     double local_load
@@ -190,7 +272,12 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         = std::make_pair(std::cref(cells_to_send), std::cref(neighbors));
 
     // Update partition array
-    _impl::mark_new_owners_from_sendvolume(partition, send_information);
+    // Don't invalidate any neighbors of "i" in the "partition" vector yet. We
+    // need to send them to the corresponding receiver of "i", later.
+    // Invalidation is deferred to the very end.
+    _impl::for_each_reassignment(
+        send_information,
+        [this](global_cell_index_type i, rank_type r) { partition[i] = r; });
 
     //
     // First communication step
@@ -204,15 +291,30 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         const auto neighbor_sendinformation
             = util::mpi_neighbor_allgather(neighcomm, send_information);
 
-        // Update the partition entry for all received cells.
-        using namespace std::placeholders;
-        std::for_each(std::begin(neighbor_sendinformation),
-                      std::end(neighbor_sendinformation),
-                      [this](const auto &neighbor_info) {
-                          _impl::mark_new_owners_from_sendvolume(partition,
-                                                                 neighbor_info);
-                      });
+        // We are only going to accept new entries into "partition" if they are
+        // relevant for us.
+        // Relevant for this subdomain are only cells in our ghost layer
+        // or -- because we are going to send them away -- neighbors of cells
+        // in "cells_to_send". These are, however, also ghost layer cells.
+        // (Or local cells but this does not matter.)
+        auto is_relevant_cell = [&old_ghost_cells](global_cell_index_type i) {
+            return old_ghost_cells.find(i) != old_ghost_cells.end();
+        };
+
+        boost::for_each(neighbor_sendinformation,
+                        [this, &is_relevant_cell](const auto &neighbor_info) {
+                            _impl::for_each_reassignment(
+                                neighbor_info,
+                                [this, &is_relevant_cell](
+                                    global_cell_index_type i, rank_type r) {
+                                    if (r == comm.rank())
+                                        assert(is_relevant_cell(i));
+                                    if (is_relevant_cell(i))
+                                        partition[i] = r;
+                                });
+                        });
     }
+
     assert(_impl::is_correct_distributed_partitioning(partition, comm_cart));
 
     //
@@ -226,7 +328,23 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
         update_partitioning_from_received_neighbourhood(
             received_neighborhood_info);
     }
+
+    // Remove unnecessary entries from "partition".
+    for (const auto &i : old_ghost_cells) {
+        invalidate_if_unknown(i);
+    }
+    // We also need to check if an old local cell became a stale entry.
+    // If the subdomain is locally(!) a 2D/1D structure, it can happen that
+    // this structure of witdth 1 (in 3D) is completely handed off, thus,
+    // leaving no own ghost cell in the cell's neighborhood.
+    for (const auto &i : local_cells()) {
+        const auto gloidx = cell_store.as_global_index(i);
+        invalidate_if_unknown(gloidx);
+    }
+
+    assert(_impl::is_correct_distributed_partitioning(partition, comm_cart));
     assert(_impl::is_ghost_layer_fully_known(partition, comm_cart, gbox));
+    assert(_impl::stores_only_minimal_information(partition, comm, gbox));
 
     return true;
 }
@@ -236,6 +354,7 @@ Diffusion::Diffusion(const boost::mpi::communicator &comm,
                      double min_cell_size,
                      ExtraParams ep)
     : GloMethod(comm, box_size, min_cell_size, ep),
+      stores_full_partitioning(true),
       flow_calc(diff_variants::create_flow_calc(
           diff_variants::FlowCalcKind::WILLEBEEK))
 {
@@ -377,6 +496,7 @@ void Diffusion::update_partitioning_from_received_neighbourhood(
     for (size_t i = 0; i < neighs.size(); ++i) {
         for (size_t j = 0; j < neighs[i].size(); ++j) {
             global_cell_index_type basecell = neighs[i][j].basecell;
+            assert(partition[basecell] == comm.rank());
             int k = 0;
             for (global_cell_index_type n :
                  gbox.full_shell_neigh_without_center(basecell)) {
@@ -390,9 +510,6 @@ void Diffusion::pre_init(bool firstcall)
 {
     borderCells.clear();
     borderCellsNeighbors.clear();
-
-    if (!firstcall)
-        clear_unknown_cell_ownership();
 }
 
 void Diffusion::post_init(bool firstcall)
@@ -471,6 +588,19 @@ void Diffusion::command(std::string s)
             }
             assert(false);
         }
+    }
+
+    if (s == "synchronize") {
+        // Make partition array globally known
+        std::vector<rank_type> buf(partition.size());
+        for (size_t i = 0; i < partition.size(); ++i)
+            buf[i] = partition[i].value_or(-1);
+        MPI_Allreduce(MPI_IN_PLACE, buf.data(), buf.size(),
+                      boost::mpi::get_mpi_datatype<rank_type>(), MPI_MAX,
+                      comm_cart);
+        for (size_t i = 0; i < partition.size(); ++i)
+            partition[i] = buf[i];
+        stores_full_partitioning = true;
     }
 }
 } // namespace grids
