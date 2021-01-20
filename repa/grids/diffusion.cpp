@@ -383,7 +383,6 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
 
     assert(_impl::is_correct_distributed_partitioning(partition, comm_cart));
     assert(_impl::is_ghost_layer_fully_known(partition, comm_cart, gbox));
-    assert(_impl::stores_only_minimal_information(partition, comm, gbox));
     assert(_impl::local_cell_indices_are_consistent(partition, comm,
                                                     _local_cell_indices));
 
@@ -564,6 +563,7 @@ void Diffusion::pre_init(bool firstcall)
     for (const auto &i : _stale_partition_entries) {
         invalidate_if_unknown(i);
     }
+    assert(_impl::stores_only_minimal_information(partition, comm, gbox));
 }
 
 void Diffusion::post_init(bool firstcall)
