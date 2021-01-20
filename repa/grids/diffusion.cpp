@@ -567,10 +567,11 @@ void Diffusion::pre_init(bool firstcall)
     borderCells.clear();
     borderCellsNeighbors.clear();
 
-    if (!firstcall) {
+    if (!firstcall && !stores_full_partitioning) {
         for (const auto &i : _stale_partition_entries) {
             invalidate_if_unknown(i);
         }
+        _stale_partition_entries.clear();
         assert(_impl::stores_only_minimal_information(partition, comm, gbox));
     }
 }

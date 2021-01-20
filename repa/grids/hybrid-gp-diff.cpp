@@ -151,6 +151,7 @@ void HybridGPDiff::switch_implementation()
         diff_impl._local_cell_indices.clear();
         auto data = diff_impl.GloMethod::compute_new_local_cells();
         diff_impl._local_cell_indices.insert(data.begin(), data.end());
+        diff_impl.stores_full_partitioning = true;
         diff_impl.init();
         break;
     }
