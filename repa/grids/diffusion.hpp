@@ -115,6 +115,9 @@ protected:
 
     std::unique_ptr<diff_variants::FlowCalculator> flow_calc;
 
+    // These are to be deleted from "partition" in pre_init().
+    std::vector<global_cell_index_type> _stale_partition_entries;
+
 private:
     friend struct HybridGPDiff; // Needs access to "partition" vector
 

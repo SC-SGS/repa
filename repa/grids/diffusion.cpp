@@ -23,6 +23,7 @@
 #include <boost/range/adaptor/indexed.hpp>
 #include <boost/range/adaptor/reversed.hpp>
 #include <boost/range/adaptor/transformed.hpp>
+#include <boost/range/algorithm/copy.hpp>
 #include <boost/range/algorithm/fill.hpp>
 #include <boost/range/algorithm/for_each.hpp>
 #include <boost/range/algorithm_ext.hpp>
@@ -364,14 +365,21 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
     for (const auto &i : old_ghost_cells) {
         invalidate_if_unknown(i);
     }
+
     // We also need to check if an old local cell became a stale entry.
     // If the subdomain is locally(!) a 2D/1D structure, it can happen that
     // this structure of witdth 1 (in 3D) is completely handed off, thus,
     // leaving no own ghost cell in the cell's neighborhood.
-    for (const auto &i : local_cells()) {
-        const auto gloidx = cell_store.as_global_index(i);
-        invalidate_if_unknown(gloidx);
-    }
+    // BUT: We still need to resolve these cells in the following
+    // call to exchange_start_callback() from GloMethod::repartition.
+    // Therefore, we delete these entries in Diffusion::pre_init().
+    _stale_partition_entries.clear();
+    boost::range::copy(
+        local_cells()
+            | boost::adaptors::transformed([this](local_cell_index_type i) {
+                  return cell_store.as_global_index(i);
+              }),
+        std::back_inserter(_stale_partition_entries));
 
     assert(_impl::is_correct_distributed_partitioning(partition, comm_cart));
     assert(_impl::is_ghost_layer_fully_known(partition, comm_cart, gbox));
@@ -552,6 +560,10 @@ void Diffusion::pre_init(bool firstcall)
 {
     borderCells.clear();
     borderCellsNeighbors.clear();
+
+    for (const auto &i : _stale_partition_entries) {
+        invalidate_if_unknown(i);
+    }
 }
 
 void Diffusion::post_init(bool firstcall)
