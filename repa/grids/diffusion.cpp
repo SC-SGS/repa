@@ -560,10 +560,12 @@ void Diffusion::pre_init(bool firstcall)
     borderCells.clear();
     borderCellsNeighbors.clear();
 
-    for (const auto &i : _stale_partition_entries) {
-        invalidate_if_unknown(i);
+    if (!firstcall) {
+        for (const auto &i : _stale_partition_entries) {
+            invalidate_if_unknown(i);
+        }
+        assert(_impl::stores_only_minimal_information(partition, comm, gbox));
     }
-    assert(_impl::stores_only_minimal_information(partition, comm, gbox));
 }
 
 void Diffusion::post_init(bool firstcall)
