@@ -361,19 +361,26 @@ bool Diffusion::sub_repartition(CellMetric m, CellCellMetric ccm)
             received_neighborhood_info);
     }
 
-    // Remove unnecessary entries from "partition".
-    for (const auto &i : old_ghost_cells) {
-        invalidate_if_unknown(i);
-    }
+    // In order to only store the minimal information, we would need to
+    // remove unnecessary entries from "partition" now.
+    // These unnecessary entries are: "old_ghost_cells" and the old local cells
+    // "local_cells()". However, we defer this to pre_init().
+    // The reason is, that we still need to resolve these cells in the following
+    // call to exchange_start_callback() from GloMethod::repartition.
+    // We also defer the old_ghost_cells because MD codes might not resort
+    // particles before calling "repartition()". If this is the case, then
+    // a particle could have moved into the ghost layer and, thus, this entry
+    // might be necessary. Note that the corresponding entries in "partition"
+    // are *not* wrong. They are just "stale" meaning that we cannot guarantee
+    // that we get their updates in the next "repartition" call.
 
-    // We also need to check if an old local cell became a stale entry.
+    // Why do we also need to check if an old local cell became a stale entry?
     // If the subdomain is locally(!) a 2D/1D structure, it can happen that
     // this structure of witdth 1 (in 3D) is completely handed off, thus,
     // leaving no own ghost cell in the cell's neighborhood.
-    // BUT: We still need to resolve these cells in the following
-    // call to exchange_start_callback() from GloMethod::repartition.
-    // Therefore, we delete these entries in Diffusion::pre_init().
     _stale_partition_entries.clear();
+    boost::range::copy(old_ghost_cells,
+                       std::back_inserter(_stale_partition_entries));
     boost::range::copy(
         local_cells()
             | boost::adaptors::transformed([this](local_cell_index_type i) {
