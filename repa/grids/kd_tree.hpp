@@ -94,8 +94,11 @@ private:
      */
     struct RepartParams {
         enum class RepartType {
-            Global, Local_Limbend, Local_Depth
-        } type = RepartType::Global;
+            Global,
+            Local_Limbend,
+            Local_Depth
+        } type
+            = RepartType::Global;
         int depth = 0; // for "Local_Depth"
     };
 
