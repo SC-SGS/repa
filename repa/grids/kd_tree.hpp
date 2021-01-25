@@ -92,7 +92,14 @@ private:
     /** Flag whether to perform local or global repartitioning,
      * modified via command().
      */
-    bool local_repart = false;
+    struct RepartParams {
+        enum class RepartType {
+            Global, Local_Limbend, Local_Depth
+        } type = RepartType::Global;
+        int depth = 0; // for "Local_Depth"
+    };
+
+    RepartParams repart_param;
 
     /**
      * Initializes datastructure that contains neighbor ranks and ghost

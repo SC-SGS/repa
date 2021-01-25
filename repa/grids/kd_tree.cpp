@@ -25,6 +25,7 @@
 #include <boost/range/numeric.hpp>
 #include <cassert>
 #include <numeric>
+#include <regex>
 
 #include <kdpart/kdpart.h>
 
@@ -389,10 +390,14 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
     const auto weights = m();
     assert(weights.size() == local_cells().size());
 
-    if (local_repart) {
+    if (repart_param.type == RepartParams::RepartType::Local_Limbend) {
         kdpart::repart_parttree_par_local(m_kdtree->t, comm_cart, m());
     }
-    else {
+    else if (repart_param.type == RepartParams::RepartType::Local_Depth) {
+        kdpart::repart_parttree_par_local_top(m_kdtree->t, comm_cart, m(),
+                                              repart_param.depth);
+    }
+    else { // "Global"
         m_kdtree = std::make_unique<KDTreePrivateImpl>(
             kdpart::repart_parttree_par(m_kdtree->t, comm_cart, m()));
     }
@@ -403,13 +408,28 @@ bool KDTreeGrid::repartition(CellMetric m, CellCellMetric ccm, Thunk cb)
 
 void KDTreeGrid::command(std::string s)
 {
-    if (s == "set repart local") {
-        local_repart = true;
-        std::cout << "Setting local repart" << std::endl;
+    static const std::regex ldepth("set\\s+repart\\s+local\\s+depth=(\\d+)");
+    static const std::regex local("set\\s+repart\\s+local$");
+    static const std::regex global("set\\s+repart\\s+global");
+
+    std::smatch m;
+
+    if (std::regex_match(s, m, ldepth)) {
+        repart_param.depth = std::atoi(m[1].str().c_str());
+        repart_param.type = RepartParams::RepartType::Local_Depth;
+        if (comm.rank() == 0)
+            std::cerr << "[kd_tree] Setting local depth repart (depth = "
+                      << repart_param.depth << ")" << std::endl;
     }
-    else if (s == "set repart global") {
-        local_repart = false;
-        std::cout << "Setting global repart" << std::endl;
+    else if (std::regex_match(s, m, local)) {
+        repart_param.type = RepartParams::RepartType::Local_Limbend;
+        if (comm.rank() == 0)
+            std::cerr << "[kd_tree] Setting local limbend repart" << std::endl;
+    }
+    else if (std::regex_match(s, m, global)) {
+        repart_param.type = RepartParams::RepartType::Global;
+        if (comm.rank() == 0)
+            std::cerr << "[kd_tree] Setting global repart" << std::endl;
     }
     else {
         throw UnknwonCommandError("No such command: `" + s + "'");
@@ -424,7 +444,8 @@ KDTreeGrid::global_hash(local_or_ghost_cell_index_type cellidx)
 
 std::set<std::string> KDTreeGrid::get_supported_variants() const
 {
-    return {"local", "global"};
+    return {"local",         "global",        "local depth=1",
+            "local depth=2", "local depth=3", "local depth=4"};
 }
 
 void KDTreeGrid::set_variant(const std::string &var)
