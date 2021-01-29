@@ -49,6 +49,14 @@ struct GridBasedGrid : public GloMethod {
     // neighborhood.
     util::const_span<rank_type> neighbor_ranks() const override;
 
+    // GloMethod::compute_new_local_cells uses rank_of() to determine if a cell
+    // belongs to this process. This is, however, very compute intensive for
+    // GridBasedGrid because it checks all neighboring (and initially *all*)
+    // subdomains. This implementation only checks the own Octagon if it
+    // includes a certain cell or not.
+    virtual std::vector<global_cell_index_type>
+    compute_new_local_cells() const override;
+
 private:
     // Indicator if the decomposition currently is a regular grid,
     // which is the case directly after instantiation.

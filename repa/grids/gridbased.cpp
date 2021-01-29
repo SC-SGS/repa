@@ -114,6 +114,18 @@ util::const_span<rank_type> GridBasedGrid::neighbor_ranks() const
     return util::make_const_span(const_neighborhood);
 }
 
+std::vector<global_cell_index_type>
+GridBasedGrid::compute_new_local_cells() const
+{
+    std::vector<global_cell_index_type> res;
+    for (const auto i : gbox.global_cells()) {
+        if (my_dom.contains(gbox.midpoint(i))) {
+            res.push_back(i);
+        }
+    }
+    return res;
+}
+
 void GridBasedGrid::pre_init(bool firstcall)
 {
     if (firstcall) {
