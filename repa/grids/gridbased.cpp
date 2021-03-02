@@ -482,6 +482,12 @@ void GridBasedGrid::command(std::string s)
             std::cout << "Setting mu = " << mu << std::endl;
 #endif
     }
+    else if (s == "synchronize") {
+        // This does not set a regular grid. It only indicates that
+        // the class should store all subdomains and not only the neighboring.
+        is_regular_grid = true;
+        init_octagons();
+    }
 }
 
 } // namespace grids
