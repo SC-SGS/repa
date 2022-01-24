@@ -54,7 +54,7 @@ struct GloMethod : public ParallelLCGrid {
     global_hash(local_or_ghost_cell_index_type cellidx) override;
 
 protected:
-    friend struct HybridGPDiff;
+    friend class HybridGPDiff;
 
     local_cell_index_type n_local_cells() const override;
     ghost_cell_index_type n_ghost_cells() const override;

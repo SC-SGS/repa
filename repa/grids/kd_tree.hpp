@@ -57,7 +57,7 @@ public:
     global_cell_index_type
     global_hash(local_or_ghost_cell_index_type cellidx) override;
 
-    virtual void command(std::string s);
+    virtual void command(std::string s) override;
 
     virtual std::set<std::string> get_supported_variants() const override;
     virtual void set_variant(const std::string &var) override;
