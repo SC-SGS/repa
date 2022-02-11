@@ -119,7 +119,7 @@ protected:
     std::vector<global_cell_index_type> _stale_partition_entries;
 
 private:
-    friend struct HybridGPDiff; // Needs access to "partition" vector
+    friend class HybridGPDiff; // Needs access to "partition" vector
 
     double profit_percentage_pass_through = 1.0;
 
