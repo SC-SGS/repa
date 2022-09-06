@@ -38,7 +38,7 @@ function(define_example)
                                   Boost::serialization)
 
     target_include_directories(${EXAMPLE_NAME}
-                               PRIVATE ${CMAKE_SOURCE_DIR})
+                               PRIVATE ${PROJECT_SOURCE_DIR})
     target_compile_options(${EXAMPLE_NAME}
                            PRIVATE ${REPA_DEFAULT_COMPILE_OPTIONS})
 endfunction(define_example)
