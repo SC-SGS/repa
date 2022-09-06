@@ -91,8 +91,8 @@ if(WITH_TESTS AND WITH_COVERAGE)
       set(CMAKE_EXE_LINKER_FLAGS "--coverage -fprofile-arcs -ftest-coverage")
 
       add_custom_target(coverage
-                        COMMAND ${CMAKE_SOURCE_DIR}/util/coverage.sh
-                        WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+                        COMMAND ${PROJECT_SOURCE_DIR}/util/coverage.sh
+                        WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
       message(STATUS "Coverage enabled. Use `coverage' target after build to execute coverage tests.")
     endif()
   endif()

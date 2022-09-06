@@ -40,7 +40,7 @@ function(define_test)
                                   ${TEST_LIBRARIES})
 
     target_include_directories(${TEST_NAME}
-                               PRIVATE ${CMAKE_SOURCE_DIR})
+                               PRIVATE ${PROJECT_SOURCE_DIR})
     target_compile_options(${TEST_NAME}
                            PRIVATE ${REPA_DEFAULT_COMPILE_OPTIONS})
 
