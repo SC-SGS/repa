@@ -25,33 +25,33 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(WITH_KDPART "Build with ORB LB support" ON)
-option(WITH_P4EST "Build with SFC LB support" ON)
-option(WITH_PARMETIS "Build with graph partitioning LB support" ON)
-option(WITH_KDPART "Build with kd grid support" ON)
+option(REPA_WITH_KDPART "Build with ORB LB support" ON)
+option(REPA_WITH_P4EST "Build with SFC LB support" ON)
+option(REPA_WITH_PARMETIS "Build with graph partitioning LB support" ON)
+option(REPA_WITH_KDPART "Build with kd grid support" ON)
 
-option(WITH_TESTS "Perform unit tests" ON)
-option(WITH_COVERAGE "Coverage for tests" OFF)
+option(REPA_WITH_TESTS "Perform unit tests" ON)
+option(REPA_WITH_COVERAGE "Coverage for tests" OFF)
 
-if(WITH_KDPART)
+if(REPA_WITH_KDPART)
   find_package(KDPart REQUIRED)
-endif(WITH_KDPART)
+endif(REPA_WITH_KDPART)
 
-if(WITH_P4EST)
+if(REPA_WITH_P4EST)
   find_package(P4est REQUIRED)
-endif(WITH_P4EST)
+endif(REPA_WITH_P4EST)
 
-if(WITH_PARMETIS)
+if(REPA_WITH_PARMETIS)
   find_package(ParMETIS REQUIRED)
-endif(WITH_PARMETIS)
+endif(REPA_WITH_PARMETIS)
 
 find_package(MPI REQUIRED)
 include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
 
 list(APPEND REQ_BOOST_PACKAGES mpi serialization)
-if(WITH_TESTS)
+if(REPA_WITH_TESTS)
   list(APPEND REQ_BOOST_PACKAGES unit_test_framework)
-endif(WITH_TESTS)
+endif(REPA_WITH_TESTS)
 find_package(Boost "1.67.0" REQUIRED ${REQ_BOOST_PACKAGES})
 
 if (Boost_VERSION VERSION_GREATER_EQUAL "1.69" AND Boost_VERSION VERSION_LESS_EQUAL "1.71")
@@ -77,7 +77,7 @@ set(REPA_DEFAULT_COMPILE_OPTIONS
       "-Wno-conversion"
       "-Wno-sign-conversion" >)
 
-if(WITH_TESTS AND WITH_COVERAGE)
+if(REPA_WITH_TESTS AND REPA_WITH_COVERAGE)
   if (NOT "${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
     message(SEND_ERROR "COVERAGE is only possible with Gnu Compiler Collection.")
   else()
@@ -96,16 +96,16 @@ if(WITH_TESTS AND WITH_COVERAGE)
       message(STATUS "Coverage enabled. Use `coverage' target after build to execute coverage tests.")
     endif()
   endif()
-endif(WITH_TESTS AND WITH_COVERAGE)
+endif(REPA_WITH_TESTS AND REPA_WITH_COVERAGE)
 
 add_subdirectory(repa)
 
-if(WITH_TESTS)
+if(REPA_WITH_TESTS)
   set(TEST_MAX_NPROC 4
       CACHE STRING "Maximum number of processes to run the tests with")
   enable_testing()
   add_subdirectory(tests)
-endif(WITH_TESTS)
+endif(REPA_WITH_TESTS)
 
 add_subdirectory(examples)
 
