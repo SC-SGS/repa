@@ -32,24 +32,24 @@ set(repa_SRC
     pargrid.cpp
 )
 
-if(WITH_KDPART AND KDPART_FOUND)
+if(REPA_WITH_KDPART AND KDPART_FOUND)
   set(repa_SRC
       ${repa_SRC}
       grids/kd_tree.cpp)
-endif(WITH_KDPART AND KDPART_FOUND)
+endif(REPA_WITH_KDPART AND KDPART_FOUND)
 
-if(WITH_P4EST AND P4EST_FOUND)
+if(REPA_WITH_P4EST AND P4EST_FOUND)
   set(repa_SRC
       ${repa_SRC}
       grids/p4est.cpp)
-endif(WITH_P4EST AND P4EST_FOUND)
+endif(REPA_WITH_P4EST AND P4EST_FOUND)
 
-if(WITH_PARMETIS AND PARMETIS_FOUND)
+if(REPA_WITH_PARMETIS AND PARMETIS_FOUND)
   set(repa_SRC
       ${repa_SRC}
       grids/graph.cpp
       grids/hybrid-gp-diff.cpp)
-endif(WITH_PARMETIS AND PARMETIS_FOUND)
+endif(REPA_WITH_PARMETIS AND PARMETIS_FOUND)
 
 set(repa_HDR
     repa.hpp
@@ -66,25 +66,25 @@ set(repa_HDR
 
 add_library(repa SHARED ${repa_SRC})
 
-if(WITH_KDPART AND KDPART_FOUND)
+if(REPA_WITH_KDPART AND KDPART_FOUND)
   target_include_directories(repa PRIVATE ${KDPART_INCLUDE_DIR})
   target_link_libraries(repa PRIVATE ${KDPART_LIBRARIES})
   add_definitions(-DHAVE_KDPART)
-endif(WITH_KDPART AND KDPART_FOUND)
+endif(REPA_WITH_KDPART AND KDPART_FOUND)
 
-if(WITH_P4EST AND P4EST_FOUND)
+if(REPA_WITH_P4EST AND P4EST_FOUND)
   target_include_directories(repa PRIVATE ${P4EST_INCLUDE_DIR})
   target_link_libraries(repa PRIVATE ${P4EST_LIBRARIES})
   add_definitions(-DHAVE_P4EST)
-endif(WITH_P4EST AND P4EST_FOUND)
+endif(REPA_WITH_P4EST AND P4EST_FOUND)
 
-if(WITH_PARMETIS AND PARMETIS_FOUND)
+if(REPA_WITH_PARMETIS AND PARMETIS_FOUND)
   target_include_directories(repa
                              PRIVATE ${PARMETIS_INCLUDE_DIR}
                                      ${METIS_INCLUDE_DIR})
   target_link_libraries(repa PRIVATE ${PARMETIS_LIBRARIES})
   add_definitions(-DHAVE_PARMETIS)
-endif(WITH_PARMETIS AND PARMETIS_FOUND)
+endif(REPA_WITH_PARMETIS AND PARMETIS_FOUND)
 
 target_link_libraries(repa
                       PUBLIC ${MPI_CXX_LIBRARIES}
